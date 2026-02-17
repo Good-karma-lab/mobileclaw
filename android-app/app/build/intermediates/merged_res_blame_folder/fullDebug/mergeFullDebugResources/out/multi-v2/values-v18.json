@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.zeroclaw.app-mergeFullDebugResources-53:/values-v18/values-v18.xml",
+            "map": [
+                {
+                    "source": "/Users/aostapenko/.gradle/caches/9.3.1/transforms/df332ee8c89e2af7b6f54d064eda9c78/transformed/appcompat-1.7.0/res/values-v18/values-v18.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "48",
+                        "endOffsets": "99"
+                    }
+                }
+            ]
+        }
+    ]
+}

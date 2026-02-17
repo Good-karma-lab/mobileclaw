@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.zeroclaw.app-playDebug-56:/xml_network_security_config.xml.flat",
+        "source": "com.zeroclaw.app-main-58:/xml/network_security_config.xml"
+    }
+]

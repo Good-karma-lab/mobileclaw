@@ -1,0 +1,2 @@
+int style Theme_ZeroClaw 0x0
+int xml network_security_config 0x0

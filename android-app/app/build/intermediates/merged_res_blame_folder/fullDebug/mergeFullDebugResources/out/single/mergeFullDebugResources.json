@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.zeroclaw.app-fullDebug-55:/xml_network_security_config.xml.flat",
+        "source": "com.zeroclaw.app-main-59:/xml/network_security_config.xml"
+    }
+]

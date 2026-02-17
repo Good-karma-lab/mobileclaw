@@ -2,7 +2,9 @@
   <img src="zeroclaw.png" alt="ZeroClaw" width="200" />
 </p>
 
-<h1 align="center">ZeroClaw 🦀</h1>
+<h1 align="center">MobileClaw 🦀</h1>
+
+<p align="center"><em>MobileClaw is the product name; ZeroClaw references are retained for Apache licensing, historical compatibility, and repository continuity.</em></p>
 
 <p align="center">
   <strong>Zero overhead. Zero compromise. 100% Rust. 100% Agnostic.</strong><br>
@@ -28,7 +30,7 @@ Fast, small, and fully autonomous AI assistant infrastructure — deploy anywher
 - ⚡ **Lightning Fast:** 400X Faster startup time, boot in <10ms (under 1s even on 0.6GHz cores).
 - 🌍 **True Portability:** Single self-contained binary across ARM, x86, and RISC-V.
 
-### Why teams pick ZeroClaw
+### Why teams pick MobileClaw
 
 - **Lean by default:** small Rust binary, fast startup, low memory footprint.
 - **Secure by design:** pairing, strict sandboxing, explicit allowlists, workspace scoping.
@@ -196,7 +198,7 @@ Every subsystem is a **trait** — swap implementations with a config change, ze
 | **Memory** | `Memory` | SQLite with hybrid search (FTS5 + vector cosine similarity), Lucid bridge (CLI sync + SQLite fallback), Markdown | Any persistence backend |
 | **Tools** | `Tool` | shell, file_read, file_write, memory_store, memory_recall, memory_forget, browser_open (Brave + allowlist), browser (agent-browser / rust-native), composio (optional) | Any capability |
 | **Observability** | `Observer` | Noop, Log, Multi | Prometheus, OTel |
-| **Runtime** | `RuntimeAdapter` | Native, Docker (sandboxed) | WASM (planned; unsupported kinds fail fast) |
+| **Runtime** | `RuntimeAdapter` | Native, Docker (sandboxed), Android (hosted) | WASM (planned; unsupported kinds fail fast) |
 | **Security** | `SecurityPolicy` | Gateway pairing, sandbox, allowlists, rate limits, filesystem scoping, encrypted secrets | — |
 | **Identity** | `IdentityConfig` | OpenClaw (markdown), AIEOS v1.1 (JSON) | Any identity format |
 | **Tunnel** | `Tunnel` | None, Cloudflare, Tailscale, ngrok, Custom | Any tunnel binary |
@@ -207,9 +209,12 @@ Every subsystem is a **trait** — swap implementations with a config change, ze
 ### Runtime support (current)
 
 - ✅ Supported today: `runtime.kind = "native"` or `runtime.kind = "docker"`
+- ✅ Mobile-hosted support: `runtime.kind = "android"` (with `android-app/` host)
 - 🚧 Planned, not implemented yet: WASM / edge runtimes
 
 When an unsupported `runtime.kind` is configured, ZeroClaw now exits with a clear error instead of silently falling back to native.
+
+Android deployment guide: `docs/android-deployment.md`
 
 ### Memory System (Full-Stack Search Engine)
 

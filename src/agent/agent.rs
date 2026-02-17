@@ -705,4 +705,62 @@ mod tests {
             .iter()
             .any(|msg| matches!(msg, ConversationMessage::ToolResults(_))));
     }
+
+    #[tokio::test]
+    async fn turn_with_android_device_tool_executes_tool_call() {
+        let provider = Box::new(MockProvider {
+            responses: Mutex::new(vec![
+                crate::providers::ChatResponse {
+                    text: Some(String::new()),
+                    tool_calls: vec![crate::providers::ToolCall {
+                        id: "tc_android_1".into(),
+                        name: "android_device".into(),
+                        arguments: r#"{"action":"list_apps"}"#.into(),
+                    }],
+                },
+                crate::providers::ChatResponse {
+                    text: Some("android done".into()),
+                    tool_calls: vec![],
+                },
+            ]),
+        });
+
+        let memory_cfg = crate::config::MemoryConfig {
+            backend: "none".into(),
+            ..crate::config::MemoryConfig::default()
+        };
+        let mem: Arc<dyn Memory> = Arc::from(
+            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None).unwrap(),
+        );
+
+        let android_config = crate::config::AndroidConfig {
+            enabled: true,
+            capabilities: crate::config::AndroidCapabilitiesConfig {
+                app_launch: true,
+                ..crate::config::AndroidCapabilitiesConfig::default()
+            },
+            ..crate::config::AndroidConfig::default()
+        };
+
+        let security = Arc::new(crate::security::SecurityPolicy::default());
+        let android_tool = crate::tools::AndroidDeviceTool::new(security, android_config);
+
+        let observer: Arc<dyn Observer> = Arc::from(crate::observability::NoopObserver {});
+        let mut agent = Agent::builder()
+            .provider(provider)
+            .tools(vec![Box::new(android_tool)])
+            .memory(mem)
+            .observer(observer)
+            .tool_dispatcher(Box::new(NativeToolDispatcher))
+            .workspace_dir(std::path::PathBuf::from("/tmp"))
+            .build()
+            .unwrap();
+
+        let response = agent.turn("list apps").await.unwrap();
+        assert_eq!(response, "android done");
+        assert!(agent.history().iter().any(|msg| {
+            matches!(msg, ConversationMessage::ToolResults(results)
+                if !results.is_empty() && results[0].content.contains("list_apps"))
+        }));
+    }
 }

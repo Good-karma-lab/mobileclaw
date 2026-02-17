@@ -162,6 +162,17 @@ pub struct CommandExecutionLog<'a> {
     pub duration_ms: u64,
 }
 
+/// Structured Android action details for audit logging.
+#[derive(Debug, Clone)]
+pub struct AndroidActionLog<'a> {
+    pub action: &'a str,
+    pub target: Option<&'a str>,
+    pub approved: bool,
+    pub allowed: bool,
+    pub success: bool,
+    pub duration_ms: u64,
+}
+
 impl AuditLogger {
     /// Create a new audit logger
     pub fn new(config: AuditConfig, zeroclaw_dir: PathBuf) -> Result<Self> {
@@ -205,6 +216,21 @@ impl AuditLogger {
                 entry.approved,
                 entry.allowed,
             )
+            .with_result(entry.success, None, entry.duration_ms, None);
+
+        self.log(&event)
+    }
+
+    /// Log Android bridge action with redacted target values.
+    pub fn log_android_action_event(&self, entry: AndroidActionLog<'_>) -> Result<()> {
+        let command = entry.target.map_or_else(
+            || entry.action.to_string(),
+            |target| format!("{}:{}", entry.action, redact_sensitive_target(target)),
+        );
+
+        let event = AuditEvent::new(AuditEventType::SecurityEvent)
+            .with_actor("android-device".to_string(), None, None)
+            .with_action(command, "high".to_string(), entry.approved, entry.allowed)
             .with_result(entry.success, None, entry.duration_ms, None);
 
         self.log(&event)
@@ -256,6 +282,26 @@ impl AuditLogger {
         std::fs::rename(&self.log_path, &rotated)?;
         Ok(())
     }
+}
+
+fn redact_sensitive_target(raw: &str) -> String {
+    let compact = raw.trim();
+    let digits = compact
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == '+')
+        .collect::<String>();
+
+    if digits.is_empty() {
+        return "***".into();
+    }
+
+    let len = digits.chars().count();
+    if len <= 4 {
+        return "****".into();
+    }
+
+    let suffix = digits.chars().skip(len - 4).collect::<String>();
+    format!("***{suffix}")
 }
 
 #[cfg(test)]
@@ -331,5 +377,10 @@ mod tests {
         // File should not exist since logging is disabled
         assert!(!tmp.path().join("audit.log").exists());
         Ok(())
+    }
+
+    #[test]
+    fn redact_sensitive_target_masks_phone() {
+        assert_eq!(redact_sensitive_target("+1 (555) 123-4567"), "***4567");
     }
 }

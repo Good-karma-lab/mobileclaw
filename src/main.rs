@@ -72,12 +72,12 @@ use config::Config;
 // Re-export so binary's hardware/peripherals modules can use crate::HardwareCommands etc.
 pub use zeroclaw::{HardwareCommands, PeripheralCommands};
 
-/// `ZeroClaw` - Zero overhead. Zero compromise. 100% Rust.
+/// `MobileClaw` - Zero overhead. Zero compromise. 100% Rust.
 #[derive(Parser, Debug)]
 #[command(name = "zeroclaw")]
 #[command(author = "theonlyhennygod")]
 #[command(version = "0.1.0")]
-#[command(about = "The fastest, smallest AI assistant.", long_about = None)]
+#[command(about = "MobileClaw (ZeroClaw core) - the fastest, smallest AI assistant.", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

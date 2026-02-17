@@ -1,0 +1,181 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.zeroclaw.app.full"
+4    android:versionCode="1"
+5    android:versionName="0.1.0-full" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="28"
+8-->INJECTED
+9        android:targetSdkVersion="36" />
+9-->INJECTED
+10
+11    <uses-permission android:name="android.permission.SEND_SMS" />
+11-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:3:5-67
+11-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:3:22-64
+12    <uses-permission android:name="android.permission.READ_SMS" />
+12-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:4:5-67
+12-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:4:22-64
+13    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+13-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:5:5-75
+13-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/full/AndroidManifest.xml:5:22-72
+14    <uses-permission android:name="android.permission.INTERNET" />
+14-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:5:5-67
+14-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:5:22-64
+15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+15-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:6:5-77
+15-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:6:22-74
+16    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+16-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:7:5-77
+16-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:7:22-74
+17    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+17-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:8:5-119
+17-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:8:22-74
+18
+19    <permission
+19-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:22:5-24:47
+20        android:name="com.zeroclaw.app.full.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+20-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:23:9-81
+21        android:protectionLevel="signature" />
+21-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:24:9-44
+22
+23    <uses-permission android:name="com.zeroclaw.app.full.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+23-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:26:5-97
+23-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:26:22-94
+24
+25    <application
+25-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:10:5-27:19
+26        android:allowBackup="true"
+26-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:11:9-35
+27        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+27-->[androidx.core:core:1.18.0-rc01] /Users/aostapenko/.gradle/caches/9.3.1/transforms/6d9aa01bb95aa0d362c65a754e52c83e/transformed/core-1.18.0-rc01/AndroidManifest.xml:28:18-86
+28        android:debuggable="true"
+29        android:extractNativeLibs="false"
+29-->INJECTED
+30        android:icon="@android:drawable/sym_def_app_icon"
+30-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:12:9-58
+31        android:label="MobileClaw"
+31-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:13:9-35
+32        android:networkSecurityConfig="@xml/network_security_config"
+32-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:14:9-69
+33        android:roundIcon="@android:drawable/sym_def_app_icon"
+33-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:15:9-63
+34        android:supportsRtl="true"
+34-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:16:9-35
+35        android:theme="@style/Theme.ZeroClaw" >
+35-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:17:9-46
+36        <activity
+36-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:19:9-26:20
+37            android:name="com.zeroclaw.app.MainActivity"
+37-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:20:13-41
+38            android:exported="true" >
+38-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:21:13-36
+39            <intent-filter>
+39-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:22:13-25:29
+40                <action android:name="android.intent.action.MAIN" />
+40-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:23:17-69
+40-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:23:25-66
+41
+42                <category android:name="android.intent.category.LAUNCHER" />
+42-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:24:17-77
+42-->/Users/aostapenko/Work/mobileclaw/android-app/app/src/main/AndroidManifest.xml:24:27-74
+43            </intent-filter>
+44        </activity>
+45
+46        <provider
+46-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:24:9-32:20
+47            android:name="androidx.startup.InitializationProvider"
+47-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:25:13-67
+48            android:authorities="com.zeroclaw.app.full.androidx-startup"
+48-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:26:13-68
+49            android:exported="false" >
+49-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:27:13-37
+50            <meta-data
+50-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:29:13-31:52
+51                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+51-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:30:17-75
+52                android:value="androidx.startup" />
+52-->[androidx.emoji2:emoji2:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/57db011635fbb2fa24fda0e2727f1321/transformed/emoji2-1.4.0/AndroidManifest.xml:31:17-49
+53            <meta-data
+53-->[androidx.lifecycle:lifecycle-process:2.10.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/39d16b55f342a033a9607b18b1d0a098/transformed/lifecycle-process-2.10.0/AndroidManifest.xml:29:13-31:52
+54                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+54-->[androidx.lifecycle:lifecycle-process:2.10.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/39d16b55f342a033a9607b18b1d0a098/transformed/lifecycle-process-2.10.0/AndroidManifest.xml:30:17-78
+55                android:value="androidx.startup" />
+55-->[androidx.lifecycle:lifecycle-process:2.10.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/39d16b55f342a033a9607b18b1d0a098/transformed/lifecycle-process-2.10.0/AndroidManifest.xml:31:17-49
+56            <meta-data
+56-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:29:13-31:52
+57                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+57-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:30:17-85
+58                android:value="androidx.startup" />
+58-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:31:17-49
+59        </provider>
+60
+61        <uses-library
+61-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:23:9-25:40
+62            android:name="androidx.window.extensions"
+62-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:24:13-54
+63            android:required="false" />
+63-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:25:13-37
+64        <uses-library
+64-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:26:9-28:40
+65            android:name="androidx.window.sidecar"
+65-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:27:13-51
+66            android:required="false" />
+66-->[androidx.window:window:1.5.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/85fef061272df2fbf408e9998d984083/transformed/window-1.5.0/AndroidManifest.xml:28:13-37
+67
+68        <activity
+68-->[androidx.compose.ui:ui-tooling-android:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/2d1d4478b497b5e93bd7e5604e3f2783/transformed/ui-tooling/AndroidManifest.xml:23:9-25:39
+69            android:name="androidx.compose.ui.tooling.PreviewActivity"
+69-->[androidx.compose.ui:ui-tooling-android:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/2d1d4478b497b5e93bd7e5604e3f2783/transformed/ui-tooling/AndroidManifest.xml:24:13-71
+70            android:exported="true" />
+70-->[androidx.compose.ui:ui-tooling-android:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/2d1d4478b497b5e93bd7e5604e3f2783/transformed/ui-tooling/AndroidManifest.xml:25:13-36
+71        <activity
+71-->[androidx.compose.ui:ui-test-manifest:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/a4eed4c1f601d5f5ca52106a0cdb9dd9/transformed/ui-test-manifest-1.11.0-alpha05/AndroidManifest.xml:23:9-26:79
+72            android:name="androidx.activity.ComponentActivity"
+72-->[androidx.compose.ui:ui-test-manifest:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/a4eed4c1f601d5f5ca52106a0cdb9dd9/transformed/ui-test-manifest-1.11.0-alpha05/AndroidManifest.xml:24:13-63
+73            android:exported="true"
+73-->[androidx.compose.ui:ui-test-manifest:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/a4eed4c1f601d5f5ca52106a0cdb9dd9/transformed/ui-test-manifest-1.11.0-alpha05/AndroidManifest.xml:25:13-36
+74            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+74-->[androidx.compose.ui:ui-test-manifest:1.11.0-alpha05] /Users/aostapenko/.gradle/caches/9.3.1/transforms/a4eed4c1f601d5f5ca52106a0cdb9dd9/transformed/ui-test-manifest-1.11.0-alpha05/AndroidManifest.xml:26:13-76
+75
+76        <receiver
+76-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:34:9-52:20
+77            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+77-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:35:13-76
+78            android:directBootAware="false"
+78-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:36:13-44
+79            android:enabled="true"
+79-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:37:13-35
+80            android:exported="true"
+80-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:38:13-36
+81            android:permission="android.permission.DUMP" >
+81-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:39:13-57
+82            <intent-filter>
+82-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:40:13-42:29
+83                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+83-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:17-91
+83-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:41:25-88
+84            </intent-filter>
+85            <intent-filter>
+85-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:43:13-45:29
+86                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+86-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:17-85
+86-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:44:25-82
+87            </intent-filter>
+88            <intent-filter>
+88-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:46:13-48:29
+89                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+89-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:17-88
+89-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:47:25-85
+90            </intent-filter>
+91            <intent-filter>
+91-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:49:13-51:29
+92                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+92-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:17-95
+92-->[androidx.profileinstaller:profileinstaller:1.4.0] /Users/aostapenko/.gradle/caches/9.3.1/transforms/c65fbbc10831e757c6b36a931fd96f7c/transformed/profileinstaller-1.4.0/AndroidManifest.xml:50:25-92
+93            </intent-filter>
+94        </receiver>
+95    </application>
+96
+97</manifest>
