@@ -1,4 +1,0 @@
-com.zeroclaw.app.test.app-updated_navigation_xml-0 /Users/aostapenko/Work/mobileclaw/android-app/app/build/generated/updated_navigation_xml/playDebugAndroidTest
-com.zeroclaw.app.test.app-packagePlayDebugAndroidTestResources-1 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/incremental/playDebugAndroidTest/packagePlayDebugAndroidTestResources/merged.dir
-com.zeroclaw.app.test.app-packagePlayDebugAndroidTestResources-2 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/incremental/playDebugAndroidTest/packagePlayDebugAndroidTestResources/stripped.dir
-com.zeroclaw.app.test.app-playDebugAndroidTest-3 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/merged_res/playDebugAndroidTest/mergePlayDebugAndroidTestResources

@@ -1,8 +1,0 @@
-com.zeroclaw.app-updated_navigation_xml-0 /Users/aostapenko/Work/mobileclaw/android-app/app/build/generated/updated_navigation_xml/playDebug
-com.zeroclaw.app-packagePlayDebugResources-1 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/incremental/playDebug/packagePlayDebugResources/merged.dir
-com.zeroclaw.app-packagePlayDebugResources-2 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/incremental/playDebug/packagePlayDebugResources/stripped.dir
-com.zeroclaw.app-playDebug-3 /Users/aostapenko/Work/mobileclaw/android-app/app/build/intermediates/merged_res/playDebug/mergePlayDebugResources
-com.zeroclaw.app-debug-4 /Users/aostapenko/Work/mobileclaw/android-app/app/src/debug/res
-com.zeroclaw.app-main-5 /Users/aostapenko/Work/mobileclaw/android-app/app/src/main/res
-com.zeroclaw.app-play-6 /Users/aostapenko/Work/mobileclaw/android-app/app/src/play/res
-com.zeroclaw.app-playDebug-7 /Users/aostapenko/Work/mobileclaw/android-app/app/src/playDebug/res

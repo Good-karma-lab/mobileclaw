@@ -3,10 +3,26 @@ firmware/*/target
 *.db
 *.db-journal
 .DS_Store
-.wt-pr37/
+.wt-*/
 __pycache__/
 *.pyc
 docker-compose.override.yml
+
+# Editor and local workspace settings
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Android/Gradle local build artifacts
+android-app/.gradle/
+android-app/.kotlin/
+android-app/build/
+android-app/**/build/
+android-app/local.properties
+android-app/**/*.iml
 
 # Environment files (may contain secrets)
 .env
