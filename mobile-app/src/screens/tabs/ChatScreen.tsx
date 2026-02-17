@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView, TextInput } from "react-native";
 import Animated, { FadeIn, SlideInLeft, SlideInRight } from "react-native-reanimated";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
@@ -41,6 +42,19 @@ export function ChatScreen() {
       cancelled = true;
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const cfg = await loadAgentConfig();
+        if (!cancelled) setDeepgramApiKey(cfg.deepgramApiKey);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     if (!scrollRef.current) return;

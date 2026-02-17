@@ -21,9 +21,14 @@ appId: com.mobileclaw.app
     id: "settings-api-key"
 - eraseText
 - inputText: "${OPENROUTER_TOKEN}"
-- extendedWaitUntil:
-    visible: "Saved locally"
-    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "deepgram-key-input"
+    direction: DOWN
+- tapOn:
+    id: "deepgram-key-input"
+- eraseText
+- inputText: "${DEEPGRAM_KEY}"
 - tapOn:
     id: "dock-tab-chat"
 - extendedWaitUntil:
