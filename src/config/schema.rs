@@ -34,6 +34,9 @@ pub struct Config {
     pub runtime: RuntimeConfig,
 
     #[serde(default)]
+    pub android: AndroidConfig,
+
+    #[serde(default)]
     pub reliability: ReliabilityConfig,
 
     #[serde(default)]
@@ -935,13 +938,209 @@ impl Default for AutonomyConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuntimeConfig {
-    /// Runtime kind (`native` | `docker`).
+    /// Runtime kind (`native` | `docker` | `android`).
     #[serde(default = "default_runtime_kind")]
     pub kind: String,
 
     /// Docker runtime settings (used when `kind = "docker"`).
     #[serde(default)]
     pub docker: DockerRuntimeConfig,
+
+    /// Android runtime settings (used when `kind = "android"`).
+    #[serde(default)]
+    pub android: AndroidRuntimeConfig,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AndroidDistribution {
+    Play,
+    Full,
+}
+
+impl Default for AndroidDistribution {
+    fn default() -> Self {
+        Self::Play
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AndroidCapabilitiesConfig {
+    #[serde(default)]
+    pub sms: bool,
+    #[serde(default)]
+    pub calls: bool,
+    #[serde(default = "default_true")]
+    pub app_launch: bool,
+    #[serde(default = "default_true")]
+    pub sensors: bool,
+    #[serde(default)]
+    pub camera: bool,
+    #[serde(default)]
+    pub microphone: bool,
+    #[serde(default)]
+    pub location: bool,
+    #[serde(default)]
+    pub notifications: bool,
+    #[serde(default)]
+    pub clipboard: bool,
+    #[serde(default = "default_true")]
+    pub network: bool,
+    #[serde(default = "default_true")]
+    pub battery: bool,
+    #[serde(default)]
+    pub contacts: bool,
+    #[serde(default)]
+    pub calendar: bool,
+}
+
+impl Default for AndroidCapabilitiesConfig {
+    fn default() -> Self {
+        Self {
+            sms: false,
+            calls: false,
+            app_launch: true,
+            sensors: true,
+            camera: false,
+            microphone: false,
+            location: false,
+            notifications: false,
+            clipboard: false,
+            network: true,
+            battery: true,
+            contacts: false,
+            calendar: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AndroidBridgeConfig {
+    /// Bridge mode (`mock`, `http`, `jni`)
+    #[serde(default = "default_android_bridge_mode")]
+    pub mode: String,
+    /// Local bridge endpoint (`http` mode)
+    #[serde(default = "default_android_bridge_endpoint")]
+    pub endpoint: String,
+    /// Optional bearer token for bridge auth
+    #[serde(default)]
+    pub api_key: Option<String>,
+    /// Allow non-local bridge endpoint (default: false)
+    #[serde(default)]
+    pub allow_remote_endpoint: bool,
+    /// Bridge timeout in milliseconds
+    #[serde(default = "default_android_bridge_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+fn default_android_bridge_mode() -> String {
+    "mock".into()
+}
+
+fn default_android_bridge_endpoint() -> String {
+    "http://127.0.0.1:9797/v1/android/actions".into()
+}
+
+fn default_android_bridge_timeout_ms() -> u64 {
+    10_000
+}
+
+impl Default for AndroidBridgeConfig {
+    fn default() -> Self {
+        Self {
+            mode: default_android_bridge_mode(),
+            endpoint: default_android_bridge_endpoint(),
+            api_key: None,
+            allow_remote_endpoint: false,
+            timeout_ms: default_android_bridge_timeout_ms(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AndroidPolicyConfig {
+    /// Require approved=true for high-risk phone actions.
+    #[serde(default = "default_true")]
+    pub require_explicit_approval: bool,
+    /// Allowed package names for app launch actions.
+    #[serde(default)]
+    pub allowed_packages: Vec<String>,
+    /// Allowed phone numbers for call/sms actions.
+    #[serde(default)]
+    pub allowed_phone_numbers: Vec<String>,
+    /// Maximum SMS sends per hour.
+    #[serde(default = "default_android_max_sms_per_hour")]
+    pub max_sms_per_hour: u32,
+    /// Maximum calls per hour.
+    #[serde(default = "default_android_max_calls_per_hour")]
+    pub max_calls_per_hour: u32,
+}
+
+fn default_android_max_sms_per_hour() -> u32 {
+    5
+}
+
+fn default_android_max_calls_per_hour() -> u32 {
+    5
+}
+
+impl Default for AndroidPolicyConfig {
+    fn default() -> Self {
+        Self {
+            require_explicit_approval: true,
+            allowed_packages: Vec::new(),
+            allowed_phone_numbers: Vec::new(),
+            max_sms_per_hour: default_android_max_sms_per_hour(),
+            max_calls_per_hour: default_android_max_calls_per_hour(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AndroidRuntimeConfig {
+    #[serde(default)]
+    pub app_data_dir: Option<String>,
+    #[serde(default = "default_android_foreground_service")]
+    pub use_foreground_service: bool,
+}
+
+fn default_android_foreground_service() -> bool {
+    true
+}
+
+impl Default for AndroidRuntimeConfig {
+    fn default() -> Self {
+        Self {
+            app_data_dir: None,
+            use_foreground_service: default_android_foreground_service(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AndroidConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub distribution: AndroidDistribution,
+    #[serde(default)]
+    pub capabilities: AndroidCapabilitiesConfig,
+    #[serde(default)]
+    pub bridge: AndroidBridgeConfig,
+    #[serde(default)]
+    pub policy: AndroidPolicyConfig,
+}
+
+impl Default for AndroidConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            distribution: AndroidDistribution::default(),
+            capabilities: AndroidCapabilitiesConfig::default(),
+            bridge: AndroidBridgeConfig::default(),
+            policy: AndroidPolicyConfig::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1014,6 +1213,7 @@ impl Default for RuntimeConfig {
         Self {
             kind: default_runtime_kind(),
             docker: DockerRuntimeConfig::default(),
+            android: AndroidRuntimeConfig::default(),
         }
     }
 }
@@ -1622,6 +1822,7 @@ impl Default for Config {
             observability: ObservabilityConfig::default(),
             autonomy: AutonomyConfig::default(),
             runtime: RuntimeConfig::default(),
+            android: AndroidConfig::default(),
             reliability: ReliabilityConfig::default(),
             scheduler: SchedulerConfig::default(),
             agent: AgentConfig::default(),
@@ -2110,6 +2311,11 @@ default_temperature = 0.7
                 kind: "docker".into(),
                 ..RuntimeConfig::default()
             },
+            android: AndroidConfig {
+                enabled: true,
+                distribution: AndroidDistribution::Full,
+                ..AndroidConfig::default()
+            },
             reliability: ReliabilityConfig::default(),
             scheduler: SchedulerConfig::default(),
             model_routes: Vec::new(),
@@ -2238,6 +2444,7 @@ tool_dispatcher = "xml"
             observability: ObservabilityConfig::default(),
             autonomy: AutonomyConfig::default(),
             runtime: RuntimeConfig::default(),
+            android: AndroidConfig::default(),
             reliability: ReliabilityConfig::default(),
             scheduler: SchedulerConfig::default(),
             model_routes: Vec::new(),

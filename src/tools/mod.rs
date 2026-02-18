@@ -1,3 +1,4 @@
+pub mod android_device;
 pub mod browser;
 pub mod browser_open;
 pub mod composio;
@@ -26,6 +27,7 @@ pub mod screenshot;
 pub mod shell;
 pub mod traits;
 
+pub use android_device::AndroidDeviceTool;
 pub use browser::{BrowserTool, ComputerUseConfig};
 pub use browser_open::BrowserOpenTool;
 pub use composio::ComposioTool;
@@ -150,6 +152,13 @@ pub fn all_tools_with_runtime(
             workspace_dir.to_path_buf(),
         )),
     ];
+
+    if root_config.android.enabled {
+        tools.push(Box::new(AndroidDeviceTool::new(
+            security.clone(),
+            root_config.android.clone(),
+        )));
+    }
 
     if browser_config.enabled {
         // Add legacy browser_open tool for simple URL opening
@@ -312,6 +321,39 @@ mod tests {
         let names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
         assert!(names.contains(&"browser_open"));
         assert!(names.contains(&"pushover"));
+    }
+
+    #[test]
+    fn all_tools_includes_android_device_when_enabled() {
+        let tmp = TempDir::new().unwrap();
+        let security = Arc::new(SecurityPolicy::default());
+        let mem_cfg = MemoryConfig {
+            backend: "markdown".into(),
+            ..MemoryConfig::default()
+        };
+        let mem: Arc<dyn Memory> =
+            Arc::from(crate::memory::create_memory(&mem_cfg, tmp.path(), None).unwrap());
+
+        let browser = BrowserConfig::default();
+        let http = crate::config::HttpRequestConfig::default();
+        let mut cfg = test_config(&tmp);
+        cfg.android.enabled = true;
+
+        let tools = all_tools(
+            Arc::new(Config::default()),
+            &security,
+            mem,
+            None,
+            None,
+            &browser,
+            &http,
+            tmp.path(),
+            &HashMap::new(),
+            None,
+            &cfg,
+        );
+        let names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
+        assert!(names.contains(&"android_device"));
     }
 
     #[test]

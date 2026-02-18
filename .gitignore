@@ -3,10 +3,30 @@ firmware/*/target
 *.db
 *.db-journal
 .DS_Store
-.wt-pr37/
+.wt-*/
 __pycache__/
 *.pyc
 docker-compose.override.yml
+
+# Editor and local workspace settings
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# React Native mobile app artifacts
+mobile-app/node_modules/
+mobile-app/.expo/
+mobile-app/.expo-shared/
+mobile-app/android/
+mobile-app/ios/
+mobile-app/dist/
+mobile-app/.maestro/screenshots/
+mobile-app/.maestro/reports/
+mobile-app/*.log
+mobile-app/npm-debug.log*
 
 # Environment files (may contain secrets)
 .env
