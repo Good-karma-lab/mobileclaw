@@ -22,7 +22,7 @@ Merge-blocking checks should stay small and deterministic. Optional checks are u
 - `.github/workflows/security.yml` (`Security Audit`)
     - Purpose: dependency advisories (`cargo audit`) and policy/license checks (`cargo deny`)
 - `.github/workflows/release.yml` (`Release`)
-    - Purpose: build tagged release artifacts and publish GitHub releases
+    - Purpose: build signed Android APK on tagged pushes and publish GitHub releases
 
 ### Optional Repository Automation
 

@@ -103,6 +103,29 @@ adb reverse tcp:8081 tcp:8081
 4. If using UI automation, enable Accessibility service from the in-app instructions.
 
 
+## Install APK from GitHub Releases
+
+### 1) Download
+
+1. Open this repository's **Releases** page on GitHub.
+2. Open the latest stable release.
+3. Download the `mobileclaw-<version>.apk` asset.
+4. (Optional) download `SHA256SUMS` and verify checksum before install.
+
+### 2) Install on Android
+
+1. Open the downloaded APK on your phone.
+2. If prompted, allow install from this source (browser/files app).
+3. Continue and finish installation.
+
+### 3) First launch setup
+
+1. Open **MobileClaw**.
+2. Go to the **Device** tab.
+3. Enable the capabilities you need and grant requested permissions.
+4. If using UI automation, enable Accessibility service from in-app guidance.
+
+
 ## Notes
 
 - This README focuses on user outcomes and running the app quickly.

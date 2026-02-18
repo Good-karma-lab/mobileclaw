@@ -38,3 +38,4 @@ mobile-app/npm-debug.log*
 *.key
 *.pem
 credentials.json
+.local-secrets/
