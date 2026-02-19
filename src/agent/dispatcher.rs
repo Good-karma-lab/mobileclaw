@@ -25,6 +25,8 @@ fn canonicalize_android_action(raw_action: &str) -> String {
         "openurl" => "open_url".to_string(),
         "listapps" => "list_apps".to_string(),
         "openapp" => "launch_app".to_string(),
+        "getandroidversion" => "get_android_version".to_string(),
+        "getdeviceinfo" => "get_device_info".to_string(),
         _ => normalized,
     }
 }

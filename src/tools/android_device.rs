@@ -59,7 +59,7 @@ impl AndroidDeviceTool {
                     anyhow::bail!("android capability app_launch is disabled");
                 }
             }
-            "sensor_read" | "vibrate" => {
+            "sensor_read" | "vibrate" | "get_device_info" | "get_android_version" => {
                 if !self.config.capabilities.sensors {
                     anyhow::bail!("android capability sensors is disabled");
                 }
@@ -135,7 +135,7 @@ impl AndroidDeviceTool {
                 }
             }
             other => anyhow::bail!(
-                "Unknown android action '{other}'. Supported: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
+                "Unknown android action '{other}'. Supported: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
             ),
         }
 
@@ -270,7 +270,7 @@ impl Tool for AndroidDeviceTool {
             "properties": {
                 "action": {
                     "type": "string",
-                    "description": "Action to perform: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
+                    "description": "Action to perform: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
                 },
                 "package": {
                     "type": "string",
@@ -283,6 +283,11 @@ impl Tool for AndroidDeviceTool {
                 "sensor": {
                     "type": "string",
                     "description": "Sensor name for sensor_read (e.g. accelerometer, gyroscope)"
+                },
+                "lens": {
+                    "type": "string",
+                    "description": "Optional camera lens for take_photo (front|rear)",
+                    "default": "rear"
                 },
                 "text": {
                     "type": "string",
@@ -433,7 +438,20 @@ impl Tool for AndroidDeviceTool {
                     .await
             }
             "get_location" => self.execute_bridge_call("get_location", json!({})).await,
-            "take_photo" => self.execute_bridge_call("take_photo", json!({})).await,
+            "take_photo" => {
+                let lens = args
+                    .get("lens")
+                    .and_then(serde_json::Value::as_str)
+                    .map_or("rear", |v| {
+                        if v.eq_ignore_ascii_case("front") {
+                            "front"
+                        } else {
+                            "rear"
+                        }
+                    });
+                self.execute_bridge_call("take_photo", json!({ "lens": lens }))
+                    .await
+            }
             "record_audio" => self.execute_bridge_call("record_audio", json!({})).await,
             "set_clipboard" => {
                 let text = args
@@ -478,6 +496,9 @@ impl Tool for AndroidDeviceTool {
             }
             "get_network" => self.execute_bridge_call("get_network", json!({})).await,
             "get_battery" => self.execute_bridge_call("get_battery", json!({})).await,
+            "get_device_info" | "get_android_version" => {
+                self.execute_bridge_call("get_device_info", json!({})).await
+            }
             "read_contacts" => self.execute_bridge_call("read_contacts", json!({})).await,
             "read_calendar" => self.execute_bridge_call("read_calendar", json!({})).await,
             "send_sms" => {
@@ -563,6 +584,24 @@ impl Tool for AndroidDeviceTool {
                 });
             }
         };
+
+        if result
+            .get("ok")
+            .and_then(serde_json::Value::as_bool)
+            .is_some_and(|ok| !ok)
+        {
+            let detail = result
+                .get("error")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("android_bridge_error")
+                .to_string();
+            return Ok(ToolResult {
+                success: false,
+                output: serde_json::to_string_pretty(&result)
+                    .unwrap_or_else(|_| result.to_string()),
+                error: Some(detail),
+            });
+        }
 
         Ok(ToolResult {
             success: true,

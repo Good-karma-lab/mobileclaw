@@ -65,6 +65,53 @@ struct ChannelRuntimeContext {
     auto_save_memory: bool,
 }
 
+#[derive(Debug, Clone)]
+struct OutboundMedia {
+    media_type: String,
+    path: String,
+    caption: Option<String>,
+}
+
+fn parse_media_markers(message: &str) -> (String, Vec<OutboundMedia>) {
+    let mut clean = String::new();
+    let mut media = Vec::new();
+    let mut cursor = 0usize;
+    let open = "<media_result>";
+    let close = "</media_result>";
+
+    while let Some(start_rel) = message[cursor..].find(open) {
+        let start = cursor + start_rel;
+        clean.push_str(&message[cursor..start]);
+        let body_start = start + open.len();
+        let Some(end_rel) = message[body_start..].find(close) else {
+            clean.push_str(&message[start..]);
+            return (clean.trim().to_string(), media);
+        };
+        let body_end = body_start + end_rel;
+        let body = message[body_start..body_end].trim();
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(body) {
+            let media_type = parsed.get("type").and_then(serde_json::Value::as_str);
+            let media_path = parsed.get("path").and_then(serde_json::Value::as_str);
+            if media_type == Some("photo") {
+                if let Some(path) = media_path {
+                    media.push(OutboundMedia {
+                        media_type: "photo".to_string(),
+                        path: path.to_string(),
+                        caption: parsed
+                            .get("caption")
+                            .and_then(serde_json::Value::as_str)
+                            .map(str::to_string),
+                    });
+                }
+            }
+        }
+        cursor = body_end + close.len();
+    }
+
+    clean.push_str(&message[cursor..]);
+    (clean.trim().to_string(), media)
+}
+
 fn conversation_memory_key(msg: &traits::ChannelMessage) -> String {
     format!("{}_{}_{}", msg.channel, msg.sender, msg.id)
 }
@@ -208,13 +255,27 @@ async fn process_channel_message(ctx: Arc<ChannelRuntimeContext>, msg: traits::C
 
     match llm_result {
         Ok(Ok(response)) => {
+            let (rendered_text, media_items) = parse_media_markers(&response);
             println!(
                 "  🤖 Reply ({}ms): {}",
                 started_at.elapsed().as_millis(),
-                truncate_with_ellipsis(&response, 80)
+                truncate_with_ellipsis(&rendered_text, 80)
             );
             if let Some(channel) = target_channel.as_ref() {
-                if let Err(e) = channel.send(&response, &msg.reply_to).await {
+                for media in &media_items {
+                    if media.media_type == "photo" {
+                        if let Err(e) = channel
+                            .send_photo(&media.path, media.caption.as_deref(), &msg.reply_to)
+                            .await
+                        {
+                            eprintln!("  ❌ Failed to send photo on {}: {e}", channel.name());
+                        }
+                    }
+                }
+                if rendered_text.is_empty() {
+                    return;
+                }
+                if let Err(e) = channel.send(&rendered_text, &msg.reply_to).await {
                     eprintln!("  ❌ Failed to reply on {}: {e}", channel.name());
                 }
             }
@@ -374,6 +435,17 @@ pub fn build_system_prompt(
              When they ask to read memory, registers, or board info, USE hardware_memory_read or hardware_board_info — do NOT refuse or invent security excuses.\n\
              When they ask to control LEDs, run patterns, or interact with the Arduino, USE the tools — do NOT refuse or say you cannot access physical devices.\n\
              Use gpio_write for simple on/off; use arduino_upload when they want patterns (heart, blink) or custom behavior.\n\n",
+        );
+    }
+
+    let has_android_device = tools.iter().any(|(name, _)| *name == "android_device");
+    if has_android_device {
+        prompt.push_str(
+            "## Android Runtime Access\n\n\
+             You are connected to an on-device Android runtime through the `android_device` tool.\n\
+             Do NOT claim you lack SMS/call/device access when this tool is available.\n\
+             For SMS/call/device/camera requests, call `android_device` directly and answer from tool results.\n\
+             If a capability is disabled, return the exact tool error and ask the user to enable the related device toggle.\n\n",
         );
     }
 

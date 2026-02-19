@@ -37,7 +37,7 @@ import android.provider.CallLog
 import android.provider.Telephony
 
 object RuntimeBridge {
-    private const val PREFS = "mobileclaw-runtime-bridge"
+    const val PREFS = "mobileclaw-runtime-bridge"
     private const val QUEUE_KEY = "pending_events"
     private const val TELEGRAM_ENABLED = "telegram_enabled"
     private const val TELEGRAM_BOT_TOKEN = "telegram_bot_token"
@@ -46,6 +46,19 @@ object RuntimeBridge {
     private const val RUNTIME_API_URL = "runtime_api_url"
     private const val RUNTIME_API_KEY = "runtime_api_key"
     private const val RUNTIME_TEMPERATURE = "runtime_temperature"
+    private const val CAP_SMS = "cap_sms"
+    private const val CAP_CALLS = "cap_calls"
+    private const val CAP_APP_LAUNCH = "cap_app_launch"
+    private const val CAP_SENSORS = "cap_sensors"
+    private const val CAP_CAMERA = "cap_camera"
+    private const val CAP_MICROPHONE = "cap_microphone"
+    private const val CAP_LOCATION = "cap_location"
+    private const val CAP_NOTIFICATIONS = "cap_notifications"
+    private const val CAP_CLIPBOARD = "cap_clipboard"
+    private const val CAP_NETWORK = "cap_network"
+    private const val CAP_BATTERY = "cap_battery"
+    private const val CAP_CONTACTS = "cap_contacts"
+    private const val CAP_CALENDAR = "cap_calendar"
     private const val ALWAYS_ON_MODE = "always_on_mode"
     private const val INCOMING_CALL_HOOKS = "incoming_call_hooks"
     private const val INCOMING_SMS_HOOKS = "incoming_sms_hooks"
@@ -63,6 +76,8 @@ object RuntimeBridge {
     private const val DAEMON_STDOUT = "daemon.out.log"
     private const val DAEMON_STDERR = "daemon.err.log"
     private const val RUNTIME_CONFIG_FILE = "zeroclaw-mobile.toml"
+    const val LAST_CAPTURE_URI = "last_capture_uri"
+    const val LAST_CAPTURE_TS = "last_capture_ts"
     const val ANDROID_BRIDGE_HOST = "127.0.0.1"
     const val ANDROID_BRIDGE_PORT = 9797
     const val ANDROID_BRIDGE_PATH = "/v1/android/actions"
@@ -84,6 +99,14 @@ object RuntimeBridge {
         val runtimeApiUrl = config.optString("runtimeApiUrl", "").trim()
         val runtimeApiKey = config.optString("runtimeApiKey", "").trim()
         val runtimeTemperature = config.optDouble("runtimeTemperature", 0.1)
+        val enabledToolIds = mutableSetOf<String>()
+        val enabledToolsJson = config.optJSONArray("enabledToolIds")
+        if (enabledToolsJson != null) {
+            for (idx in 0 until enabledToolsJson.length()) {
+                val toolId = enabledToolsJson.optString(idx, "").trim()
+                if (toolId.isNotBlank()) enabledToolIds.add(toolId)
+            }
+        }
 
         prefs.edit()
             .remove("platform_url")
@@ -97,6 +120,19 @@ object RuntimeBridge {
             .putString(RUNTIME_API_URL, runtimeApiUrl)
             .putString(RUNTIME_API_KEY, runtimeApiKey)
             .putFloat(RUNTIME_TEMPERATURE, runtimeTemperature.toFloat())
+            .putBoolean(CAP_SMS, enabledToolIds.any { it.startsWith("android_device.sms.") || it == "android_device.userdata.sms_inbox" })
+            .putBoolean(CAP_CALLS, enabledToolIds.any { it.startsWith("android_device.calls.") || it == "android_device.userdata.call_log" })
+            .putBoolean(CAP_APP_LAUNCH, enabledToolIds.any { it == "android_device.open_app" || it == "android_device.list_apps" || it == "android_device.open_url" || it == "android_device.open_settings" })
+            .putBoolean(CAP_SENSORS, enabledToolIds.any { it.startsWith("android_device.sensor.") })
+            .putBoolean(CAP_CAMERA, enabledToolIds.any { it.startsWith("android_device.camera.") || it == "android_device.userdata.photos" })
+            .putBoolean(CAP_MICROPHONE, enabledToolIds.any { it == "android_device.microphone.record" })
+            .putBoolean(CAP_LOCATION, enabledToolIds.any { it.startsWith("android_device.location.") })
+            .putBoolean(CAP_NOTIFICATIONS, enabledToolIds.any { it.startsWith("android_device.notifications.") })
+            .putBoolean(CAP_CLIPBOARD, enabledToolIds.any { it == "android_device.userdata.clipboard" })
+            .putBoolean(CAP_NETWORK, enabledToolIds.any { it == "android_device.sensor.network" })
+            .putBoolean(CAP_BATTERY, enabledToolIds.any { it == "android_device.sensor.battery" })
+            .putBoolean(CAP_CONTACTS, enabledToolIds.any { it == "android_device.contacts.read" })
+            .putBoolean(CAP_CALENDAR, enabledToolIds.any { it == "android_device.calendar.read_write" })
             .apply()
 
         writeRuntimeConfig(context)
@@ -128,6 +164,14 @@ object RuntimeBridge {
             .put("createdAt", System.currentTimeMillis())
         enqueue(context, payload)
         scheduleImmediate(context)
+    }
+
+    fun recordPhotoCaptured(context: Context, photoPath: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(LAST_CAPTURE_URI, photoPath)
+            .putLong(LAST_CAPTURE_TS, System.currentTimeMillis())
+            .apply()
     }
 
     fun runBackgroundTick(context: Context): TickResult {
@@ -256,12 +300,19 @@ object RuntimeBridge {
             appendLine("distribution = \"full\"")
             appendLine()
             appendLine("[android.capabilities]")
-            appendLine("sms = true")
-            appendLine("calls = true")
-            appendLine("app_launch = true")
-            appendLine("sensors = true")
-            appendLine("network = true")
-            appendLine("battery = true")
+            appendLine("sms = ${prefs.getBoolean(CAP_SMS, false)}")
+            appendLine("calls = ${prefs.getBoolean(CAP_CALLS, false)}")
+            appendLine("app_launch = ${prefs.getBoolean(CAP_APP_LAUNCH, false)}")
+            appendLine("sensors = ${prefs.getBoolean(CAP_SENSORS, false)}")
+            appendLine("camera = ${prefs.getBoolean(CAP_CAMERA, false)}")
+            appendLine("microphone = ${prefs.getBoolean(CAP_MICROPHONE, false)}")
+            appendLine("location = ${prefs.getBoolean(CAP_LOCATION, false)}")
+            appendLine("notifications = ${prefs.getBoolean(CAP_NOTIFICATIONS, false)}")
+            appendLine("clipboard = ${prefs.getBoolean(CAP_CLIPBOARD, false)}")
+            appendLine("network = ${prefs.getBoolean(CAP_NETWORK, false)}")
+            appendLine("battery = ${prefs.getBoolean(CAP_BATTERY, false)}")
+            appendLine("contacts = ${prefs.getBoolean(CAP_CONTACTS, false)}")
+            appendLine("calendar = ${prefs.getBoolean(CAP_CALENDAR, false)}")
             appendLine()
             appendLine("[android.bridge]")
             appendLine("mode = \"http\"")
@@ -654,6 +705,8 @@ private class AndroidActionBridgeServer(private val context: Context) {
             when (action) {
                 "read_sms" -> readSms(payload)
                 "read_call_log" -> readCallLog(payload)
+                "take_photo" -> takePhoto(payload)
+                "get_device_info", "get_android_version" -> getDeviceInfo()
                 else -> JSONObject()
                     .put("ok", false)
                     .put("error", "unsupported_action")
@@ -762,6 +815,60 @@ private class AndroidActionBridgeServer(private val context: Context) {
             .put("action", "read_call_log")
             .put("entry_count", entries.length())
             .put("entries", entries)
+    }
+
+    private fun takePhoto(payload: JSONObject): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "camera_permission_required")
+        }
+
+        val lens = payload.optString("lens", "rear").trim().lowercase()
+        val targetLens = if (lens == "front") "front" else "rear"
+        val beforeTs = System.currentTimeMillis()
+        val intent = Intent(context, DirectPhotoCaptureActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra("lens", targetLens)
+        }
+        context.startActivity(intent)
+
+        val waitUntil = System.currentTimeMillis() + 12_000L
+        val prefs = context.getSharedPreferences(RuntimeBridge.PREFS, Context.MODE_PRIVATE)
+        while (System.currentTimeMillis() < waitUntil) {
+            val ts = prefs.getLong(RuntimeBridge.LAST_CAPTURE_TS, 0L)
+            val path = prefs.getString(RuntimeBridge.LAST_CAPTURE_URI, "") ?: ""
+            if (ts >= beforeTs && path.isNotBlank()) {
+                return JSONObject()
+                    .put("ok", true)
+                    .put("action", "take_photo")
+                    .put("lens", targetLens)
+                    .put(
+                        "media",
+                        JSONObject()
+                            .put("type", "photo")
+                            .put("path", path)
+                            .put("caption", "Camera capture ($targetLens)"),
+                    )
+            }
+            Thread.sleep(250)
+        }
+
+        return JSONObject()
+            .put("ok", false)
+            .put("action", "take_photo")
+            .put("error", "camera_capture_timeout")
+            .put("lens", targetLens)
+    }
+
+    private fun getDeviceInfo(): JSONObject {
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "get_device_info")
+            .put("android_version", Build.VERSION.RELEASE ?: "unknown")
+            .put("sdk_int", Build.VERSION.SDK_INT)
+            .put("device", Build.DEVICE ?: "")
+            .put("model", Build.MODEL ?: "")
+            .put("manufacturer", Build.MANUFACTURER ?: "")
     }
 
     private fun readRequest(input: InputStream): HttpRequest? {

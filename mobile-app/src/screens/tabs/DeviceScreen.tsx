@@ -13,6 +13,7 @@ import {
 } from "../../state/mobileclaw";
 import { runToolExecutionProbe } from "../../runtime/session";
 import { executeAndroidToolAction } from "../../native/androidAgentBridge";
+import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 
 const sdkInt = typeof Platform.Version === "number" ? Platform.Version : Number(Platform.Version || 0);
 const UI_AUTOMATION_TOOL_IDS = [
@@ -77,6 +78,7 @@ export function DeviceScreen() {
     if (!hydratedRef.current) return;
     const timer = setTimeout(() => {
       void saveDeviceToolsConfig(tools);
+      void applyRuntimeSupervisorConfig("device_tools_changed");
       setSaveStatus("Saved locally");
     }, 300);
     return () => clearTimeout(timer);
