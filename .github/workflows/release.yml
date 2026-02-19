@@ -37,6 +37,16 @@ jobs:
             - name: Install mobile app dependencies
               run: npm ci
 
+            - name: Install Rust toolchain and cargo-ndk
+              run: |
+                  set -euo pipefail
+                  rustup toolchain install 1.92.0 --profile minimal
+                  rustup default 1.92.0
+                  rustup target add aarch64-linux-android x86_64-linux-android
+                  if ! cargo ndk --version >/dev/null 2>&1; then
+                    cargo install cargo-ndk --locked
+                  fi
+
             - name: Generate Android native project
               env:
                   CI: "1"
