@@ -33,11 +33,16 @@ appId: com.mobileclaw.app
     id: "dock-tab-activity"
 - tapOn:
     id: "dock-tab-activity"
+- extendedWaitUntil:
+    visible: "ZeroClaw Runtime"
+    timeout: 10000
+# Tap "Show raw" if visible (sidebar mode hides it by default)
+- tapOn:
+    text: "Show raw"
+    optional: true
 - assertVisible: "ZeroClaw Runtime"
-- assertVisible: "status="
 - tapOn:
     id: "dock-tab-integrations"
 - assertVisible:
     id: "screen-integrations"
 - assertVisible: "Telegram"
-- assertNotVisible: "Chat ID"

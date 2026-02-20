@@ -2,8 +2,9 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { FloatingDock } from "../../ui/navigation/FloatingDock";
+import { NavigationShell } from "../../ui/navigation/NavigationShell";
 import { DockMorphProvider } from "../../ui/animation/DockMorphProvider";
+import { LayoutProvider } from "../state/layout";
 
 import { ActivityScreen } from "../screens/tabs/ActivityScreen";
 import { ChatScreen } from "../screens/tabs/ChatScreen";
@@ -29,7 +30,7 @@ function MainTabsNavigator() {
       id="main-tabs"
       initialRouteName="chat"
       screenOptions={{ headerShown: false }}
-      tabBar={(props) => <FloatingDock {...props} />}
+      tabBar={(props) => <NavigationShell {...props} />}
     >
       <MainTabs.Screen name="activity" component={ActivityScreen} options={{ title: "Activity" }} />
       <MainTabs.Screen name="integrations" component={IntegrationsScreen} options={{ title: "Integrations" }} />
@@ -42,11 +43,13 @@ function MainTabsNavigator() {
 
 export function RootNavigator() {
   return (
-    <DockMorphProvider>
-      <Stack.Navigator id="root-stack" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
-        <Stack.Screen name="Security" component={SecurityScreen} />
-      </Stack.Navigator>
-    </DockMorphProvider>
+    <LayoutProvider>
+      <DockMorphProvider>
+        <Stack.Navigator id="root-stack" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
+          <Stack.Screen name="Security" component={SecurityScreen} />
+        </Stack.Navigator>
+      </DockMorphProvider>
+    </LayoutProvider>
   );
 }

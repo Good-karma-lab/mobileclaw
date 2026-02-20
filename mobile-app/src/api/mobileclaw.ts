@@ -1,4 +1,6 @@
 import type { AgentRuntimeConfig } from "../state/mobileclaw";
+import * as FileSystem from "expo-file-system/legacy";
+import { Buffer } from "buffer";
 
 export type ChatCompletionMessage = {
   role: "system" | "user" | "assistant";
@@ -298,6 +300,39 @@ export async function transcribeWithDeepgram(audioUri: string, apiKey: string): 
 
   if (!res.ok) throw new Error(json.err_msg || `Deepgram HTTP ${res.status}`);
   return String(json.results?.channels?.[0]?.alternatives?.[0]?.transcript || "").trim();
+}
+
+export async function synthesizeSpeechWithDeepgram(text: string, apiKey: string): Promise<string> {
+  const key = apiKey.trim();
+  const content = text.trim();
+  if (!key) throw new Error("Deepgram API key is required in Settings.");
+  if (!content) throw new Error("Speech text is empty.");
+
+  const response = await fetch("https://api.deepgram.com/v1/speak?model=aura-2-thalia-en", {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text: content }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || `Deepgram TTS HTTP ${response.status}`);
+  }
+
+  const audioArrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(audioArrayBuffer).toString("base64");
+  const outputUri = `${FileSystem.cacheDirectory || ""}mobileclaw-tts-${Date.now()}.mp3`;
+  if (!outputUri) {
+    throw new Error("Cache directory unavailable for TTS playback");
+  }
+
+  await FileSystem.writeAsStringAsync(outputUri, base64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return outputUri;
 }
 
 export async function fetchOpenRouterModels(apiKey?: string): Promise<string[]> {

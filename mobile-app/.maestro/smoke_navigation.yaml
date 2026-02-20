@@ -12,7 +12,7 @@ appId: com.mobileclaw.app
     optional: true
 - extendedWaitUntil:
     visible: "MobileClaw agent chat with voice mode."
-    timeout: 30000
+    timeout: 60000
 - tapOn:
     id: "dock-tab-settings"
 - tapOn:

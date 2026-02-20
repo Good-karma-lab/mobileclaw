@@ -17,6 +17,14 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   security: "shield-checkmark"
 };
 
+const LABELS: Record<string, string> = {
+  chat: "Talk",
+  activity: "Activity",
+  settings: "Settings",
+  integrations: "Integrations",
+  device: "Status",
+};
+
 export function FloatingDock(props: BottomTabBarProps) {
   const { state, descriptors, navigation } = props;
   const insets = useSafeAreaInsets();
@@ -179,7 +187,9 @@ export function FloatingDock(props: BottomTabBarProps) {
                       />
                     </View>
                   ) : (
-                    <Ionicons name={iconName} size={22} color={isFocused ? theme.colors.base.primary : theme.colors.overlay.dockIconIdle} />
+                    <View style={{ alignItems: "center" }}>
+                      <Ionicons name={iconName} size={22} color={isFocused ? theme.colors.base.primary : theme.colors.overlay.dockIconIdle} />
+                    </View>
                   )}
                 </Pressable>
               );
