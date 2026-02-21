@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, ScrollView, TextInput, Pressable, Linking, KeyboardAvoidingView, Keyboard, Platform } from "react-native";
+import { View, ScrollView, TextInput, Pressable, Linking, KeyboardAvoidingView, Platform } from "react-native";
 import Animated, { FadeIn, SlideInLeft, SlideInRight } from "react-native-reanimated";
 import { useFocusEffect } from "@react-navigation/native";
 import Markdown from "react-native-markdown-display";
 import MarkdownIt from "markdown-it";
+import { Audio } from "expo-av";
 
 import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
@@ -16,12 +17,15 @@ import { appendChat, loadChat, sanitizeAssistantArtifacts, type ChatMessage } fr
 import { addActivity } from "../../state/activity";
 import { loadAgentConfig } from "../../state/mobileclaw";
 import { runAgentTurn } from "../../runtime/session";
+import { synthesizeSpeechWithDeepgram } from "../../api/mobileclaw";
+import { useLayoutContext } from "../../state/layout";
 
 const BUBBLE_USER = SlideInRight.duration(280).springify().damping(18).stiffness(180);
 const BUBBLE_ASSISTANT = SlideInLeft.duration(280).springify().damping(18).stiffness(180);
 const MARKDOWN_NO_TABLES = new MarkdownIt({ breaks: true, linkify: true, typographer: true }).disable(["table"]);
 
 export function ChatScreen() {
+  const { useSidebar } = useLayoutContext();
   const toast = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -29,10 +33,10 @@ export function ChatScreen() {
   const [thinkingDots, setThinkingDots] = useState(".");
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const [deepgramApiKey, setDeepgramApiKey] = useState("");
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const voice = useVoiceRecording(deepgramApiKey);
   const scrollRef = useRef<ScrollView | null>(null);
   const runNonceRef = useRef(0);
+  const speechSoundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +49,18 @@ export function ChatScreen() {
     })();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void (async () => {
+        try {
+          await speechSoundRef.current?.unloadAsync();
+        } catch {
+          // ignore unload errors
+        }
+      })();
     };
   }, []);
 
@@ -74,18 +90,15 @@ export function ChatScreen() {
     return () => clearInterval(id);
   }, [busy]);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   const markdownStyles = useMemo(
     () => ({
-      body: { color: theme.colors.base.text, fontFamily: theme.typography.body, fontSize: 15, lineHeight: 22 },
+      body: {
+        color: theme.colors.base.text,
+        fontFamily: theme.typography.body,
+        fontSize: useSidebar ? 18 : 15,
+        lineHeight: useSidebar ? 26 : 22,
+      },
       paragraph: { marginTop: 0, marginBottom: 8 },
       heading1: { fontFamily: theme.typography.bodyMedium, fontSize: 24, lineHeight: 30, marginBottom: 8 },
       heading2: { fontFamily: theme.typography.bodyMedium, fontSize: 20, lineHeight: 28, marginBottom: 8 },
@@ -134,19 +147,18 @@ export function ChatScreen() {
       link: { color: theme.colors.base.primary },
       hr: { backgroundColor: theme.colors.stroke.subtle },
     }),
-    [],
+    [useSidebar],
   );
 
   const renderMessageText = useCallback(
     (message: ChatMessage) => {
       if (message.role !== "assistant") {
         return (
-          <Text variant="body" style={{ lineHeight: 22 }}>
+          <Text variant="body" style={{ lineHeight: useSidebar ? 26 : 22, fontSize: useSidebar ? 18 : 15 }}>
             {message.text}
           </Text>
         );
       }
-
       return (
         <Markdown
           markdownit={MARKDOWN_NO_TABLES}
@@ -160,7 +172,7 @@ export function ChatScreen() {
         </Markdown>
       );
     },
-    [markdownStyles],
+    [markdownStyles, useSidebar],
   );
 
   const runTurnWithTimeout = useCallback(async (prompt: string) => {
@@ -172,6 +184,44 @@ export function ChatScreen() {
       }),
     ]);
   }, []);
+
+  const speechTextFromMarkdown = useCallback((raw: string) => {
+    return String(raw || "")
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+      .replace(/[>#*_~|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }, []);
+
+  const speakAssistantReply = useCallback(
+    async (assistantText: string) => {
+      const key = deepgramApiKey.trim();
+      if (!key) return;
+      const speechText = speechTextFromMarkdown(assistantText).slice(0, 1200);
+      if (!speechText) return;
+      try {
+        const uri = await synthesizeSpeechWithDeepgram(speechText, key);
+        if (!uri) return;
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        try {
+          await speechSoundRef.current?.unloadAsync();
+        } catch {
+          // ignore
+        }
+        const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+        speechSoundRef.current = sound;
+      } catch (error) {
+        toast.show(error instanceof Error ? error.message : "Voice playback failed");
+      }
+    },
+    [deepgramApiKey, speechTextFromMarkdown, toast],
+  );
 
   const restartAgent = useCallback(async () => {
     runNonceRef.current += 1;
@@ -222,6 +272,10 @@ export function ChatScreen() {
         await appendChat(assistantMsg);
         await addActivity({ kind: "action", source: "chat", title: "Agent response", detail: assistantMsg.text.slice(0, 120) });
 
+        if (voiceText) {
+          await speakAssistantReply(assistantMsg.text);
+        }
+
         for (const event of result.toolEvents) {
           await addActivity({
             kind: "action",
@@ -249,7 +303,7 @@ export function ChatScreen() {
         }
       }
     },
-    [runTurnWithTimeout, toast],
+    [runTurnWithTimeout, speakAssistantReply, toast],
   );
 
   const canSend = useMemo(() => !!draft.trim() && !busy, [draft, busy]);
@@ -259,123 +313,155 @@ export function ChatScreen() {
     <Screen>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 14 : 0}
       >
-      <View style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: keyboardVisible ? 12 : 92 }}>
-        <Text testID="screen-chat" variant="display">Chat</Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: theme.spacing.xs }}>
-          <Text variant="muted">MobileClaw agent chat with voice mode.</Text>
-          <Pressable
-            testID="chat-restart-agent"
-            onPress={() => {
-              void restartAgent();
-            }}
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: theme.radii.md,
-              backgroundColor: theme.colors.surface.panel,
-              borderWidth: 1,
-              borderColor: theme.colors.stroke.subtle,
-            }}
-          >
-            <Text variant="label">Restart Agent</Text>
-          </Pressable>
-        </View>
-        <View style={{ marginBottom: theme.spacing.md }} />
-
-        <ScrollView
-          ref={scrollRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 18, gap: theme.spacing.sm }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: useSidebar ? "row" : "column",
+            paddingHorizontal: theme.spacing.lg,
+            paddingTop: theme.spacing.xl,
+            paddingBottom: useSidebar ? 24 : 92,
+            gap: useSidebar ? theme.spacing.lg : 0,
+          }}
         >
-          {messages.map((m) => {
-            const isUser = m.role === "user";
-            const isNew = !loadedIds.has(m.id);
-            const bubbleContent = (
-              <View
-                style={{
-                  alignSelf: isUser ? "flex-end" : "flex-start",
-                  maxWidth: isUser ? "90%" : "100%",
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: 18,
-                  backgroundColor: isUser ? theme.colors.alpha.userBubbleBg : theme.colors.surface.raised,
-                  borderWidth: 1,
-                  borderColor: isUser ? theme.colors.alpha.userBubbleBorder : theme.colors.stroke.subtle,
-                }}
-              >
-                {renderMessageText(m)}
-              </View>
-            );
-            if (isNew) {
-              return (
-                <Animated.View key={m.id} entering={isUser ? BUBBLE_USER : BUBBLE_ASSISTANT}>
-                  {bubbleContent}
-                </Animated.View>
-              );
-            }
-            return <View key={m.id}>{bubbleContent}</View>;
-          })}
-          {busy && (
-            <Animated.View entering={FadeIn}>
-              <Text variant="muted" style={{ alignSelf: "center", color: theme.colors.base.textMuted }}>
-                {`MobileClaw is thinking${thinkingDots}`}
-              </Text>
-            </Animated.View>
-          )}
-        </ScrollView>
 
-        {(voice.state !== "idle" || !!voice.transcript || !!voice.interimText) && (
-          <View style={{ marginBottom: theme.spacing.sm }}>
-            <TranscriptOverlay state={voice.state} transcript={voice.transcript} interimText={voice.interimText} />
-          </View>
-        )}
-
-        <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, paddingTop: theme.spacing.sm }}>
           <View style={{ flex: 1 }}>
-            <TextInput
-              testID="chat-input"
-              value={draft}
-              onChangeText={setDraft}
-              placeholder={busy ? "Thinking..." : "Tell agent what to do..."}
-              placeholderTextColor={theme.colors.alpha.textPlaceholder}
-              editable={!busy}
-              multiline
-              style={{
-                minHeight: 56,
-                maxHeight: 120,
-                borderRadius: theme.radii.lg,
-                paddingHorizontal: theme.spacing.md,
-                paddingVertical: 14,
-                backgroundColor: theme.colors.surface.raised,
-                borderWidth: 1,
-                borderColor: theme.colors.stroke.subtle,
-                color: theme.colors.base.text,
-                fontFamily: theme.typography.body,
-                opacity: busy ? 0.5 : 1,
-              }}
-            />
-          </View>
+            {useSidebar ? (
+              // Automotive/tablet layout - no header to save space
+              <Text testID="screen-chat" variant="display" style={{ position: "absolute", opacity: 0, height: 0 }}>Chat</Text>
+            ) : (
+              // Phone layout - show header
+              <>
+                <Text testID="screen-chat" variant="display">Chat</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: theme.spacing.xs }}>
+                  <Text variant="muted">MobileClaw agent chat with voice mode.</Text>
+                  <Pressable
+                    testID="chat-restart-agent"
+                    onPress={() => { void restartAgent(); }}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: theme.radii.md,
+                      backgroundColor: theme.colors.surface.panel,
+                      borderWidth: 1,
+                      borderColor: theme.colors.stroke.subtle,
+                    }}
+                  >
+                    <Text variant="label">Restart Agent</Text>
+                  </Pressable>
+                </View>
+                <View style={{ marginBottom: theme.spacing.md }} />
+              </>
+            )}
 
-          <VoiceRecordButton
-            testID="chat-send-or-voice"
-            size={56}
-            style={{ alignSelf: "center" }}
-            mode={hasDraft ? "send" : "voice"}
-            disabled={busy || (hasDraft && !canSend)}
-            onPress={hasDraft ? () => (canSend ? send(draft) : undefined) : undefined}
-            onRecordStart={hasDraft ? undefined : voice.start}
-            onRecordEnd={hasDraft ? undefined : voice.stop}
-            volume={voice.volume}
-            onVoiceResult={hasDraft ? undefined : (t) => send("", t)}
-          />
+            <ScrollView
+              ref={scrollRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 18, gap: theme.spacing.sm }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+            >
+              {messages.map((m) => {
+                const isUser = m.role === "user";
+                const isNew = !loadedIds.has(m.id);
+                const bubbleContent = (
+                  <View
+                    style={{
+                      alignSelf: isUser ? "flex-end" : "flex-start",
+                      maxWidth: isUser ? (useSidebar ? "84%" : "90%") : "100%",
+                      paddingVertical: useSidebar ? 14 : 10,
+                      paddingHorizontal: useSidebar ? 16 : 12,
+                      borderRadius: 18,
+                      backgroundColor: isUser ? theme.colors.alpha.userBubbleBg : theme.colors.surface.raised,
+                      borderWidth: 1,
+                      borderColor: isUser ? theme.colors.alpha.userBubbleBorder : theme.colors.stroke.subtle,
+                    }}
+                  >
+                    {renderMessageText(m)}
+                  </View>
+                );
+                if (isNew) {
+                  return (
+                    <Animated.View key={m.id} entering={isUser ? BUBBLE_USER : BUBBLE_ASSISTANT}>
+                      {bubbleContent}
+                    </Animated.View>
+                  );
+                }
+                return <View key={m.id}>{bubbleContent}</View>;
+              })}
+              {busy && (
+                <Animated.View entering={FadeIn}>
+                  <Text variant="muted" style={{ alignSelf: "center", color: theme.colors.base.textMuted }}>
+                    {`MobileClaw is thinking${thinkingDots}`}
+                  </Text>
+                </Animated.View>
+              )}
+            </ScrollView>
+
+            {(voice.state !== "idle" || !!voice.transcript || !!voice.interimText) && (
+              <View style={{ marginBottom: theme.spacing.sm }}>
+                <TranscriptOverlay state={voice.state} transcript={voice.transcript} interimText={voice.interimText} />
+              </View>
+            )}
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, paddingTop: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  testID="chat-input"
+                  value={draft}
+                  onChangeText={(text) => {
+                    if (!useSidebar && text.endsWith("\n") && !draft.endsWith("\n")) {
+                      const trimmed = text.slice(0, -1).trim();
+                      if (trimmed && !busy) {
+                        setDraft("");
+                        void send(trimmed);
+                      }
+                      return;
+                    }
+                    setDraft(text);
+                  }}
+                  onSubmitEditing={useSidebar ? () => { if (canSend) void send(draft); } : undefined}
+                  returnKeyType={useSidebar ? "send" : "default"}
+                  blurOnSubmit={useSidebar}
+                  placeholder={busy ? "Thinking..." : "Tell agent what to do..."}
+                  placeholderTextColor={theme.colors.alpha.textPlaceholder}
+                  editable={!busy}
+                  multiline={!useSidebar}
+                  style={{
+                    minHeight: useSidebar ? 56 : 56,
+                    maxHeight: useSidebar ? 84 : 120,
+                    borderRadius: theme.radii.lg,
+                    paddingHorizontal: theme.spacing.md,
+                    paddingVertical: 14,
+                    backgroundColor: theme.colors.surface.raised,
+                    borderWidth: 1,
+                    borderColor: theme.colors.stroke.subtle,
+                    color: theme.colors.base.text,
+                    fontFamily: theme.typography.body,
+                    fontSize: useSidebar ? 20 : 16,
+                    opacity: busy ? 0.5 : 1,
+                  }}
+                />
+              </View>
+
+              <VoiceRecordButton
+                testID="chat-send-or-voice"
+                size={useSidebar ? 80 : 56}
+                style={{ alignSelf: "center" }}
+                mode={hasDraft ? "send" : "voice"}
+                disabled={busy || (hasDraft && !canSend)}
+                onPress={hasDraft ? () => (canSend ? send(draft) : undefined) : undefined}
+                onRecordStart={hasDraft ? undefined : voice.start}
+                onRecordEnd={hasDraft ? undefined : voice.stop}
+                volume={voice.volume}
+                onVoiceResult={hasDraft ? undefined : (t) => send("", t)}
+              />
+            </View>
+          </View>
         </View>
-      </View>
       </KeyboardAvoidingView>
     </Screen>
   );

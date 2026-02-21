@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "../../../ui/primitives/Screen";
@@ -13,6 +13,9 @@ import {
   saveIntegrationsConfig,
 } from "../../state/mobileclaw";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
+import { useLayoutContext } from "../../state/layout";
+
+type TileId = "telegram" | "discord" | "slack" | "whatsapp" | "composio";
 
 function IntegrationCard(props: {
   name: string;
@@ -74,6 +77,7 @@ function SecretField(props: { label: string; value: string; onChangeText: (value
         onChangeText={props.onChangeText}
         secureTextEntry
         style={{
+          minHeight: 56,
           borderRadius: theme.radii.lg,
           padding: theme.spacing.md,
           backgroundColor: theme.colors.surface.panel,
@@ -88,11 +92,13 @@ function SecretField(props: { label: string; value: string; onChangeText: (value
 }
 
 export function IntegrationsScreen() {
+  const { useSidebar, width, sidebarWidth } = useLayoutContext();
   const [form, setForm] = useState<IntegrationsConfig>(DEFAULT_INTEGRATIONS);
   const [saveStatus, setSaveStatus] = useState("Loading...");
   const [telegramLookupStatus, setTelegramLookupStatus] = useState("");
   const [telegramLookupBusy, setTelegramLookupBusy] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [sheetId, setSheetId] = useState<TileId | null>(null);
   const hydratedRef = useRef(false);
 
   const toggleExpanded = (key: string) => {
@@ -224,6 +230,173 @@ export function IntegrationsScreen() {
     return () => clearTimeout(timer);
   }, [form]);
 
+  if (useSidebar) {
+    const tiles: Array<{ id: TileId; title: string; enabled: boolean }> = [
+      { id: "telegram", title: "Telegram", enabled: form.telegramEnabled },
+      { id: "discord", title: "Discord", enabled: form.discordEnabled },
+      { id: "slack", title: "Slack", enabled: form.slackEnabled },
+      { id: "whatsapp", title: "WhatsApp", enabled: form.whatsappEnabled },
+      { id: "composio", title: "Composio", enabled: form.composioEnabled },
+    ];
+
+    const availableWidth = width - sidebarWidth - 32;
+    const numColumns = Math.min(4, Math.max(2, Math.floor(availableWidth / 200)));
+    const tileSize = Math.floor((availableWidth - (numColumns - 1) * theme.spacing.md) / numColumns);
+
+    const toggleTile = (id: TileId, next?: boolean) => {
+      setForm((prev) => {
+        const val = (field: boolean) => next !== undefined ? next : !field;
+        if (id === "telegram") return { ...prev, telegramEnabled: val(prev.telegramEnabled) };
+        if (id === "discord") return { ...prev, discordEnabled: val(prev.discordEnabled) };
+        if (id === "slack") return { ...prev, slackEnabled: val(prev.slackEnabled) };
+        if (id === "whatsapp") return { ...prev, whatsappEnabled: val(prev.whatsappEnabled) };
+        return { ...prev, composioEnabled: val(prev.composioEnabled) };
+      });
+    };
+
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: 40, gap: theme.spacing.lg }}>
+          <Text testID="screen-integrations" variant="display">Integrations</Text>
+          <Text variant="muted">Tap a tile to configure and enable each integration.</Text>
+
+          <FlatList
+            data={tiles}
+            numColumns={numColumns}
+            key={String(numColumns)}
+            scrollEnabled={false}
+            keyExtractor={(tile) => tile.id}
+            columnWrapperStyle={numColumns > 1 ? { gap: theme.spacing.md } : undefined}
+            contentContainerStyle={{ gap: theme.spacing.md }}
+            renderItem={({ item: tile }) => (
+              <Pressable
+                onPress={() => setSheetId(tile.id)}
+                style={{
+                  width: tileSize,
+                  height: tileSize,
+                  borderRadius: theme.radii.xl,
+                  borderWidth: 1,
+                  borderColor: tile.enabled ? theme.colors.base.secondary : theme.colors.stroke.subtle,
+                  backgroundColor: tile.enabled ? theme.colors.surface.glass : theme.colors.surface.raised,
+                  padding: theme.spacing.lg,
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text variant="title" style={{ fontSize: 16 }}>{tile.title}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Ionicons
+                    name={tile.enabled ? "checkmark-circle" : "radio-button-off"}
+                    size={22}
+                    color={tile.enabled ? theme.colors.base.secondary : theme.colors.base.textMuted}
+                  />
+                  <Text variant="bodyMedium">{tile.enabled ? "Connected" : "Off"}</Text>
+                </View>
+              </Pressable>
+            )}
+          />
+        </ScrollView>
+
+        {/* Config bottom sheet */}
+        <Modal
+          animationType="slide"
+          transparent
+          visible={sheetId !== null}
+          onRequestClose={() => setSheetId(null)}
+        >
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.alpha.scrim }}>
+            <View
+              style={{
+                maxHeight: "60%",
+                padding: theme.spacing.lg,
+                borderTopLeftRadius: theme.radii.xl,
+                borderTopRightRadius: theme.radii.xl,
+                backgroundColor: theme.colors.base.background,
+                gap: theme.spacing.sm,
+              }}
+            >
+              {/* Sheet header: title + enable toggle + close */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text variant="title">{tiles.find((t) => t.id === sheetId)?.title ?? ""} Setup</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <Switch
+                    value={tiles.find((t) => t.id === sheetId)?.enabled ?? false}
+                    onValueChange={(next) => sheetId && toggleTile(sheetId, next)}
+                  />
+                  <Pressable onPress={() => setSheetId(null)}>
+                    <Ionicons name="close" size={22} color={theme.colors.base.textMuted} />
+                  </Pressable>
+                </View>
+              </View>
+              <ScrollView contentContainerStyle={{ gap: theme.spacing.sm }}>
+                {sheetId === "telegram" ? (
+                  <>
+                    <SecretField label="Bot token" value={form.telegramBotToken} onChangeText={(v) => setForm((p) => ({ ...p, telegramBotToken: v }))} />
+                    <View style={{ gap: 6 }}>
+                      <Text variant="label">Chat ID</Text>
+                      <TextInput
+                        value={form.telegramChatId}
+                        onChangeText={(v) => setForm((p) => ({ ...p, telegramChatId: v }))}
+                        placeholder="Auto-detect or enter manually"
+                        placeholderTextColor={theme.colors.alpha.textPlaceholder}
+                        keyboardType="numeric"
+                        style={{
+                          minHeight: 56,
+                          borderRadius: theme.radii.lg,
+                          padding: theme.spacing.md,
+                          backgroundColor: theme.colors.surface.panel,
+                          borderWidth: 1,
+                          borderColor: theme.colors.stroke.subtle,
+                          color: theme.colors.base.text,
+                          fontFamily: theme.typography.body,
+                        }}
+                      />
+                    </View>
+                    <Pressable
+                      onPress={() => { void detectTelegramChatId(); }}
+                      disabled={telegramLookupBusy}
+                      style={{
+                        paddingVertical: 14,
+                        borderRadius: theme.radii.lg,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: theme.colors.stroke.subtle,
+                        backgroundColor: telegramLookupBusy ? theme.colors.surface.panel : theme.colors.surface.raised,
+                      }}
+                    >
+                      <Text variant="bodyMedium">{telegramLookupBusy ? "Detecting chat..." : "Detect Chat ID from updates"}</Text>
+                    </Pressable>
+                    {telegramLookupStatus ? <Text variant="muted">{telegramLookupStatus}</Text> : null}
+                  </>
+                ) : null}
+                {sheetId === "discord" ? (
+                  <SecretField label="Discord Bot token" value={form.discordBotToken} onChangeText={(v) => setForm((p) => ({ ...p, discordBotToken: v }))} />
+                ) : null}
+                {sheetId === "slack" ? (
+                  <SecretField label="Slack Bot token" value={form.slackBotToken} onChangeText={(v) => setForm((p) => ({ ...p, slackBotToken: v }))} />
+                ) : null}
+                {sheetId === "whatsapp" ? (
+                  <SecretField label="WhatsApp access token" value={form.whatsappAccessToken} onChangeText={(v) => setForm((p) => ({ ...p, whatsappAccessToken: v }))} />
+                ) : null}
+                {sheetId === "composio" ? (
+                  <SecretField label="Composio API key" value={form.composioApiKey} onChangeText={(v) => setForm((p) => ({ ...p, composioApiKey: v }))} />
+                ) : null}
+                {/* Setup guide */}
+                {sheetId && guides[sheetId] ? (
+                  <View style={{ marginTop: theme.spacing.sm, gap: 6, padding: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.surface.panel }}>
+                    <Text variant="label">Setup guide</Text>
+                    {guides[sheetId].map((step) => (
+                      <Text key={step} variant="muted">• {step}</Text>
+                    ))}
+                  </View>
+                ) : null}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: 140, gap: theme.spacing.lg }}>
@@ -250,9 +423,7 @@ export function IntegrationsScreen() {
         >
           <SecretField label="Bot token" value={form.telegramBotToken} onChangeText={(value) => setForm((prev) => ({ ...prev, telegramBotToken: value }))} />
           <Pressable
-            onPress={() => {
-              void detectTelegramChatId();
-            }}
+            onPress={() => { void detectTelegramChatId(); }}
             disabled={telegramLookupBusy}
             style={{
               paddingVertical: 10,

@@ -81,6 +81,7 @@ function makeSystemInstruction(enabledTools: string[], enabledIntegrations: stri
     "- Place outgoing call -> android_device.calls.start with {\"to\":\"+15551234567\"}",
     "- Read last calls/history -> android_device.userdata.call_log",
     "- Read SMS inbox/messages -> android_device.userdata.sms_inbox",
+    "- Send WhatsApp message by contact relation/name -> integration.whatsapp.send_message with {\"recipient_alias\":\"wife\",\"body\":\"...\"}",
     "- List files/storage -> android_device.storage.files",
     "- Read URL content -> standard web read tool (never android_device.browser.*)",
     "Never use call_log tool when user asks to place a call.",
@@ -113,7 +114,7 @@ function makeIntegrationHints(config: Awaited<ReturnType<typeof loadIntegrations
     hints.push("Slack integration requires backend runtime channel path for inbound/outbound automation.");
   }
   if (config.whatsappEnabled) {
-    hints.push("WhatsApp integration requires backend runtime channel path for inbound/outbound automation.");
+    hints.push("WhatsApp integration can be executed on-device via app automation tools when available.");
   }
   if (config.composioEnabled) {
     hints.push("Composio integration actions are executed by backend runtime when available.");
@@ -155,6 +156,29 @@ function extractTelegramMessageBody(text: string): string {
   return "";
 }
 
+function extractWhatsAppTargetAndBody(text: string): { recipientAlias: string; body: string } | null {
+  const trimmed = text.trim();
+  const match = trimmed.match(
+    /(?:send\s+(?:a\s+)?message\s+to\s+(.+?)\s+in\s+what(?:s|sup|\s*app)\s*[:,-]\s*["']?([\s\S]+?)["']?$)/i,
+  );
+  if (match?.[1] && match?.[2]) {
+    return {
+      recipientAlias: match[1].trim(),
+      body: match[2].trim(),
+    };
+  }
+
+  const generic = trimmed.match(/what(?:s|sup|\s*app).*(?:to\s+(.+?)\s*[:,-]\s*)?["']([\s\S]+)["']/i);
+  if (generic?.[2]) {
+    return {
+      recipientAlias: generic[1]?.trim() || "wife",
+      body: generic[2].trim(),
+    };
+  }
+
+  return null;
+}
+
 function normalizeDirectiveForPrompt(
   userPrompt: string,
   directive: { tool: string; arguments: Record<string, unknown> },
@@ -192,6 +216,20 @@ function inferDirectiveFromPrompt(
     const body = extractTelegramMessageBody(userPrompt);
     if (body) {
       return { tool: "integration.telegram.send_message", arguments: { text: body } };
+    }
+  }
+
+  const asksWhatsAppMessage = /\b(whatsapp|whatsup|whats\s*app)\b/.test(text) && /\b(send|write|message|text)\b/.test(text);
+  if (asksWhatsAppMessage) {
+    const payload = extractWhatsAppTargetAndBody(userPrompt);
+    if (payload?.body) {
+      return {
+        tool: "integration.whatsapp.send_message",
+        arguments: {
+          recipient_alias: payload.recipientAlias || "wife",
+          body: payload.body,
+        },
+      };
     }
   }
 

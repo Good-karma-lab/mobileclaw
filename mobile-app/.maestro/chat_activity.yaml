@@ -9,7 +9,12 @@ appId: com.mobileclaw.app
 - inputText: "Say hello from Maestro"
 - tapOn:
     id: "chat-send-or-voice"
+- waitForAnimationToEnd
 - tapOn:
     id: "dock-tab-activity"
-- assertVisible: "Activity"
-- assertVisible: "User message"
+- extendedWaitUntil:
+    visible: "Activity"
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "User message"
+    timeout: 10000

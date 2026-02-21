@@ -186,6 +186,27 @@ export function parseToolDirective(replyText: string): ToolCallDirective | null 
 }
 
 function defaultPayloadForTool(tool: string, args: Record<string, unknown>): Record<string, unknown> {
+  if (tool === "android_device.open_app") {
+    const pkg =
+      (typeof args.package === "string" && args.package.trim()) ||
+      (typeof args.packageName === "string" && args.packageName.trim()) ||
+      (typeof args.package_name === "string" && args.package_name.trim()) ||
+      (typeof args.app_id === "string" && args.app_id.trim()) ||
+      (typeof args.app === "string" && args.app.trim()) ||
+      (typeof args.app_name === "string" && args.app_name.trim()) ||
+      "";
+    return { package: pkg };
+  }
+
+  if (tool === "android_device.open_url") {
+    let url = String(
+      args.url ?? args.link ?? args.href ?? args.address ?? ""
+    ).trim();
+    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+    else if (url.startsWith("http://")) url = url.replace("http://", "https://");
+    return { ...args, url };
+  }
+
   if (tool.startsWith("android_device.sensor.")) {
     const sensorFromId = tool.split(".").pop() || "accelerometer";
     return { sensor: args.sensor || sensorFromId };
@@ -355,6 +376,154 @@ async function executeTelegramSendMessage(
   }
 }
 
+type ContactEntry = {
+  name: string;
+  number: string;
+  phone_type?: number;
+};
+
+function sanitizePhoneNumber(value: string): string {
+  return String(value || "").replace(/[^\d+]/g, "").trim();
+}
+
+function relationKeywords(alias: string): string[] {
+  const base = alias.trim().toLowerCase();
+  if (!base) return [];
+  if (base === "wife") {
+    return ["wife", "wifey", "spouse", "my love", "honey", "darling", "love"];
+  }
+  return [base];
+}
+
+function pickContactByAlias(alias: string, contacts: ContactEntry[]): ContactEntry | null {
+  if (!contacts.length) return null;
+  const keywords = relationKeywords(alias);
+  let best: ContactEntry | null = null;
+  let bestScore = -1;
+  for (const contact of contacts) {
+    const name = String(contact.name || "").toLowerCase();
+    let score = 0;
+    for (const keyword of keywords) {
+      if (!keyword) continue;
+      if (name === keyword) score += 10;
+      else if (name.includes(keyword)) score += 6;
+    }
+    if (contact.phone_type === 2) score += 1;
+    if (score > bestScore) {
+      best = contact;
+      bestScore = score;
+    }
+  }
+  if (bestScore <= 0) {
+    return contacts[0] || null;
+  }
+  return best;
+}
+
+function extractMessageBody(args: Record<string, unknown>): string {
+  return (
+    (typeof args.text === "string" && args.text.trim()) ||
+    (typeof args.message === "string" && args.message.trim()) ||
+    (typeof args.body === "string" && args.body.trim()) ||
+    (typeof args.content === "string" && args.content.trim()) ||
+    ""
+  );
+}
+
+async function executeWhatsAppDeviceSend(
+  directive: ToolCallDirective,
+  config: {
+    tools: MobileToolCapability[];
+  },
+): Promise<ToolExecutionEvent> {
+  const body = extractMessageBody(directive.arguments);
+  if (!body) {
+    return {
+      tool: directive.tool,
+      status: "blocked",
+      detail: "WhatsApp message body is required.",
+    };
+  }
+
+  const hasTool = (id: string) => config.tools.some((tool) => tool.id === id && tool.enabled);
+  if (!hasTool("android_device.open_url")) {
+    return {
+      tool: directive.tool,
+      status: "blocked",
+      detail: "Enable android_device.open_url in Device tools to send WhatsApp messages.",
+    };
+  }
+
+  const recipientAlias =
+    (typeof directive.arguments.recipient_alias === "string" && directive.arguments.recipient_alias.trim()) ||
+    (typeof directive.arguments.to_name === "string" && directive.arguments.to_name.trim()) ||
+    (typeof directive.arguments.to === "string" && directive.arguments.to.trim()) ||
+    "wife";
+
+  let selectedNumber = sanitizePhoneNumber(
+    (typeof directive.arguments.phone === "string" && directive.arguments.phone) ||
+      (typeof directive.arguments.number === "string" && directive.arguments.number) ||
+      (typeof directive.arguments.to === "string" && directive.arguments.to) ||
+      "",
+  );
+  let selectedName = recipientAlias;
+
+  if (!selectedNumber && hasTool("android_device.contacts.read")) {
+    try {
+      const contactsRaw = await executeAndroidToolAction("read_contacts", { limit: 250 });
+      const contacts =
+        (contactsRaw as { entries?: ContactEntry[] } | null)?.entries?.filter((entry) => sanitizePhoneNumber(entry.number).length >= 6) || [];
+      const picked = pickContactByAlias(recipientAlias, contacts);
+      if (picked) {
+        selectedName = picked.name || selectedName;
+        selectedNumber = sanitizePhoneNumber(picked.number);
+      }
+    } catch {
+      // fallback below
+    }
+  }
+
+  if (!selectedNumber) {
+    return {
+      tool: directive.tool,
+      status: "failed",
+      detail: `Could not resolve a WhatsApp recipient for '${recipientAlias}'. Enable contacts access or provide a phone number.`,
+    };
+  }
+
+  const phoneDigits = selectedNumber.replace(/[^\d]/g, "");
+  const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(body)}`;
+  await executeAndroidToolAction("open_url", { url });
+
+  let autoSend = false;
+  if (hasTool("android_device.ui.click_text")) {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1400));
+      const sendResult = (await executeAndroidToolAction("ui_automation_click_text", {
+        text: "Send",
+      })) as { ok?: boolean } | null;
+      autoSend = Boolean(sendResult?.ok);
+    } catch {
+      autoSend = false;
+    }
+  }
+
+  return {
+    tool: directive.tool,
+    status: "executed",
+    detail: autoSend
+      ? `WhatsApp message sent to ${selectedName} (${selectedNumber}).`
+      : `WhatsApp chat opened for ${selectedName} (${selectedNumber}) with prefilled message.`,
+    output: {
+      recipient_alias: recipientAlias,
+      recipient_name: selectedName,
+      recipient_number: selectedNumber,
+      auto_sent: autoSend,
+      channel: "whatsapp",
+    },
+  };
+}
+
 function integrationBlockedEvent(tool: string, enabled: boolean, configured: boolean, detail: string): ToolExecutionEvent {
   if (!enabled) {
     return {
@@ -385,6 +554,10 @@ export async function executeToolDirective(
     security: SecurityConfig;
   },
 ): Promise<ToolExecutionEvent> {
+  if (directive.tool === "integration.whatsapp.send_message") {
+    return executeWhatsAppDeviceSend(directive, { tools: config.tools });
+  }
+
   if (directive.tool.startsWith("integration.")) {
     if (directive.tool === "integration.telegram.send_message") {
       return executeTelegramSendMessage(directive, config.integrations);
@@ -403,14 +576,6 @@ export async function executeToolDirective(
         config.integrations.slackEnabled,
         Boolean(config.integrations.slackBotToken.trim()),
         "Slack",
-      );
-    }
-    if (directive.tool === "integration.whatsapp.send_message") {
-      return integrationBlockedEvent(
-        directive.tool,
-        config.integrations.whatsappEnabled,
-        Boolean(config.integrations.whatsappAccessToken.trim()),
-        "WhatsApp",
       );
     }
     if (directive.tool === "integration.composio.invoke_action") {
