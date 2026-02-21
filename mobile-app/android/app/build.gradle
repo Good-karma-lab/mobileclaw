@@ -128,6 +128,7 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
+            pickFirsts += ['**/*.so']
         }
     }
     androidResources {
@@ -136,7 +137,8 @@ android {
     sourceSets {
         main {
             assets.srcDirs += rustAssetsDir
-            jniLibs.srcDirs += rustJniLibsDir
+            // Commented out: Using manually placed binaries in src/main/jniLibs instead
+            // jniLibs.srcDirs += rustJniLibsDir
         }
     }
 }

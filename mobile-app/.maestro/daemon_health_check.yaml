@@ -1,0 +1,45 @@
+appId: com.mobileclaw.app
+---
+# Verify embedded daemon health and status
+
+- launchApp
+
+# Wait for daemon to start
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# Navigate to Activity screen to check daemon status
+- tapOn:
+    id: dock-tab-activity
+- assertVisible:
+    id: screen-activity
+
+# Verify activity screen loaded
+- assertVisible:
+    text: "Activity"
+
+# Check for runtime status (daemon should be running)
+- scrollUntilVisible:
+    element:
+      text: "ZeroClaw"
+      optional: true
+    direction: DOWN
+    speed: 40
+    timeout: 5000
+
+# Return to chat
+- tapOn:
+    id: dock-tab-chat
+
+# Test basic message functionality
+- tapOn:
+    id: chat-input
+- inputText: "daemon health check"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify message was sent
+- assertVisible:
+    text: "daemon health check"

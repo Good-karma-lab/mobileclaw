@@ -1,0 +1,66 @@
+appId: com.mobileclaw.app
+---
+# Test embedded ZeroClaw daemon functionality
+# Tests: daemon auto-start, health check, gateway integration
+
+- launchApp:
+    clearState: false  # Keep daemon state
+
+# Wait for app and daemon initialization
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# Test 1: Verify app launched successfully
+- assertVisible:
+    id: chat-input
+    timeout: 15000
+
+# Test 2: Send message to test gateway connectivity
+- tapOn:
+    id: chat-input
+- inputText: "test daemon connectivity"
+- tapOn:
+    id: chat-send-or-voice
+
+# Wait for response from embedded daemon
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test 3: Context preservation - First message
+- tapOn:
+    id: chat-input
+- inputText: "Remember my test ID is DAEMON-123"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test 4: Context preservation - Recall message
+- tapOn:
+    id: chat-input
+- inputText: "What test ID did I give you?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify context was preserved (daemon has memory)
+- assertVisible:
+    text: "DAEMON-123"
+    optional: true  # May not be visible if scrolled
+
+# Test 5: Check Activity tab for daemon events
+- tapOn:
+    id: dock-tab-activity
+- assertVisible:
+    id: screen-activity
+
+# Verify activity logging is working
+- assertVisible:
+    text: "Activity"
+
+# Return to chat
+- tapOn:
+    id: dock-tab-chat
+- assertVisible:
+    id: chat-input

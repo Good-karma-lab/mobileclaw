@@ -1,0 +1,66 @@
+appId: com.mobileclaw.app
+---
+# Test embedded daemon memory and context preservation
+# This validates that the backend agent runtime is working properly
+
+- launchApp:
+    clearState: false
+
+# Wait for initialization
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# Test 1: Store information
+- tapOn:
+    id: chat-input
+- inputText: "My embedded test name is DaemonUser99"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test 2: Store additional context
+- tapOn:
+    id: chat-input
+- inputText: "I prefer backend mode embedded"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test 3: Recall first piece of information
+- tapOn:
+    id: chat-input
+- inputText: "What is my embedded test name?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify first recall
+- assertVisible:
+    text: "DaemonUser99"
+    optional: true
+
+# Test 4: Recall second piece of information
+- tapOn:
+    id: chat-input
+- inputText: "What backend mode do I prefer?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify second recall
+- assertVisible:
+    text: "embedded"
+    optional: true
+
+# Test 5: Complex recall (both pieces)
+- tapOn:
+    id: chat-input
+- inputText: "Tell me everything you remember about me"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000

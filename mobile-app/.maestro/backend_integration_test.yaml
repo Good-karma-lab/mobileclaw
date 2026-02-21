@@ -1,0 +1,59 @@
+appId: com.mobileclaw.app
+---
+# Test backend gateway integration
+# Prerequisites: Backend must be running at http://10.0.2.2:8000
+
+- launchApp
+
+# Verify chat is ready
+- assertVisible:
+    id: chat-input
+
+# Test gateway connectivity with simple message
+- tapOn:
+    id: chat-input
+- inputText: "test gateway connection"
+- tapOn:
+    id: chat-send-or-voice
+
+# Wait for gateway response
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test context preservation across multiple messages
+- tapOn:
+    id: chat-input
+- inputText: "Remember this test ID: MAESTRO-12345"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Second message to test context
+- tapOn:
+    id: chat-input
+- inputText: "What test ID did I just give you?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify agent recalls the ID from context
+- assertVisible:
+    text: "MAESTRO-12345"
+    optional: true
+
+# Test tool execution request
+- tapOn:
+    id: chat-input
+- inputText: "Please check battery level"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Check activity log for tool execution events
+- tapOn:
+    id: dock-tab-activity
+- assertVisible:
+    id: screen-activity

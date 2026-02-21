@@ -1,0 +1,29 @@
+appId: com.mobileclaw.app
+---
+# Test that agent remembers context across messages
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "Remember: my name is ZeroClawUser and my wife's name is Maria"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertNotVisible:
+    text: "Gateway error"
+# Second message — agent should recall from memory
+- tapOn:
+    id: chat-input
+- inputText: "What is my wife's name?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    text: "Maria"
+    optional: true

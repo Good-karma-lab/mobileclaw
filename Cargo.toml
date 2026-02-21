@@ -85,6 +85,9 @@ console = "0.15"
 # Hardware discovery (device path globbing)
 glob = "0.3"
 
+# JNI bindings for Android
+jni = { version = "0.21", default-features = false }
+
 # Discord WebSocket gateway
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }

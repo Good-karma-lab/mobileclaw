@@ -1,4 +1,4 @@
-import { runAgentChat, type ChatCompletionMessage } from "../api/mobileclaw";
+import { runAgentChat, runZeroClawAgent, type ChatCompletionMessage } from "../api/mobileclaw";
 import { addActivity } from "../state/activity";
 import { sanitizeAssistantArtifacts } from "../state/chat";
 import {
@@ -289,6 +289,69 @@ function integrationToolIds(integrations: string[]): string[] {
   return integrations.flatMap((name) => map[name] ?? []);
 }
 
+/**
+ * Run agent turn using the ZeroClaw backend gateway.
+ * This provides full agent runtime with tools, memory, and multi-step reasoning.
+ * Falls back to local direct LLM calls if gateway is unavailable.
+ */
+export async function runAgentTurnWithGateway(userPrompt: string): Promise<AgentTurnResult> {
+  const [runtime, supervisor] = await Promise.all([
+    loadAgentConfig(),
+    getRuntimeSupervisorState(),
+  ]);
+
+  // Check if gateway mode is enabled via platformUrl
+  const useGateway = runtime.platformUrl && runtime.platformUrl.trim().length > 0;
+
+  if (!useGateway) {
+    // Fall back to local implementation
+    return runAgentTurn(userPrompt);
+  }
+
+  if (supervisor.status === "degraded" && isInboundIntegrationIntent(userPrompt)) {
+    return {
+      assistantText:
+        "ZeroClaw runtime is degraded, so inbound channel events may not reach the agent right now. Check Activity status, ensure backend is reachable, then retry.",
+      toolEvents: [],
+    };
+  }
+
+  try {
+    // Call the full agent runtime via gateway
+    const response = await runZeroClawAgent(userPrompt, runtime);
+
+    await addActivity({
+      kind: "action",
+      source: "chat",
+      title: "Agent turn completed",
+      detail: "Full agent runtime with tools and memory",
+    });
+
+    return {
+      assistantText: stripSystemReminder(response) || "(empty response)",
+      toolEvents: [], // Gateway handles tools internally, we don't see individual tool calls
+    };
+  } catch (error) {
+    return {
+      assistantText:
+        error instanceof Error
+          ? `Gateway error: ${error.message}. Check Settings > Agent Config > Platform URL.`
+          : "Gateway error. Check Settings > Agent Config > Platform URL.",
+      toolEvents: [
+        {
+          tool: "gateway",
+          status: "failed",
+          detail: error instanceof Error ? error.message : "Gateway request failed",
+        },
+      ],
+    };
+  }
+}
+
+/**
+ * Run agent turn using local direct LLM calls (original implementation).
+ * This is the fallback when gateway mode is disabled.
+ */
 export async function runAgentTurn(userPrompt: string): Promise<AgentTurnResult> {
   const [runtime, tools, integrations, security, supervisor] = await Promise.all([
     loadAgentConfig(),

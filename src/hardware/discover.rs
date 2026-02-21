@@ -17,7 +17,7 @@ pub struct UsbDeviceInfo {
 }
 
 /// Enumerate all connected USB devices and enrich with board registry lookup.
-#[cfg(feature = "hardware")]
+#[cfg(all(feature = "hardware", not(target_os = "android")))]
 pub fn list_usb_devices() -> Result<Vec<UsbDeviceInfo>> {
     let mut devices = Vec::new();
 
@@ -42,4 +42,10 @@ pub fn list_usb_devices() -> Result<Vec<UsbDeviceInfo>> {
     }
 
     Ok(devices)
+}
+
+/// Stub for Android (USB enumeration not supported)
+#[cfg(all(feature = "hardware", target_os = "android"))]
+pub fn list_usb_devices() -> Result<Vec<UsbDeviceInfo>> {
+    Ok(Vec::new())
 }

@@ -19,11 +19,12 @@ import { RootNavigator } from "./src/navigation/RootNavigator";
 import { log } from "./src/logger";
 import { ErrorBoundary } from "./src/state/ErrorBoundary";
 import { addActivity } from "./src/state/activity";
-import { loadSecurityConfig } from "./src/state/mobileclaw";
+import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./src/state/mobileclaw";
 import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
 import { prepopulateDevCredentials } from "./scripts/prepopulate-config";
+import { startDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
 
 export default function App() {
   const lastTelegramSeenRef = useRef(0);
@@ -31,6 +32,7 @@ export default function App() {
   const lastWebhookFailRef = useRef(0);
   const [initError, setInitError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [daemonReady, setDaemonReady] = useState(false);
   const [fontsLoaded, fontError] = Font.useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -53,11 +55,45 @@ export default function App() {
         console.log("[app] initializing...");
         log("info", "app started", { platform: Platform.OS });
 
-        // Prepopulate dev credentials automatically in dev mode
-        if (__DEV__) {
-          console.log("[app] prepopulating dev credentials...");
-          await prepopulateDevCredentials();
-          log("info", "dev credentials prepopulated");
+        // Prepopulate dev credentials if not already configured (idempotent — preserves existing)
+        console.log("[app] prepopulating dev credentials...");
+        await prepopulateDevCredentials();
+        log("info", "dev credentials prepopulated");
+
+        // Start embedded ZeroClaw daemon (Android only)
+        if (Platform.OS === 'android') {
+          try {
+            console.log("[app] starting embedded ZeroClaw daemon...");
+            const running = await isDaemonRunning();
+
+            if (!running) {
+              const agentCfg = await loadAgentConfig();
+              const integCfg = await loadIntegrationsConfig();
+              await startDaemon({
+                apiKey: agentCfg.apiKey,
+                model: agentCfg.model,
+                telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
+              });
+              console.log("[app] daemon start requested, waiting for ready...");
+
+              // Wait up to 60 seconds for HTTP gateway to bind
+              await waitForDaemonReady(60000, 1000);
+              console.log("[app] ✅ embedded daemon ready");
+            } else {
+              console.log("[app] ✅ daemon already running");
+            }
+
+            setDaemonReady(true);
+            log("info", "embedded daemon ready", { url: "http://127.0.0.1:8000" });
+          } catch (err) {
+            console.warn("[app] ⚠️ daemon failed to start, continuing anyway:", err);
+            // Don't block app launch if daemon fails
+            setDaemonReady(false);
+            log("warn", "embedded daemon failed", { error: err instanceof Error ? err.message : String(err) });
+          }
+        } else {
+          // Non-Android platforms
+          setDaemonReady(true);
         }
 
         console.log("[app] initialization complete");
@@ -121,26 +157,51 @@ export default function App() {
       void (async () => {
         const security = await loadSecurityConfig();
         if (!security.incomingCallHooks) return;
-        const suffix = security.includeCallerNumber && event.phone.trim() ? event.phone.trim() : "redacted";
-        await reportRuntimeHookEvent("incoming_call", `${event.state} from ${suffix}`);
+        const phone = security.includeCallerNumber && event.phone.trim() ? event.phone.trim() : "redacted";
+        await reportRuntimeHookEvent("incoming_call", `${event.state} from ${phone}`);
         await addActivity({
           kind: "action",
           source: "device",
           title: "Incoming call hook",
-          detail: `${event.state} from ${suffix}`,
+          detail: `${event.state} from ${phone}`,
         });
+        try {
+          await fetch('http://127.0.0.1:8000/agent/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event_type: 'incoming_call',
+              data: { phone, state: event.state },
+            }),
+          });
+        } catch (err) {
+          console.warn('[app] Failed to forward call event to agent:', err);
+        }
       })();
     }, (event) => {
       void (async () => {
         const security = await loadSecurityConfig();
         if (!security.incomingSmsHooks) return;
-        await reportRuntimeHookEvent("incoming_sms", `from ${event.address || "unknown"}`);
+        const address = event.address || "unknown";
+        await reportRuntimeHookEvent("incoming_sms", `from ${address}`);
         await addActivity({
           kind: "action",
           source: "device",
           title: "Incoming SMS hook",
-          detail: `from ${event.address || "unknown"}`,
+          detail: `from ${address}`,
         });
+        try {
+          await fetch('http://127.0.0.1:8000/agent/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event_type: 'incoming_sms',
+              data: { address },
+            }),
+          });
+        } catch (err) {
+          console.warn('[app] Failed to forward SMS event to agent:', err);
+        }
       })();
     });
 

@@ -992,6 +992,14 @@ pub struct AndroidCapabilitiesConfig {
     pub contacts: bool,
     #[serde(default)]
     pub calendar: bool,
+    #[serde(default)]
+    pub ui_automation: bool,
+    #[serde(default)]
+    pub browser_automation: bool,
+    #[serde(default)]
+    pub file_system_access: bool,
+    #[serde(default)]
+    pub event_hooks: bool,
 }
 
 impl Default for AndroidCapabilitiesConfig {
@@ -1010,6 +1018,10 @@ impl Default for AndroidCapabilitiesConfig {
             battery: true,
             contacts: false,
             calendar: false,
+            ui_automation: false,
+            browser_automation: false,
+            file_system_access: false,
+            event_hooks: false,
         }
     }
 }
