@@ -16,6 +16,7 @@ export type AgentRuntimeConfig = {
   enterpriseUrl: string;
   temperature: number;
   deepgramApiKey: string;
+  platformUrl: string; // ZeroClaw backend gateway URL (e.g., "http://10.0.2.2:8000")
 };
 
 export type IntegrationsConfig = {
@@ -43,6 +44,14 @@ export type SecurityConfig = {
   alwaysOnRuntime: boolean;
 };
 
+export type DaemonConfig = {
+  enabled: boolean;
+  alwaysOn: boolean;
+  cronEnabled: boolean;
+  heartbeatEnabled: boolean;
+  heartbeatIntervalMin: number;
+};
+
 export type MobileToolCapability = {
   id: string;
   title: string;
@@ -54,6 +63,7 @@ const AGENT_KEY = "mobileclaw:agent-config:v1";
 const INTEGRATIONS_KEY = "mobileclaw:integrations-config:v2";
 const SECURITY_KEY = "mobileclaw:security-config:v1";
 const DEVICE_TOOLS_KEY = "mobileclaw:device-tools:v2";
+const DAEMON_KEY = "mobileclaw:daemon-config:v1";
 
 export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   provider: "openrouter",
@@ -68,6 +78,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   enterpriseUrl: "",
   temperature: 0.1,
   deepgramApiKey: "",
+  platformUrl: "http://127.0.0.1:8000", // Embedded daemon on localhost
 };
 
 export const DEFAULT_INTEGRATIONS: IntegrationsConfig = {
@@ -93,6 +104,14 @@ export const DEFAULT_SECURITY: SecurityConfig = {
   directExecution: true,
   preferStandardWebTool: true,
   alwaysOnRuntime: false,
+};
+
+export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
+  enabled: true,
+  alwaysOn: true,
+  cronEnabled: true,
+  heartbeatEnabled: false,
+  heartbeatIntervalMin: 30,
 };
 
 export const DEFAULT_DEVICE_TOOLS: MobileToolCapability[] = [
@@ -179,6 +198,14 @@ export async function loadSecurityConfig(): Promise<SecurityConfig> {
 
 export async function saveSecurityConfig(config: SecurityConfig): Promise<void> {
   await AsyncStorage.setItem(SECURITY_KEY, JSON.stringify(config));
+}
+
+export async function loadDaemonConfig(): Promise<DaemonConfig> {
+  return readJson(DAEMON_KEY, DEFAULT_DAEMON_CONFIG);
+}
+
+export async function saveDaemonConfig(config: DaemonConfig): Promise<void> {
+  await AsyncStorage.setItem(DAEMON_KEY, JSON.stringify(config));
 }
 
 export async function loadDeviceToolsConfig(): Promise<MobileToolCapability[]> {

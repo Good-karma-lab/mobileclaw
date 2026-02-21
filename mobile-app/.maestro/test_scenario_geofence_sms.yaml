@@ -1,0 +1,19 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "When I arrive home, send an SMS to my wife. My home coordinates are 37.7749,-122.4194. Wife phone number is +341234567890"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"

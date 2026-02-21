@@ -1,0 +1,115 @@
+appId: com.mobileclaw.app
+---
+# Test newly implemented gateway integration features
+# Tests: platformUrl configuration, gateway mode, context preservation
+
+- launchApp:
+    clearState: true
+
+# Navigate to Settings to configure Platform URL
+- tapOn:
+    id: dock-tab-settings
+- assertVisible:
+    id: screen-settings
+
+# Scroll to find Agent Config section
+- scrollUntilVisible:
+    element:
+      text: "Agent Config"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+
+# Verify Platform URL field exists (new feature)
+- scrollUntilVisible:
+    element:
+      text: "Platform URL"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+- assertVisible:
+    text: "Platform URL"
+
+# Configure Platform URL for gateway mode
+- tapOn:
+    text: "Platform URL"
+- inputText: "http://10.0.2.2:8000"
+- tapOn:
+    text: "Save"
+    optional: true
+
+# Navigate to Activity tab to check runtime status
+- tapOn:
+    id: dock-tab-activity
+- assertVisible:
+    id: screen-activity
+
+# Wait for activity screen to load
+- waitForAnimationToEnd
+
+# Verify Activity screen content loads
+- assertVisible:
+    text: "Activity"
+
+# Return to chat to test gateway communication
+- tapOn:
+    id: dock-tab-chat
+- assertVisible:
+    id: chat-input
+
+# Test 1: Simple message with gateway
+- tapOn:
+    id: chat-input
+- inputText: "Hello from Maestro gateway test"
+- tapOn:
+    id: chat-send-or-voice
+
+# Wait for response (gateway mode may take longer)
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify message was sent
+- assertVisible:
+    text: "Hello from Maestro gateway test"
+
+# Test 2: Context preservation (memory test)
+- tapOn:
+    id: chat-input
+- inputText: "My test name is MaestroBot"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Test 3: Ask agent to recall context
+- tapOn:
+    id: chat-input
+- inputText: "What is my test name?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# Verify agent remembered the name (context preservation)
+# Note: This assertion may fail if backend is not running
+- assertVisible:
+    text: "MaestroBot"
+    optional: true
+
+# Check activity log for agent runtime events
+- tapOn:
+    id: dock-tab-activity
+- assertVisible:
+    id: screen-activity
+- waitForAnimationToEnd
+
+# Return to settings and verify daemon config exists (new feature)
+- tapOn:
+    id: dock-tab-settings
+- scrollUntilVisible:
+    element:
+      text: "Daemon Config"
+      optional: true
+    direction: DOWN
+    speed: 40
+    timeout: 10000

@@ -1,0 +1,19 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "Open Twitter application and reply to all not-replied comments under my 5 recent posts. My Twitter username is @zeroclaw_test"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"

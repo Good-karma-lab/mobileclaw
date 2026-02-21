@@ -12,7 +12,8 @@ import { useLayoutContext } from "../../state/layout";
 
 function runtimeStatusLabel(state: RuntimeSupervisorState | null): { dot: string; text: string; reason: string } {
   if (!state) return { dot: "⚪", text: "Unknown", reason: "No runtime data" };
-  if (state.status === "running") return { dot: "🟢", text: "Running", reason: state.degradeReason || "" };
+  if (state.status === "healthy") return { dot: "🟢", text: "Healthy", reason: state.degradeReason || "" };
+  if (state.status === "starting") return { dot: "🟡", text: "Starting", reason: state.degradeReason || "" };
   if (state.status === "degraded") return { dot: "🟡", text: "Degraded", reason: state.degradeReason || "" };
   if (state.status === "stopped") return { dot: "🔴", text: "Stopped", reason: state.degradeReason || "" };
   return { dot: "⚪", text: state.status, reason: state.degradeReason || "" };

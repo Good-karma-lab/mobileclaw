@@ -16,7 +16,7 @@ import { useToast } from "../../state/toast";
 import { appendChat, loadChat, sanitizeAssistantArtifacts, type ChatMessage } from "../../state/chat";
 import { addActivity } from "../../state/activity";
 import { loadAgentConfig } from "../../state/mobileclaw";
-import { runAgentTurn } from "../../runtime/session";
+import { runAgentTurnWithGateway } from "../../runtime/session";
 import { synthesizeSpeechWithDeepgram } from "../../api/mobileclaw";
 import { useLayoutContext } from "../../state/layout";
 
@@ -178,7 +178,7 @@ export function ChatScreen() {
   const runTurnWithTimeout = useCallback(async (prompt: string) => {
     const timeoutMs = 90_000;
     return await Promise.race([
-      runAgentTurn(prompt),
+      runAgentTurnWithGateway(prompt),
       new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error("Agent request timed out. You can restart and retry.")), timeoutMs);
       }),
@@ -310,7 +310,7 @@ export function ChatScreen() {
   const hasDraft = useMemo(() => !!draft.trim(), [draft]);
 
   return (
-    <Screen>
+    <Screen testID="screen-chat">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

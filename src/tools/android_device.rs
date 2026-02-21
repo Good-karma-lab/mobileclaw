@@ -134,8 +134,32 @@ impl AndroidDeviceTool {
                     anyhow::bail!("android capability calendar is disabled");
                 }
             }
+            "ui_automation_enable" | "ui_automation_tap" | "ui_automation_swipe"
+            | "ui_automation_click_text" | "ui_automation_back" | "ui_automation_home"
+            | "ui_automation_recents" => {
+                if !self.config.capabilities.ui_automation {
+                    anyhow::bail!("android capability ui_automation is disabled");
+                }
+            }
+            "browser_open_session" | "browser_navigate" | "browser_get_state"
+            | "browser_fetch_page" | "browser_close_session" => {
+                if !self.config.capabilities.browser_automation {
+                    anyhow::bail!("android capability browser_automation is disabled");
+                }
+            }
+            "request_all_files_access" | "pick_document" | "manage_files" => {
+                if !self.config.capabilities.file_system_access {
+                    anyhow::bail!("android capability file_system_access is disabled");
+                }
+            }
+            "hook_incoming_call" | "hook_incoming_sms" | "hook_notifications"
+            | "read_notifications" => {
+                if !self.config.capabilities.event_hooks {
+                    anyhow::bail!("android capability event_hooks is disabled");
+                }
+            }
             other => anyhow::bail!(
-                "Unknown android action '{other}'. Supported: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
+                "Unknown android action '{other}'. Supported: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log, ui_automation_*, browser_*, *_files*, hook_*"
             ),
         }
 
@@ -270,7 +294,7 @@ impl Tool for AndroidDeviceTool {
             "properties": {
                 "action": {
                     "type": "string",
-                    "description": "Action to perform: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log"
+                    "description": "Action to perform: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log, ui_automation_enable, ui_automation_tap, ui_automation_swipe, ui_automation_click_text, ui_automation_back, ui_automation_home, ui_automation_recents, browser_open_session, browser_navigate, browser_get_state, browser_fetch_page, browser_close_session, request_all_files_access, pick_document, manage_files, hook_incoming_call, hook_incoming_sms, hook_notifications, read_notifications"
                 },
                 "package": {
                     "type": "string",
@@ -319,6 +343,51 @@ impl Tool for AndroidDeviceTool {
                     "type": "boolean",
                     "description": "Explicit approval flag for high-risk actions",
                     "default": false
+                },
+                "x": {
+                    "type": "integer",
+                    "description": "X coordinate for UI automation tap"
+                },
+                "y": {
+                    "type": "integer",
+                    "description": "Y coordinate for UI automation tap"
+                },
+                "x1": {
+                    "type": "integer",
+                    "description": "Start X coordinate for UI automation swipe"
+                },
+                "y1": {
+                    "type": "integer",
+                    "description": "Start Y coordinate for UI automation swipe"
+                },
+                "x2": {
+                    "type": "integer",
+                    "description": "End X coordinate for UI automation swipe"
+                },
+                "y2": {
+                    "type": "integer",
+                    "description": "End Y coordinate for UI automation swipe"
+                },
+                "session_id": {
+                    "type": "string",
+                    "description": "Browser session ID for navigation/state operations"
+                },
+                "headless": {
+                    "type": "boolean",
+                    "description": "Whether to open browser in headless mode",
+                    "default": false
+                },
+                "mime_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "MIME types for document picker"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable/disable event hook",
+                    "default": true
                 }
             },
             "required": ["action"]
@@ -571,6 +640,235 @@ impl Tool for AndroidDeviceTool {
                 self.execute_bridge_call("place_call", json!({ "to": normalize_phone(to) }))
                     .await
             }
+            // ── UI Automation ────────────────────────────────────────
+            "ui_automation_enable" => {
+                self.execute_bridge_call("ui_automation_enable", json!({}))
+                    .await
+            }
+            "ui_automation_tap" => {
+                let x = args
+                    .get("x")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
+                let y = args
+                    .get("y")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
+                self.execute_bridge_call("ui_automation_tap", json!({ "x": x, "y": y }))
+                    .await
+            }
+            "ui_automation_swipe" => {
+                let x1 = args.get("x1").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
+                let y1 = args.get("y1").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
+                let x2 = args.get("x2").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
+                let y2 = args.get("y2").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
+                let duration_ms = args
+                    .get("duration_ms")
+                    .and_then(serde_json::Value::as_u64)
+                    .map_or(300, |v| v.clamp(50, 5000)) as u32;
+                self.execute_bridge_call(
+                    "ui_automation_swipe",
+                    json!({ "x1": x1, "y1": y1, "x2": x2, "y2": y2, "duration_ms": duration_ms }),
+                )
+                .await
+            }
+            "ui_automation_click_text" => {
+                let text = args
+                    .get("text")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if text.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("ui_automation_click_text requires 'text'".into()),
+                    });
+                }
+                self.execute_bridge_call("ui_automation_click_text", json!({ "text": text }))
+                    .await
+            }
+            "ui_automation_back" => {
+                self.execute_bridge_call("ui_automation_back", json!({}))
+                    .await
+            }
+            "ui_automation_home" => {
+                self.execute_bridge_call("ui_automation_home", json!({}))
+                    .await
+            }
+            "ui_automation_recents" => {
+                self.execute_bridge_call("ui_automation_recents", json!({}))
+                    .await
+            }
+            // ── Browser Automation ───────────────────────────────────
+            "browser_open_session" => {
+                let url = args
+                    .get("url")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if url.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_open_session requires 'url'".into()),
+                    });
+                }
+                if !url.starts_with("https://") {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_open_session requires HTTPS URL".into()),
+                    });
+                }
+                let headless = args
+                    .get("headless")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+                self.execute_bridge_call(
+                    "browser_open_session",
+                    json!({ "url": url, "headless": headless }),
+                )
+                .await
+            }
+            "browser_navigate" => {
+                let session_id = args
+                    .get("session_id")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                let url = args
+                    .get("url")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if session_id.is_empty() || url.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_navigate requires 'session_id' and 'url'".into()),
+                    });
+                }
+                self.execute_bridge_call(
+                    "browser_navigate",
+                    json!({ "session_id": session_id, "url": url }),
+                )
+                .await
+            }
+            "browser_get_state" => {
+                let session_id = args
+                    .get("session_id")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if session_id.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_get_state requires 'session_id'".into()),
+                    });
+                }
+                self.execute_bridge_call("browser_get_state", json!({ "session_id": session_id }))
+                    .await
+            }
+            "browser_fetch_page" => {
+                let session_id = args
+                    .get("session_id")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if session_id.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_fetch_page requires 'session_id'".into()),
+                    });
+                }
+                self.execute_bridge_call("browser_fetch_page", json!({ "session_id": session_id }))
+                    .await
+            }
+            "browser_close_session" => {
+                let session_id = args
+                    .get("session_id")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                if session_id.is_empty() {
+                    return Ok(ToolResult {
+                        success: false,
+                        output: String::new(),
+                        error: Some("browser_close_session requires 'session_id'".into()),
+                    });
+                }
+                self.execute_bridge_call("browser_close_session", json!({ "session_id": session_id }))
+                    .await
+            }
+            // ── File System Access ───────────────────────────────────
+            "request_all_files_access" => {
+                self.execute_bridge_call("request_all_files_access", json!({}))
+                    .await
+            }
+            "pick_document" => {
+                let mime_types = args
+                    .get("mime_types")
+                    .and_then(serde_json::Value::as_array)
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .map(String::from)
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(|| vec!["*/*".to_string()]);
+                self.execute_bridge_call("pick_document", json!({ "mime_types": mime_types }))
+                    .await
+            }
+            "manage_files" => {
+                let action = args
+                    .get("action")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("list")
+                    .trim();
+                let path = args
+                    .get("path")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .trim();
+                self.execute_bridge_call("manage_files", json!({ "action": action, "path": path }))
+                    .await
+            }
+            // ── Event Hooks ──────────────────────────────────────────
+            "hook_incoming_call" => {
+                let enabled = args
+                    .get("enabled")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(true);
+                self.execute_bridge_call("hook_incoming_call", json!({ "enabled": enabled }))
+                    .await
+            }
+            "hook_incoming_sms" => {
+                let enabled = args
+                    .get("enabled")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(true);
+                self.execute_bridge_call("hook_incoming_sms", json!({ "enabled": enabled }))
+                    .await
+            }
+            "hook_notifications" => {
+                let enabled = args
+                    .get("enabled")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(true);
+                self.execute_bridge_call("hook_notifications", json!({ "enabled": enabled }))
+                    .await
+            }
+            "read_notifications" => {
+                let limit = args
+                    .get("limit")
+                    .and_then(serde_json::Value::as_u64)
+                    .map_or(10, |v| v.clamp(1, 100));
+                self.execute_bridge_call("read_notifications", json!({ "limit": limit }))
+                    .await
+            }
             _ => anyhow::bail!("Unsupported action"),
         };
 
@@ -681,6 +979,10 @@ mod tests {
                 battery: true,
                 contacts: true,
                 calendar: true,
+                ui_automation: true,
+                browser_automation: true,
+                file_system_access: true,
+                event_hooks: true,
             },
             bridge: crate::config::AndroidBridgeConfig::default(),
             policy: crate::config::AndroidPolicyConfig {

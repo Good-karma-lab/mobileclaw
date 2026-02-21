@@ -1,0 +1,20 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "If I receive an incoming call from my wife, send me a message in Telegram. Wife phone number is +341234567890"
+- hideKeyboard
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"

@@ -35,8 +35,8 @@ use uuid::Uuid;
 
 /// Maximum request body size (64KB) — prevents memory exhaustion
 pub const MAX_BODY_SIZE: usize = 65_536;
-/// Request timeout (30s) — prevents slow-loris attacks
-pub const REQUEST_TIMEOUT_SECS: u64 = 30;
+/// Request timeout (300s) — prevents runaway connections; agent tasks can take several minutes
+pub const REQUEST_TIMEOUT_SECS: u64 = 300;
 /// Sliding window used by gateway rate limiting.
 pub const RATE_LIMIT_WINDOW_SECS: u64 = 60;
 
@@ -194,6 +194,8 @@ pub struct AppState {
     pub whatsapp: Option<Arc<WhatsAppChannel>>,
     /// `WhatsApp` app secret for webhook signature verification (`X-Hub-Signature-256`)
     pub whatsapp_app_secret: Option<Arc<str>>,
+    /// Full config for agent runtime (needed by process_message)
+    pub config: Arc<Config>,
 }
 
 /// Run the HTTP gateway using axum with proper HTTP/1.1 compliance.
@@ -335,13 +337,15 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
     if let Some(ref url) = tunnel_url {
         println!("  🌐 Public URL: {url}");
     }
-    println!("  POST /pair      — pair a new client (X-Pairing-Code header)");
-    println!("  POST /webhook   — {{\"message\": \"your prompt\"}}");
+    println!("  POST /pair          — pair a new client (X-Pairing-Code header)");
+    println!("  POST /webhook       — {{\"message\": \"your prompt\"}} (simple chat)");
+    println!("  POST /agent/message — {{\"message\": \"your prompt\"}} (full agent with tools)");
+    println!("  POST /agent/event   — {{\"event_type\": \"...\", \"data\": {{...}}}} (device events)");
     if whatsapp_channel.is_some() {
-        println!("  GET  /whatsapp  — Meta webhook verification");
-        println!("  POST /whatsapp  — WhatsApp message webhook");
+        println!("  GET  /whatsapp      — Meta webhook verification");
+        println!("  POST /whatsapp      — WhatsApp message webhook");
     }
-    println!("  GET  /health    — health check");
+    println!("  GET  /health        — health check");
     if let Some(code) = pairing.pairing_code() {
         println!();
         println!("  🔐 PAIRING REQUIRED — use this one-time code:");
@@ -371,6 +375,7 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         idempotency_store,
         whatsapp: whatsapp_channel,
         whatsapp_app_secret,
+        config: Arc::new(config.clone()),
     };
 
     // Build router with middleware
@@ -378,6 +383,8 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/health", get(handle_health))
         .route("/pair", post(handle_pair))
         .route("/webhook", post(handle_webhook))
+        .route("/agent/message", post(handle_agent_message))
+        .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
         .with_state(state)
@@ -456,6 +463,19 @@ async fn handle_pair(State(state): State<AppState>, headers: HeaderMap) -> impl 
 #[derive(serde::Deserialize)]
 pub struct WebhookBody {
     pub message: String,
+}
+
+/// Agent message request body
+#[derive(serde::Deserialize)]
+pub struct AgentMessageRequest {
+    pub message: String,
+}
+
+/// Device event request body
+#[derive(serde::Deserialize)]
+pub struct DeviceEventRequest {
+    pub event_type: String,
+    pub data: serde_json::Value,
 }
 
 /// POST /webhook — main webhook endpoint
@@ -566,6 +586,180 @@ async fn handle_webhook(
             (StatusCode::INTERNAL_SERVER_ERROR, Json(err))
         }
     }
+}
+
+/// POST /agent/message — full agent runtime with tools, memory, and multi-step reasoning
+async fn handle_agent_message(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Result<Json<AgentMessageRequest>, axum::extract::rejection::JsonRejection>,
+) -> impl IntoResponse {
+    let client_key = client_key_from_headers(&headers);
+    if !state.rate_limiter.allow_webhook(&client_key) {
+        tracing::warn!("/agent/message rate limit exceeded for key: {client_key}");
+        let err = serde_json::json!({
+            "error": "Too many agent requests. Please retry later.",
+            "retry_after": RATE_LIMIT_WINDOW_SECS,
+        });
+        return (StatusCode::TOO_MANY_REQUESTS, Json(err));
+    }
+
+    // ── Bearer token auth (pairing) ──
+    if state.pairing.require_pairing() {
+        let auth = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let token = auth.strip_prefix("Bearer ").unwrap_or("");
+        if !state.pairing.is_authenticated(token) {
+            tracing::warn!("Agent: rejected — not paired / invalid bearer token");
+            let err = serde_json::json!({
+                "error": "Unauthorized — pair first via POST /pair, then send Authorization: Bearer <token>"
+            });
+            return (StatusCode::UNAUTHORIZED, Json(err));
+        }
+    }
+
+    // ── Webhook secret auth (optional, additional layer) ──
+    if let Some(ref secret_hash) = state.webhook_secret_hash {
+        let header_hash = headers
+            .get("X-Webhook-Secret")
+            .and_then(|v| v.to_str().ok())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(hash_webhook_secret);
+        match header_hash {
+            Some(val) if constant_time_eq(&val, secret_hash.as_ref()) => {}
+            _ => {
+                tracing::warn!("Agent: rejected request — invalid or missing X-Webhook-Secret");
+                let err = serde_json::json!({"error": "Unauthorized — invalid or missing X-Webhook-Secret header"});
+                return (StatusCode::UNAUTHORIZED, Json(err));
+            }
+        }
+    }
+
+    // ── Parse body ──
+    let Json(agent_body) = match body {
+        Ok(b) => b,
+        Err(e) => {
+            tracing::warn!("Agent JSON parse error: {e}");
+            let err = serde_json::json!({
+                "error": "Invalid JSON body. Expected: {\"message\": \"...\"}"
+            });
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    // ── Idempotency (optional) ──
+    if let Some(idempotency_key) = headers
+        .get("X-Idempotency-Key")
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        if !state.idempotency_store.record_if_new(idempotency_key) {
+            tracing::info!("Agent duplicate ignored (idempotency key: {idempotency_key})");
+            let body = serde_json::json!({
+                "status": "duplicate",
+                "idempotent": true,
+                "message": "Request already processed for this idempotency key"
+            });
+            return (StatusCode::OK, Json(body));
+        }
+    }
+
+    let message = &agent_body.message;
+
+    // Use full agent runtime with tools + memory + multi-step reasoning
+    // This is the key difference from /webhook (which uses simple_chat)
+    match crate::agent::loop_::process_message((*state.config).clone(), message).await {
+        Ok(response) => {
+            let body = serde_json::json!({
+                "response": response,
+                "model": state.model
+            });
+            (StatusCode::OK, Json(body))
+        }
+        Err(e) => {
+            tracing::error!(
+                "Agent runtime error: {}",
+                providers::sanitize_api_error(&e.to_string())
+            );
+            let err = serde_json::json!({"error": "Agent execution failed"});
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(err))
+        }
+    }
+}
+
+/// POST /agent/event — device event webhook for autonomous reactions
+async fn handle_agent_event(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Result<Json<DeviceEventRequest>, axum::extract::rejection::JsonRejection>,
+) -> impl IntoResponse {
+    let client_key = client_key_from_headers(&headers);
+    if !state.rate_limiter.allow_webhook(&client_key) {
+        tracing::warn!("/agent/event rate limit exceeded for key: {client_key}");
+        let err = serde_json::json!({
+            "error": "Too many event requests. Please retry later.",
+            "retry_after": RATE_LIMIT_WINDOW_SECS,
+        });
+        return (StatusCode::TOO_MANY_REQUESTS, Json(err));
+    }
+
+    // ── Bearer token auth (pairing) ──
+    if state.pairing.require_pairing() {
+        let auth = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let token = auth.strip_prefix("Bearer ").unwrap_or("");
+        if !state.pairing.is_authenticated(token) {
+            tracing::warn!("Event: rejected — not paired / invalid bearer token");
+            let err = serde_json::json!({
+                "error": "Unauthorized — pair first via POST /pair, then send Authorization: Bearer <token>"
+            });
+            return (StatusCode::UNAUTHORIZED, Json(err));
+        }
+    }
+
+    // ── Parse body ──
+    let Json(event_body) = match body {
+        Ok(b) => b,
+        Err(e) => {
+            tracing::warn!("Event JSON parse error: {e}");
+            let err = serde_json::json!({
+                "error": "Invalid JSON body. Expected: {\"event_type\": \"...\", \"data\": {...}}"
+            });
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    // Log the event
+    tracing::info!(
+        target: "device_event",
+        event_type = %event_body.event_type,
+        "Device event received"
+    );
+
+    // Spawn agent processing for this device event (async — return immediately)
+    let prompt = format!(
+        "Device event received: {} — {}",
+        event_body.event_type,
+        serde_json::to_string(&event_body.data).unwrap_or_default()
+    );
+    let config = (*state.config).clone();
+    tokio::spawn(async move {
+        if let Err(e) = crate::agent::loop_::process_message(config, &prompt).await {
+            tracing::error!("Agent event processing error: {}", e);
+        }
+    });
+
+    let body = serde_json::json!({
+        "status": "ok",
+        "processing": true
+    });
+    (StatusCode::OK, Json(body))
 }
 
 /// `WhatsApp` verification query params
@@ -748,8 +942,8 @@ mod tests {
     }
 
     #[test]
-    fn security_timeout_is_30_seconds() {
-        assert_eq!(REQUEST_TIMEOUT_SECS, 30);
+    fn security_timeout_is_300_seconds() {
+        assert_eq!(REQUEST_TIMEOUT_SECS, 300);
     }
 
     #[test]
@@ -1026,6 +1220,7 @@ mod tests {
             idempotency_store: Arc::new(IdempotencyStore::new(Duration::from_secs(300))),
             whatsapp: None,
             whatsapp_app_secret: None,
+            config: Arc::new(crate::config::Config::default()),
         };
 
         let mut headers = HeaderMap::new();
@@ -1074,6 +1269,7 @@ mod tests {
             idempotency_store: Arc::new(IdempotencyStore::new(Duration::from_secs(300))),
             whatsapp: None,
             whatsapp_app_secret: None,
+            config: Arc::new(crate::config::Config::default()),
         };
 
         let headers = HeaderMap::new();
@@ -1135,6 +1331,7 @@ mod tests {
             idempotency_store: Arc::new(IdempotencyStore::new(Duration::from_secs(300))),
             whatsapp: None,
             whatsapp_app_secret: None,
+            config: Arc::new(crate::config::Config::default()),
         };
 
         let response = handle_webhook(
@@ -1169,6 +1366,7 @@ mod tests {
             idempotency_store: Arc::new(IdempotencyStore::new(Duration::from_secs(300))),
             whatsapp: None,
             whatsapp_app_secret: None,
+            config: Arc::new(crate::config::Config::default()),
         };
 
         let mut headers = HeaderMap::new();
@@ -1206,6 +1404,7 @@ mod tests {
             idempotency_store: Arc::new(IdempotencyStore::new(Duration::from_secs(300))),
             whatsapp: None,
             whatsapp_app_secret: None,
+            config: Arc::new(crate::config::Config::default()),
         };
 
         let mut headers = HeaderMap::new();

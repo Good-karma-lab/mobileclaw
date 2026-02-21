@@ -342,6 +342,38 @@ export async function synthesizeSpeechWithDeepgram(text: string, apiKey: string)
   return outputUri;
 }
 
+export async function runZeroClawAgent(
+  message: string,
+  config: AgentRuntimeConfig,
+): Promise<string> {
+  const gatewayUrl = config.platformUrl?.trim() || "http://10.0.2.2:8000";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  // Add auth if pairing enabled
+  const bearerToken = bearerFor(config);
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
+
+  const res = await fetch(`${gatewayUrl}/agent/message`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ message }),
+  });
+
+  if (!res.ok) {
+    const errorData = await readJsonResponse(res);
+    const errorMsg = errorData?.error || `Gateway error: ${res.status}`;
+    throw new Error(errorMsg);
+  }
+
+  const data = await readJsonResponse(res);
+  return String(data?.response || "").trim();
+}
+
 export async function fetchOpenRouterModels(apiKey?: string): Promise<string[]> {
   const headers: Record<string, string> = {};
   if (apiKey?.trim()) {

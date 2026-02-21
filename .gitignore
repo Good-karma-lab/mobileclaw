@@ -47,3 +47,8 @@ mobile-app/android/app/.cxx/
 *.pem
 credentials.json
 .local-secrets/
+
+# Test credentials (DO NOT COMMIT)
+test_config.json
+.env.test
+test_integration.sh

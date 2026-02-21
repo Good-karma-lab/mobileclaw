@@ -67,6 +67,10 @@ pub mod tools;
 pub mod tunnel;
 pub mod util;
 
+// JNI bridge for Android (only compiled when building as cdylib)
+#[cfg(target_os = "android")]
+pub mod jni_bridge;
+
 pub use config::Config;
 
 /// Service management subcommands

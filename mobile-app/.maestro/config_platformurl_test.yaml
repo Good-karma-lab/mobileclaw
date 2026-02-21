@@ -1,0 +1,99 @@
+appId: com.mobileclaw.app
+---
+# Test Platform URL configuration (new feature)
+
+- launchApp
+
+# Navigate to settings
+- tapOn:
+    id: dock-tab-settings
+- assertVisible:
+    id: screen-settings
+
+# Find Agent Config section
+- scrollUntilVisible:
+    element:
+      text: "Agent Config"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+
+# Test 1: Verify Platform URL field exists
+- scrollUntilVisible:
+    element:
+      text: "Platform URL"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+- assertVisible:
+    text: "Platform URL"
+
+# Test 2: Configure emulator URL
+- tapOn:
+    text: "Platform URL"
+- inputText: "http://10.0.2.2:8000"
+- tapOn:
+    text: "Save"
+    optional: true
+
+# Test 3: Verify configuration persists
+- tapOn:
+    id: dock-tab-chat
+- tapOn:
+    id: dock-tab-settings
+- scrollUntilVisible:
+    element:
+      text: "Platform URL"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+- assertVisible:
+    text: "http://10.0.2.2:8000"
+    optional: true
+
+# Test 4: Test with invalid URL
+- tapOn:
+    text: "Platform URL"
+- eraseText
+- inputText: "http://invalid-url:9999"
+- tapOn:
+    text: "Save"
+    optional: true
+
+# Navigate to chat and verify error handling
+- tapOn:
+    id: dock-tab-chat
+- tapOn:
+    id: chat-input
+- inputText: "test invalid gateway"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Should show error message
+- assertVisible:
+    text: "Gateway error"
+    optional: true
+
+# Test 5: Clear Platform URL to test fallback mode
+- tapOn:
+    id: dock-tab-settings
+- scrollUntilVisible:
+    element:
+      text: "Platform URL"
+    direction: DOWN
+    speed: 40
+    timeout: 10000
+- tapOn:
+    text: "Platform URL"
+- eraseText
+- tapOn:
+    text: "Save"
+    optional: true
+
+# Return to chat
+- tapOn:
+    id: dock-tab-chat
+- assertVisible:
+    id: chat-input
