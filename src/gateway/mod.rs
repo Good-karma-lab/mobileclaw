@@ -35,8 +35,8 @@ use uuid::Uuid;
 
 /// Maximum request body size (64KB) — prevents memory exhaustion
 pub const MAX_BODY_SIZE: usize = 65_536;
-/// Request timeout (30s) — prevents slow-loris attacks
-pub const REQUEST_TIMEOUT_SECS: u64 = 30;
+/// Request timeout (300s) — prevents runaway connections; agent tasks can take several minutes
+pub const REQUEST_TIMEOUT_SECS: u64 = 300;
 /// Sliding window used by gateway rate limiting.
 pub const RATE_LIMIT_WINDOW_SECS: u64 = 60;
 
@@ -942,8 +942,8 @@ mod tests {
     }
 
     #[test]
-    fn security_timeout_is_30_seconds() {
-        assert_eq!(REQUEST_TIMEOUT_SECS, 30);
+    fn security_timeout_is_300_seconds() {
+        assert_eq!(REQUEST_TIMEOUT_SECS, 300);
     }
 
     #[test]

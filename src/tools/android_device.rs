@@ -979,6 +979,10 @@ mod tests {
                 battery: true,
                 contacts: true,
                 calendar: true,
+                ui_automation: true,
+                browser_automation: true,
+                file_system_access: true,
+                event_hooks: true,
             },
             bridge: crate::config::AndroidBridgeConfig::default(),
             policy: crate::config::AndroidPolicyConfig {

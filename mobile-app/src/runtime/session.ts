@@ -295,10 +295,7 @@ function integrationToolIds(integrations: string[]): string[] {
  * Falls back to local direct LLM calls if gateway is unavailable.
  */
 export async function runAgentTurnWithGateway(userPrompt: string): Promise<AgentTurnResult> {
-  const [runtime, supervisor] = await Promise.all([
-    loadAgentConfig(),
-    getRuntimeSupervisorState(),
-  ]);
+  const runtime = await loadAgentConfig();
 
   // Check if gateway mode is enabled via platformUrl
   const useGateway = runtime.platformUrl && runtime.platformUrl.trim().length > 0;
@@ -306,14 +303,6 @@ export async function runAgentTurnWithGateway(userPrompt: string): Promise<Agent
   if (!useGateway) {
     // Fall back to local implementation
     return runAgentTurn(userPrompt);
-  }
-
-  if (supervisor.status === "degraded" && isInboundIntegrationIntent(userPrompt)) {
-    return {
-      assistantText:
-        "ZeroClaw runtime is degraded, so inbound channel events may not reach the agent right now. Check Activity status, ensure backend is reachable, then retry.",
-      toolEvents: [],
-    };
   }
 
   try {
