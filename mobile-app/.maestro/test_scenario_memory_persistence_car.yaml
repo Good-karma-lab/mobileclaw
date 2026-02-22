@@ -4,7 +4,7 @@ appId: com.mobileclaw.app
 - launchApp:
     clearState: false
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 15000
 - assertVisible:
     id: chat-input
 - tapOn:
@@ -14,9 +14,13 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 120000
 - assertNotVisible:
     text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"
 # Second message — agent should recall from memory
 - tapOn:
     id: chat-input
@@ -25,7 +29,10 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 120000
+- assertNotVisible:
+    text: "Gateway error"
+# Agent should recall Maria
 - assertVisible:
     text: "Maria"
     optional: true

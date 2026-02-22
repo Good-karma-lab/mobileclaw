@@ -40,6 +40,10 @@ class ZeroClawDaemonService : Service() {
         const val EXTRA_API_KEY = "api_key"
         const val EXTRA_MODEL = "model"
         const val EXTRA_TELEGRAM_TOKEN = "telegram_token"
+        const val EXTRA_TELEGRAM_CHAT_ID = "telegram_chat_id"
+        const val EXTRA_DISCORD_BOT_TOKEN = "discord_bot_token"
+        const val EXTRA_SLACK_BOT_TOKEN = "slack_bot_token"
+        const val EXTRA_COMPOSIO_API_KEY = "composio_api_key"
 
         @Volatile
         private var isRunning = false
@@ -55,6 +59,10 @@ class ZeroClawDaemonService : Service() {
     private var apiKey: String = ""
     private var model: String = ""
     private var telegramToken: String = ""
+    private var telegramChatId: String = ""
+    private var discordBotToken: String = ""
+    private var slackBotToken: String = ""
+    private var composioApiKey: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -68,6 +76,10 @@ class ZeroClawDaemonService : Service() {
             apiKey = intent?.getStringExtra(EXTRA_API_KEY) ?: ""
             model = intent?.getStringExtra(EXTRA_MODEL) ?: ""
             telegramToken = intent?.getStringExtra(EXTRA_TELEGRAM_TOKEN) ?: ""
+            telegramChatId = intent?.getStringExtra(EXTRA_TELEGRAM_CHAT_ID) ?: ""
+            discordBotToken = intent?.getStringExtra(EXTRA_DISCORD_BOT_TOKEN) ?: ""
+            slackBotToken = intent?.getStringExtra(EXTRA_SLACK_BOT_TOKEN) ?: ""
+            composioApiKey = intent?.getStringExtra(EXTRA_COMPOSIO_API_KEY) ?: ""
         }
 
         when (intent?.action) {
@@ -122,8 +134,14 @@ class ZeroClawDaemonService : Service() {
                 // Get config path (app files directory)
                 val configPath = (applicationContext.filesDir.parent ?: applicationContext.filesDir.absolutePath) + "/.zeroclaw"
 
+                // Start Android action bridge server so Rust can call native Android APIs
+                RuntimeBridge.ensureAndroidActionBridge(applicationContext)
+
                 // Start agent runtime via JNI with config params
-                agentHandle = ZeroClawBackend.startAgent(configPath, apiKey, model, telegramToken)
+                agentHandle = ZeroClawBackend.startAgent(
+                    configPath, apiKey, model, telegramToken,
+                    telegramChatId, discordBotToken, slackBotToken, composioApiKey
+                )
 
                 if (agentHandle == 0L) {
                     Log.e(TAG, "Failed to start agent - handle is 0")

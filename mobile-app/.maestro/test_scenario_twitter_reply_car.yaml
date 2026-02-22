@@ -3,7 +3,7 @@ appId: com.mobileclaw.app
 - launchApp:
     clearState: false
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 15000
 - assertVisible:
     id: chat-input
 - tapOn:
@@ -13,8 +13,20 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 120000
+# No errors
 - assertNotVisible:
     text: "Gateway error"
 - assertNotVisible:
     text: "Network request failed"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"
+# Agent acknowledged the Twitter request
+- assertVisible:
+    text: "Twitter"
+    optional: true
+- assertVisible:
+    text: "zeroclaw_test"
+    optional: true

@@ -12,6 +12,7 @@ import { SettingsScreen } from "../screens/tabs/SettingsScreen";
 import { IntegrationsScreen } from "../screens/tabs/IntegrationsScreen";
 import { DeviceScreen } from "../screens/tabs/DeviceScreen";
 import { SecurityScreen } from "../screens/tabs/SecurityScreen";
+import { ScheduledTasksScreen } from "../screens/tabs/ScheduledTasksScreen";
 
 type MainTabParamList = {
   chat: undefined;
@@ -48,6 +49,7 @@ export function RootNavigator() {
         <Stack.Navigator id="root-stack" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
           <Stack.Screen name="Security" component={SecurityScreen} />
+          <Stack.Screen name="Tasks" component={ScheduledTasksScreen} />
         </Stack.Navigator>
       </DockMorphProvider>
     </LayoutProvider>

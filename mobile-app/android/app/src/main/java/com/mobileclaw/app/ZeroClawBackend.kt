@@ -32,10 +32,23 @@ class ZeroClawBackend {
          * @param apiKey Provider API key (empty string to use config file value)
          * @param model Default model name (empty string to use config file value)
          * @param telegramToken Telegram bot token (empty string to disable)
+         * @param telegramChatId Telegram chat ID for proactive notifications (empty string to disable)
+         * @param discordBotToken Discord bot token (empty string to disable)
+         * @param slackBotToken Slack bot token (empty string to disable)
+         * @param composioApiKey Composio API key (empty string to disable)
          * @return Handle ID for subsequent calls, or 0 on failure
          */
         @JvmStatic
-        external fun startAgent(configPath: String, apiKey: String, model: String, telegramToken: String): Long
+        external fun startAgent(
+            configPath: String,
+            apiKey: String,
+            model: String,
+            telegramToken: String,
+            telegramChatId: String,
+            discordBotToken: String,
+            slackBotToken: String,
+            composioApiKey: String,
+        ): Long
 
         /**
          * Process a message through the agent runtime

@@ -73,6 +73,10 @@ export default function App() {
                 apiKey: agentCfg.apiKey,
                 model: agentCfg.model,
                 telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
+                telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
+                discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
+                slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
+                composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
               });
               console.log("[app] daemon start requested, waiting for ready...");
 
