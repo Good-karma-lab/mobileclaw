@@ -66,46 +66,6 @@ MobileClaw is powerful, but Android security still applies:
 
 Anyway, use it with caution!!
 
-## Build and Run on a Real Android Device
-
-### 1) Prepare your phone
-
-1. Enable **Developer Options** on the phone.
-2. Enable **USB debugging**.
-3. Connect phone by USB and accept the debug prompt.
-
-Check device connection:
-
-```bash
-adb devices
-```
-
-You should see your device as `device`.
-
-### 2) Build and launch
-
-From this repository:
-
-```bash
-cd mobile-app
-npm install
-npm run android
-```
-
-If Metro cannot be reached through USB, run:
-
-```bash
-adb reverse tcp:8081 tcp:8081
-```
-
-### 3) First-time setup in app
-
-1. Open the **Device** tab.
-2. Enable the capabilities you want.
-3. Accept Android permission prompts.
-4. If using UI automation, enable Accessibility service from the in-app instructions.
-
-
 ## Install APK from GitHub Releases
 
 ### 1) Download
@@ -124,12 +84,13 @@ adb reverse tcp:8081 tcp:8081
 ### 3) First launch setup
 
 1. Open **MobileClaw**.
-2. Go to the **Device** tab.
-3. Enable the capabilities you need and grant requested permissions.
-4. If using UI automation, enable Accessibility service from in-app guidance.
-
+2. Go to **Settings** tab.
+3. Setup LLM provider.
+4. Setup Deepgram key for Voice mode (optional).
+5. Go to the **Device** tab.
+6. Enable the capabilities you need and grant requested permissions. 
+7. If using UI automation, enable Accessibility service from in-app guidance.
 
 ## Notes
-
 - This README focuses on user outcomes and running the app quickly.
 - For deeper engineering internals, see docs and module sources in the repo.
