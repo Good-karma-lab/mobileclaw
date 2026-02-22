@@ -19,10 +19,10 @@ use crate::util::truncate_with_ellipsis;
 use anyhow::Result;
 use axum::{
     body::Bytes,
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Json},
-    routing::{delete, get, post},
+    routing::{get, post},
     Router,
 };
 use std::collections::HashMap;
@@ -387,9 +387,7 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
-        .route("/cron/jobs", get(handle_list_cron_jobs))
-        // DELETE endpoint disabled - causes daemon crash
-        // .route("/cron/jobs/:job_id", delete(handle_delete_cron_job))
+        .route("/cron/jobs", get(handle_list_cron_jobs).delete(handle_delete_cron_job))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -954,6 +952,7 @@ async fn handle_list_cron_jobs(State(state): State<AppState>) -> impl IntoRespon
                         "name": j.name,
                         "expression": j.expression,
                         "prompt": j.prompt,
+                        "context": j.context,
                         "command": j.command,
                         "enabled": j.enabled,
                         "created_at": j.created_at,
@@ -976,11 +975,17 @@ async fn handle_list_cron_jobs(State(state): State<AppState>) -> impl IntoRespon
     }
 }
 
-/// DELETE /cron/jobs/:job_id — cancel and remove a scheduled cron job
+/// DELETE /cron/jobs?id=<job_id> — cancel and remove a scheduled cron job
 async fn handle_delete_cron_job(
     State(state): State<AppState>,
-    Path(job_id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
+    let Some(job_id) = params.get("id").cloned() else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "missing 'id' query parameter"})),
+        );
+    };
     let config = state.config.clone();
     let job_id_clone = job_id.clone();
 

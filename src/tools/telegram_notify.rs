@@ -89,7 +89,6 @@ impl Tool for TelegramNotifyTool {
         let body = json!({
             "chat_id": self.chat_id,
             "text": message,
-            "parse_mode": "Markdown"
         });
 
         let response = self

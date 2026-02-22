@@ -91,7 +91,13 @@ async fn execute_job_with_retry(
 async fn run_agent_job(config: &Config, job: &CronJob) -> (bool, String) {
     let name = job.name.clone().unwrap_or_else(|| "cron-job".to_string());
     let prompt = job.prompt.clone().unwrap_or_default();
-    let prefixed_prompt = format!("[cron:{} {name}] {prompt}", job.id);
+    // Prepend saved context verbatim so the agent has reliable setup-time information
+    // (IDs, credentials, user preferences) without relying on vector search.
+    let context_block = match &job.context {
+        Some(ctx) if !ctx.trim().is_empty() => format!("[saved context]\n{}\n\n", ctx.trim()),
+        _ => String::new(),
+    };
+    let prefixed_prompt = format!("[cron:{} {name}] {context_block}{prompt}", job.id);
     let model_override = job.model.clone();
 
     let run_result = match job.session_target {
@@ -420,6 +426,7 @@ mod tests {
             },
             command: command.into(),
             prompt: None,
+            context: None,
             name: None,
             job_type: JobType::Shell,
             session_target: SessionTarget::Isolated,
@@ -594,6 +601,7 @@ mod tests {
             Some("one-shot".into()),
             crate::cron::Schedule::At { at },
             "Hello",
+            None,
             SessionTarget::Isolated,
             None,
             None,
@@ -619,6 +627,7 @@ mod tests {
             Some("one-shot".into()),
             crate::cron::Schedule::At { at },
             "Hello",
+            None,
             SessionTarget::Isolated,
             None,
             None,

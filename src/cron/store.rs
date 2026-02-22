@@ -59,6 +59,7 @@ pub fn add_agent_job(
     name: Option<String>,
     schedule: Schedule,
     prompt: &str,
+    context: Option<String>,
     session_target: SessionTarget,
     model: Option<String>,
     delivery: Option<DeliveryConfig>,
@@ -75,14 +76,15 @@ pub fn add_agent_job(
     with_connection(config, |conn| {
         conn.execute(
             "INSERT INTO cron_jobs (
-                id, expression, command, schedule, job_type, prompt, name, session_target, model,
+                id, expression, command, schedule, job_type, prompt, context, name, session_target, model,
                 enabled, delivery, delete_after_run, created_at, next_run
-             ) VALUES (?1, ?2, '', ?3, 'agent', ?4, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11)",
+             ) VALUES (?1, ?2, '', ?3, 'agent', ?4, ?5, ?6, ?7, ?8, 1, ?9, ?10, ?11, ?12)",
             params![
                 id,
                 expression,
                 schedule_json,
                 prompt,
+                context,
                 name,
                 session_target.as_str(),
                 model,
@@ -103,7 +105,7 @@ pub fn list_jobs(config: &Config) -> Result<Vec<CronJob>> {
     with_connection(config, |conn| {
         let mut stmt = conn.prepare(
             "SELECT id, expression, command, schedule, job_type, prompt, name, session_target, model,
-                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output
+                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output, context
              FROM cron_jobs ORDER BY next_run ASC",
         )?;
 
@@ -121,7 +123,7 @@ pub fn get_job(config: &Config, job_id: &str) -> Result<CronJob> {
     with_connection(config, |conn| {
         let mut stmt = conn.prepare(
             "SELECT id, expression, command, schedule, job_type, prompt, name, session_target, model,
-                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output
+                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output, context
              FROM cron_jobs WHERE id = ?1",
         )?;
 
@@ -152,7 +154,7 @@ pub fn due_jobs(config: &Config, now: DateTime<Utc>) -> Result<Vec<CronJob>> {
     with_connection(config, |conn| {
         let mut stmt = conn.prepare(
             "SELECT id, expression, command, schedule, job_type, prompt, name, session_target, model,
-                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output
+                    enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output, context
              FROM cron_jobs WHERE enabled = 1 AND next_run <= ?1 ORDER BY next_run ASC",
         )?;
 
@@ -401,6 +403,7 @@ fn map_cron_job_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CronJob> {
         },
         last_status: row.get(15)?,
         last_output: row.get(16)?,
+        context: row.get(17)?,
     })
 }
 
@@ -473,6 +476,7 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
             schedule         TEXT,
             job_type         TEXT NOT NULL DEFAULT 'shell',
             prompt           TEXT,
+            context          TEXT,
             name             TEXT,
             session_target   TEXT NOT NULL DEFAULT 'isolated',
             model            TEXT,
@@ -505,6 +509,7 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
     add_column_if_missing(&conn, "schedule", "TEXT")?;
     add_column_if_missing(&conn, "job_type", "TEXT NOT NULL DEFAULT 'shell'")?;
     add_column_if_missing(&conn, "prompt", "TEXT")?;
+    add_column_if_missing(&conn, "context", "TEXT")?;
     add_column_if_missing(&conn, "name", "TEXT")?;
     add_column_if_missing(&conn, "session_target", "TEXT NOT NULL DEFAULT 'isolated'")?;
     add_column_if_missing(&conn, "model", "TEXT")?;

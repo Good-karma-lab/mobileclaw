@@ -103,6 +103,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     config.gateway.require_pairing = false;
     config.android.enabled = true;
     config.android.bridge.mode = "http".into();
+    config.cron.enabled = true;
     // Use Full distribution — Android OS permissions are the actual gate, not Play restrictions
     config.android.distribution = crate::config::schema::AndroidDistribution::Full;
     // Enable all capabilities — Android OS permissions are the actual gate
