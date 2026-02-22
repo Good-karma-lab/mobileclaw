@@ -68,6 +68,7 @@ export function ScheduledTasksScreen() {
   }, [checkGateway]);
 
   const fetchCronJobs = useCallback(() => {
+    console.log(`[ScheduledTasks] Fetching cron jobs from ${gatewayUrl}/cron/jobs`);
     setCronLoading(true);
     (async () => {
       try {
@@ -75,11 +76,16 @@ export function ScheduledTasksScreen() {
           fetch(`${gatewayUrl}/cron/jobs`),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
         ]);
+        console.log(`[ScheduledTasks] Response status: ${res.status}`);
         if (res.ok) {
           const data = (await res.json()) as { jobs: CronJob[] };
+          console.log(`[ScheduledTasks] Fetched ${data.jobs?.length ?? 0} cron jobs`);
           setCronJobs(data.jobs ?? []);
+        } else {
+          console.warn(`[ScheduledTasks] HTTP error: ${res.status}`);
         }
-      } catch {
+      } catch (err) {
+        console.error(`[ScheduledTasks] Fetch error:`, err);
         // gateway offline — leave existing list
       } finally {
         setCronLoading(false);

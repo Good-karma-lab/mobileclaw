@@ -23,8 +23,17 @@ import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./s
 import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
-import { prepopulateDevCredentials } from "./scripts/prepopulate-config";
 import { startDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
+
+// Dev-only: prepopulate credentials for faster local testing
+let prepopulateDevCredentials: (() => Promise<void>) | undefined;
+if (__DEV__) {
+  try {
+    prepopulateDevCredentials = require("./scripts/prepopulate-config").prepopulateDevCredentials;
+  } catch {
+    // File doesn't exist in CI/production builds - that's expected
+  }
+}
 
 export default function App() {
   const lastTelegramSeenRef = useRef(0);
@@ -56,9 +65,11 @@ export default function App() {
         log("info", "app started", { platform: Platform.OS });
 
         // Prepopulate dev credentials if not already configured (idempotent — preserves existing)
-        console.log("[app] prepopulating dev credentials...");
-        await prepopulateDevCredentials();
-        log("info", "dev credentials prepopulated");
+        if (prepopulateDevCredentials) {
+          console.log("[app] prepopulating dev credentials...");
+          await prepopulateDevCredentials();
+          log("info", "dev credentials prepopulated");
+        }
 
         // Start embedded ZeroClaw daemon (Android only)
         if (Platform.OS === 'android') {

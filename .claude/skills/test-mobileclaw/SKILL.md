@@ -248,10 +248,38 @@ curl -s "https://api.telegram.org/bot${TOKEN}/getUpdates" | \
 
 ## 5. Checking Scheduled Tasks and Hooks
 
-### Via Mobile App UI
-1. Navigate to Tasks & Hooks tab (bottom navigation)
-2. Check "Active Hooks" section: Incoming Call Hook, Incoming SMS Hook, Notifications Hook (ON/OFF)
-3. Check "Scheduled Tasks" section: lists all cron jobs with schedule, next run time, Delete button
+### Via Mobile App UI (Tasks & Hooks Screen)
+
+**Navigate to Tasks & Hooks:**
+```yaml
+# Maestro flow
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: /tmp/tasks_hooks
+```
+
+**What to verify:**
+1. **Gateway status badge** (top) shows "Online" with green dot
+2. **Active Hooks section:**
+   - "Incoming Call Hook" — Agent reacts to incoming phone calls
+   - "Incoming SMS Hook" — Agent reacts to incoming SMS messages
+   - Each hook shows ON/OFF toggle
+3. **Scheduled Tasks section:**
+   - Lists all cron jobs created by agent
+   - Each card shows: Job ID, command/prompt, schedule, next run time
+   - "Delete" button for each task
+   - If no jobs: shows "No scheduled tasks. Ask the agent to set up reminders or automations."
+
+**Common issues:**
+- ✅ **Expected**: After agent creates cron job, it appears in this list within 3 seconds
+- ❌ **Bug**: Agent says "cron job created" but list shows "No scheduled tasks" → database write failed (check logs)
+- ❌ **Bug**: Gateway badge shows "Offline" → daemon crashed or not started
 
 ### Via ADB (SharedPreferences for hooks)
 ```bash
@@ -265,9 +293,25 @@ curl -s "https://api.telegram.org/bot${TOKEN}/getUpdates" | \
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
   shell curl -s http://127.0.0.1:8000/cron/jobs | jq .
 
-# Delete a job by ID
-~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
-  shell curl -s -X DELETE http://127.0.0.1:8000/cron/jobs/<job_id>
+# Response format:
+# {
+#   "jobs": [
+#     {
+#       "id": "bb96afa9-0581-4019-a2b5-b2d81d70f685",
+#       "name": null,
+#       "expression": "* * * * *",
+#       "prompt": "...",
+#       "command": "echo 'test'",
+#       "enabled": true,
+#       "created_at": "2026-02-22T12:49:00Z",
+#       "next_run": "2026-02-22T12:50:00Z",
+#       "last_run": null,
+#       "last_status": null
+#     }
+#   ]
+# }
+
+# Note: DELETE endpoint currently disabled due to axum Path parameter bug
 ```
 
 ### Common mistake: cron job instead of hook
@@ -313,6 +357,8 @@ If all pass, daemon is running with full capabilities.
 | Agent creates cron job instead of hook | Misses short calls | Update tool description to warn against polling |
 | Telegram notify not available | "I don't have a Telegram tool" | Configure `telegramChatId` in app settings |
 | http_request tool error | "no allowed_domains configured" | `jni_bridge.rs` sets `allowed_domains`; rebuild APK |
+| CI build fails: prepopulate-config missing | Production build can't find dev script | Use conditional `require()` in `__DEV__` block |
+| Tasks & Hooks shows "No scheduled tasks" | Agent claims cron job created but UI empty | Check React Native logs for fetch errors; verify gateway returns jobs |
 
 ## 9. Integration Setup
 
