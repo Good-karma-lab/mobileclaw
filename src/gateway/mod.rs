@@ -19,10 +19,10 @@ use crate::util::truncate_with_ellipsis;
 use anyhow::Result;
 use axum::{
     body::Bytes,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Json},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::collections::HashMap;
@@ -387,6 +387,9 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
+        .route("/cron/jobs", get(handle_list_cron_jobs))
+        // DELETE endpoint disabled - causes daemon crash
+        // .route("/cron/jobs/:job_id", delete(handle_delete_cron_job))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -921,6 +924,82 @@ async fn handle_whatsapp_message(
 
     // Acknowledge the webhook
     (StatusCode::OK, Json(serde_json::json!({"status": "ok"})))
+}
+
+/// GET /cron/jobs — list all scheduled cron jobs
+async fn handle_list_cron_jobs(State(state): State<AppState>) -> impl IntoResponse {
+    eprintln!("[ZeroClaw] GET /cron/jobs called");
+    let config = state.config.clone();
+    eprintln!("[ZeroClaw] workspace_dir: {:?}", config.workspace_dir);
+
+    // Run in blocking task since SQLite I/O is blocking
+    let result = tokio::task::spawn_blocking(move || {
+        let db_path = config.workspace_dir.join("cron").join("jobs.db");
+        eprintln!("[ZeroClaw] Cron DB path: {:?}, exists: {}", db_path, db_path.exists());
+        let jobs_result = crate::cron::list_jobs(&config);
+        if let Ok(ref jobs) = jobs_result {
+            eprintln!("[ZeroClaw] list_jobs returned {} jobs", jobs.len());
+        }
+        jobs_result
+    }).await;
+
+    match result {
+        Ok(Ok(jobs)) => {
+            tracing::info!("[gateway] Retrieved {} cron jobs from database", jobs.len());
+            let items: Vec<serde_json::Value> = jobs
+                .iter()
+                .map(|j| {
+                    serde_json::json!({
+                        "id": j.id,
+                        "name": j.name,
+                        "expression": j.expression,
+                        "prompt": j.prompt,
+                        "command": j.command,
+                        "enabled": j.enabled,
+                        "created_at": j.created_at,
+                        "last_run": j.last_run,
+                        "next_run": j.next_run,
+                        "last_status": j.last_status,
+                    })
+                })
+                .collect();
+            (StatusCode::OK, Json(serde_json::json!({"jobs": items})))
+        }
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+/// DELETE /cron/jobs/:job_id — cancel and remove a scheduled cron job
+async fn handle_delete_cron_job(
+    State(state): State<AppState>,
+    Path(job_id): Path<String>,
+) -> impl IntoResponse {
+    let config = state.config.clone();
+    let job_id_clone = job_id.clone();
+
+    // Run in blocking task since SQLite I/O is blocking
+    let result = tokio::task::spawn_blocking(move || {
+        crate::cron::remove_job(&config, &job_id_clone)
+    }).await;
+
+    match result {
+        Ok(Ok(())) => (StatusCode::OK, Json(serde_json::json!({"status": "deleted", "id": job_id}))),
+        Ok(Err(e)) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
 }
 
 #[cfg(test)]

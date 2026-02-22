@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView, TextInput, Pressable, Linking, KeyboardAvoidingView, Platform } from "react-native";
 import Animated, { FadeIn, SlideInLeft, SlideInRight } from "react-native-reanimated";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import Markdown from "react-native-markdown-display";
 import MarkdownIt from "markdown-it";
 import { Audio } from "expo-av";
@@ -10,7 +10,6 @@ import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
 import { VoiceRecordButton } from "../../../ui/voice/VoiceRecordButton";
-import { TranscriptOverlay } from "../../../ui/voice/TranscriptOverlay";
 import { useVoiceRecording } from "../../hooks/useVoiceRecording";
 import { useToast } from "../../state/toast";
 import { appendChat, loadChat, sanitizeAssistantArtifacts, type ChatMessage } from "../../state/chat";
@@ -26,6 +25,7 @@ const MARKDOWN_NO_TABLES = new MarkdownIt({ breaks: true, linkify: true, typogra
 
 export function ChatScreen() {
   const { useSidebar } = useLayoutContext();
+  const navigation = useNavigation<any>();
   const toast = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -89,6 +89,13 @@ export function ChatScreen() {
     }, 420);
     return () => clearInterval(id);
   }, [busy]);
+
+  // Wire interim transcription into the draft field while recording
+  useEffect(() => {
+    if (voice.state === "recording" || voice.state === "transcribing") {
+      setDraft(voice.interimText || voice.transcript || "");
+    }
+  }, [voice.interimText, voice.transcript, voice.state]);
 
 
   const markdownStyles = useMemo(
@@ -176,13 +183,21 @@ export function ChatScreen() {
   );
 
   const runTurnWithTimeout = useCallback(async (prompt: string) => {
-    const timeoutMs = 90_000;
-    return await Promise.race([
-      runAgentTurnWithGateway(prompt),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Agent request timed out. You can restart and retry.")), timeoutMs);
-      }),
-    ]);
+    const timeoutMs = 180_000; // 3 minutes — allow time for complex tool-using agent turns
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await Promise.race([
+          runAgentTurnWithGateway(prompt),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Agent request timed out. Retrying...")), timeoutMs)
+          ),
+        ]);
+      } catch (err) {
+        if (attempt === 0 && err instanceof Error && err.message.includes("timed out")) continue;
+        throw err;
+      }
+    }
+    throw new Error("Agent request timed out after retry.");
   }, []);
 
   const speechTextFromMarkdown = useCallback((raw: string) => {
@@ -222,21 +237,6 @@ export function ChatScreen() {
     },
     [deepgramApiKey, speechTextFromMarkdown, toast],
   );
-
-  const restartAgent = useCallback(async () => {
-    runNonceRef.current += 1;
-    setBusy(false);
-    setThinkingDots(".");
-    const assistantMsg: ChatMessage = {
-      id: `a_restart_${Date.now()}`,
-      role: "assistant",
-      text: sanitizeAssistantArtifacts("Agent runtime restarted. Please retry your request."),
-      ts: Date.now(),
-    };
-    setMessages((prev) => [...prev, assistantMsg]);
-    await appendChat(assistantMsg);
-    await addActivity({ kind: "action", source: "chat", title: "Agent restarted", detail: "Runtime state was reset from chat screen" });
-  }, []);
 
   const send = useCallback(
     async (text: string, voiceText?: string | null) => {
@@ -291,7 +291,7 @@ export function ChatScreen() {
         const assistantMsg: ChatMessage = {
           id: `a_err_${Date.now()}_${Math.random()}`,
           role: "assistant",
-          text: sanitizeAssistantArtifacts(`Agent error: ${detail}. You can tap Restart Agent and try again.`),
+          text: sanitizeAssistantArtifacts(`Agent error: ${detail}. Please retry your request.`),
           ts: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
@@ -338,8 +338,8 @@ export function ChatScreen() {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: theme.spacing.xs }}>
                   <Text variant="muted">MobileClaw agent chat with voice mode.</Text>
                   <Pressable
-                    testID="chat-restart-agent"
-                    onPress={() => { void restartAgent(); }}
+                    testID="chat-tasks-hooks"
+                    onPress={() => navigation.navigate("Tasks")}
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 6,
@@ -349,7 +349,7 @@ export function ChatScreen() {
                       borderColor: theme.colors.stroke.subtle,
                     }}
                   >
-                    <Text variant="label">Restart Agent</Text>
+                    <Text variant="label">Tasks &amp; Hooks</Text>
                   </Pressable>
                 </View>
                 <View style={{ marginBottom: theme.spacing.md }} />
@@ -401,12 +401,6 @@ export function ChatScreen() {
               )}
             </ScrollView>
 
-            {(voice.state !== "idle" || !!voice.transcript || !!voice.interimText) && (
-              <View style={{ marginBottom: theme.spacing.sm }}>
-                <TranscriptOverlay state={voice.state} transcript={voice.transcript} interimText={voice.interimText} />
-              </View>
-            )}
-
             <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, paddingTop: theme.spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <TextInput
@@ -426,9 +420,15 @@ export function ChatScreen() {
                   onSubmitEditing={useSidebar ? () => { if (canSend) void send(draft); } : undefined}
                   returnKeyType={useSidebar ? "send" : "default"}
                   blurOnSubmit={useSidebar}
-                  placeholder={busy ? "Thinking..." : "Tell agent what to do..."}
+                  placeholder={
+                    busy
+                      ? "Thinking..."
+                      : voice.state === "recording"
+                      ? "Listening..."
+                      : "Tell agent what to do..."
+                  }
                   placeholderTextColor={theme.colors.alpha.textPlaceholder}
-                  editable={!busy}
+                  editable={!busy && voice.state !== "recording"}
                   multiline={!useSidebar}
                   style={{
                     minHeight: useSidebar ? 56 : 56,
@@ -438,7 +438,10 @@ export function ChatScreen() {
                     paddingVertical: 14,
                     backgroundColor: theme.colors.surface.raised,
                     borderWidth: 1,
-                    borderColor: theme.colors.stroke.subtle,
+                    borderColor:
+                      voice.state === "recording"
+                        ? theme.colors.base.primary
+                        : theme.colors.stroke.subtle,
                     color: theme.colors.base.text,
                     fontFamily: theme.typography.body,
                     fontSize: useSidebar ? 20 : 16,
@@ -457,7 +460,7 @@ export function ChatScreen() {
                 onRecordStart={hasDraft ? undefined : voice.start}
                 onRecordEnd={hasDraft ? undefined : voice.stop}
                 volume={voice.volume}
-                onVoiceResult={hasDraft ? undefined : (t) => send("", t)}
+                onVoiceResult={hasDraft ? undefined : (t) => { setDraft(t); }}
               />
             </View>
           </View>

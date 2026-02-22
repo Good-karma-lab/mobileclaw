@@ -31,6 +31,7 @@ mod tests {
         let telegram = TelegramConfig {
             bot_token: "token".into(),
             allowed_users: vec!["alice".into()],
+            notify_chat_id: None,
         };
 
         let discord = DiscordConfig {

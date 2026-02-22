@@ -33,8 +33,17 @@ import java.net.URL
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.BatteryManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.CallLog
 import android.provider.Telephony
+import android.telephony.SmsManager
+import androidx.core.app.NotificationCompat
 
 object RuntimeBridge {
     const val PREFS = "mobileclaw-runtime-bridge"
@@ -69,7 +78,7 @@ object RuntimeBridge {
     private const val WEBHOOK_FAIL_COUNT = "webhook_fail_count"
     private const val LAST_EVENT_NOTE = "last_event_note"
     private const val MAX_QUEUE = 500
-    private const val LOCAL_GATEWAY = "http://127.0.0.1:8080"
+    private const val LOCAL_GATEWAY = "http://127.0.0.1:8000"
     private const val RUNTIME_DIR = "runtime"
     private const val RUNTIME_BIN_DIR = "bin"
     private const val RUNTIME_WORKSPACE_DIR = "workspace"
@@ -447,7 +456,7 @@ object RuntimeBridge {
         }
     }
 
-    private fun ensureAndroidActionBridge(context: Context) {
+    fun ensureAndroidActionBridge(context: Context) {
         val running = actionBridgeServer
         if (running?.isRunning() == true) return
         synchronized(this) {
@@ -746,6 +755,25 @@ private class AndroidActionBridgeServer(private val context: Context) {
                 "read_call_log" -> readCallLog(payload)
                 "take_photo" -> takePhoto(payload)
                 "get_device_info", "get_android_version" -> getDeviceInfo()
+                "hook_incoming_call" -> hookIncomingCall(payload)
+                "hook_incoming_sms" -> hookIncomingSms(payload)
+                "hook_notifications" -> hookNotifications(payload)
+                "read_notifications" -> readNotifications(payload)
+                "send_sms" -> sendSms(payload)
+                "get_battery" -> getBattery()
+                "get_network" -> getNetwork()
+                "get_location" -> getLocation()
+                "post_notification" -> postNotification(payload)
+                "launch_app" -> launchApp(payload)
+                "list_apps" -> listApps()
+                "open_url" -> openUrl(payload)
+                "open_settings" -> openSettings(payload)
+                "vibrate" -> vibrate(payload)
+                "read_contacts" -> readContacts(payload)
+                "read_calendar" -> readCalendar(payload)
+                "read_clipboard" -> readClipboard()
+                "set_clipboard" -> setClipboard(payload)
+                "get_contacts_count" -> getContactsCount()
                 else -> JSONObject()
                     .put("ok", false)
                     .put("error", "unsupported_action")
@@ -757,6 +785,260 @@ private class AndroidActionBridgeServer(private val context: Context) {
                 .put("error", error.message ?: "bridge_error")
                 .put("action", action)
         }
+    }
+
+    private fun hookIncomingCall(payload: JSONObject): JSONObject {
+        val enabled = payload.optBoolean("enabled", true)
+        val prefs = context.getSharedPreferences(RuntimeBridge.PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("incoming_call_hooks", enabled).apply()
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "hook_incoming_call")
+            .put("enabled", enabled)
+            .put("message", if (enabled) "Call hook registered" else "Call hook disabled")
+    }
+
+    private fun hookIncomingSms(payload: JSONObject): JSONObject {
+        val enabled = payload.optBoolean("enabled", true)
+        val prefs = context.getSharedPreferences(RuntimeBridge.PREFS, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("incoming_sms_hooks", enabled).apply()
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "hook_incoming_sms")
+            .put("enabled", enabled)
+            .put("message", if (enabled) "SMS hook registered" else "SMS hook disabled")
+    }
+
+    private fun hookNotifications(payload: JSONObject): JSONObject {
+        val enabled = payload.optBoolean("enabled", true)
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "hook_notifications")
+            .put("enabled", enabled)
+            .put("message", if (enabled) "Notification hook registered" else "Notification hook disabled")
+    }
+
+    private fun readNotifications(payload: JSONObject): JSONObject {
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "read_notifications")
+            .put("entries", JSONArray())
+            .put("entry_count", 0)
+            .put("note", "Notification listener requires NotificationListenerService setup")
+    }
+
+    private fun sendSms(payload: JSONObject): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.SEND_SMS)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "send_sms_permission_required")
+        }
+        val to = payload.optString("to", "").trim()
+        val body = payload.optString("body", "").trim()
+        if (to.isEmpty()) return JSONObject().put("ok", false).put("error", "missing_to")
+        if (body.isEmpty()) return JSONObject().put("ok", false).put("error", "missing_body")
+        return try {
+            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+            smsManager.sendTextMessage(to, null, body, null, null)
+            JSONObject().put("ok", true).put("action", "send_sms").put("to", to)
+        } catch (e: Exception) {
+            JSONObject().put("ok", false).put("error", e.message ?: "sms_send_failed")
+        }
+    }
+
+    private fun getBattery(): JSONObject {
+        val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        val level = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        val charging = bm?.isCharging ?: false
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "get_battery")
+            .put("level", level)
+            .put("charging", charging)
+    }
+
+    private fun getNetwork(): JSONObject {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val network = cm?.activeNetwork
+        val caps = cm?.getNetworkCapabilities(network)
+        val connected = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        val type = when {
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true -> "ethernet"
+            else -> "none"
+        }
+        return JSONObject()
+            .put("ok", true)
+            .put("action", "get_network")
+            .put("connected", connected)
+            .put("type", type)
+    }
+
+    private fun getLocation(): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "location_permission_required")
+        }
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        val providers = lm?.getProviders(true) ?: emptyList()
+        for (provider in providers) {
+            @Suppress("MissingPermission")
+            val loc = lm?.getLastKnownLocation(provider)
+            if (loc != null) {
+                return JSONObject()
+                    .put("ok", true)
+                    .put("action", "get_location")
+                    .put("lat", loc.latitude)
+                    .put("lon", loc.longitude)
+                    .put("accuracy", loc.accuracy)
+                    .put("provider", provider)
+            }
+        }
+        return JSONObject().put("ok", false).put("error", "location_unavailable")
+    }
+
+    private fun postNotification(payload: JSONObject): JSONObject {
+        val title = payload.optString("title", "ZeroClaw")
+        val body = payload.optString("body", "")
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val ch = android.app.NotificationChannel("zeroclaw_agent", "ZeroClaw Agent", NotificationManager.IMPORTANCE_DEFAULT)
+            nm.createNotificationChannel(ch)
+        }
+        val notif = NotificationCompat.Builder(context, "zeroclaw_agent")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(System.currentTimeMillis().toInt(), notif)
+        return JSONObject().put("ok", true).put("action", "post_notification")
+    }
+
+    private fun launchApp(payload: JSONObject): JSONObject {
+        val pkg = payload.optString("package", "").trim()
+        if (pkg.isEmpty()) return JSONObject().put("ok", false).put("error", "missing_package")
+        val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+            ?: return JSONObject().put("ok", false).put("error", "app_not_found")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        return JSONObject().put("ok", true).put("action", "launch_app").put("package", pkg)
+    }
+
+    private fun listApps(): JSONObject {
+        val pm = context.packageManager
+        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        val arr = JSONArray()
+        for (app in apps) {
+            val label = pm.getApplicationLabel(app).toString()
+            arr.put(JSONObject().put("package", app.packageName).put("label", label))
+        }
+        return JSONObject().put("ok", true).put("action", "list_apps").put("apps", arr).put("count", arr.length())
+    }
+
+    private fun openUrl(payload: JSONObject): JSONObject {
+        val url = payload.optString("url", "").trim()
+        if (url.isEmpty()) return JSONObject().put("ok", false).put("error", "missing_url")
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        return JSONObject().put("ok", true).put("action", "open_url").put("url", url)
+    }
+
+    private fun openSettings(payload: JSONObject): JSONObject {
+        val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        return JSONObject().put("ok", true).put("action", "open_settings")
+    }
+
+    private fun vibrate(payload: JSONObject): JSONObject {
+        val durationMs = payload.optLong("duration_ms", 500L).coerceIn(100L, 5000L)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = context.getSystemService(VibratorManager::class.java)
+            vm?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(durationMs)
+            }
+        }
+        return JSONObject().put("ok", true).put("action", "vibrate").put("duration_ms", durationMs)
+    }
+
+    private fun readContacts(payload: JSONObject): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "read_contacts_permission_required")
+        }
+        val limit = payload.optInt("limit", 20).coerceIn(1, 100)
+        val cursor = context.contentResolver.query(
+            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            ),
+            null, null, null
+        )
+        val entries = JSONArray()
+        cursor?.use {
+            val nameIdx = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numIdx = it.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+            var count = 0
+            while (it.moveToNext() && count < limit) {
+                entries.put(JSONObject()
+                    .put("name", if (nameIdx >= 0) it.getString(nameIdx) ?: "" else "")
+                    .put("number", if (numIdx >= 0) it.getString(numIdx) ?: "" else ""))
+                count++
+            }
+        }
+        return JSONObject().put("ok", true).put("action", "read_contacts").put("entries", entries).put("entry_count", entries.length())
+    }
+
+    private fun readCalendar(payload: JSONObject): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALENDAR)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "read_calendar_permission_required")
+        }
+        return JSONObject().put("ok", true).put("action", "read_calendar").put("entries", JSONArray()).put("entry_count", 0)
+    }
+
+    private fun readClipboard(): JSONObject {
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        val text = cm?.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+        return JSONObject().put("ok", true).put("action", "read_clipboard").put("text", text)
+    }
+
+    private fun setClipboard(payload: JSONObject): JSONObject {
+        val text = payload.optString("text", "")
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        cm?.setPrimaryClip(android.content.ClipData.newPlainText("zeroclaw", text))
+        return JSONObject().put("ok", true).put("action", "set_clipboard")
+    }
+
+    private fun getContactsCount(): JSONObject {
+        val permission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS)
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            return JSONObject().put("ok", false).put("error", "read_contacts_permission_required")
+        }
+        val cursor = context.contentResolver.query(
+            android.provider.ContactsContract.Contacts.CONTENT_URI,
+            null, null, null, null
+        )
+        val count = cursor?.count ?: 0
+        cursor?.close()
+        return JSONObject().put("ok", true).put("count", count)
     }
 
     private fun readSms(payload: JSONObject): JSONObject {

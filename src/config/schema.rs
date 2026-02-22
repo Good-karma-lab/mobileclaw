@@ -1519,6 +1519,8 @@ impl Default for ChannelsConfig {
 pub struct TelegramConfig {
     pub bot_token: String,
     pub allowed_users: Vec<String>,
+    #[serde(default)]
+    pub notify_chat_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2341,6 +2343,7 @@ default_temperature = 0.7
                 telegram: Some(TelegramConfig {
                     bot_token: "123:ABC".into(),
                     allowed_users: vec!["user1".into()],
+                    notify_chat_id: None,
                 }),
                 discord: None,
                 slack: None,
@@ -2597,11 +2600,13 @@ tool_dispatcher = "xml"
         let tc = TelegramConfig {
             bot_token: "123:XYZ".into(),
             allowed_users: vec!["alice".into(), "bob".into()],
+            notify_chat_id: Some("987654321".into()),
         };
         let json = serde_json::to_string(&tc).unwrap();
         let parsed: TelegramConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.bot_token, "123:XYZ");
         assert_eq!(parsed.allowed_users.len(), 2);
+        assert_eq!(parsed.notify_chat_id.as_deref(), Some("987654321"));
     }
 
     #[test]

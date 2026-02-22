@@ -53,6 +53,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     api_key: JString,
     model: JString,
     telegram_token: JString,
+    telegram_chat_id: JString,
+    discord_bot_token: JString,
+    slack_bot_token: JString,
+    composio_api_key: JString,
 ) -> jlong {
     init_handles();
 
@@ -68,6 +72,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     let api_key_str: String = env.get_string(&api_key).map(Into::into).unwrap_or_default();
     let model_str: String = env.get_string(&model).map(Into::into).unwrap_or_default();
     let telegram_token_str: String = env.get_string(&telegram_token).map(Into::into).unwrap_or_default();
+    let telegram_chat_id_str: String = env.get_string(&telegram_chat_id).map(Into::into).unwrap_or_default();
+    let discord_bot_token_str: String = env.get_string(&discord_bot_token).map(Into::into).unwrap_or_default();
+    let slack_bot_token_str: String = env.get_string(&slack_bot_token).map(Into::into).unwrap_or_default();
+    let composio_api_key_str: String = env.get_string(&composio_api_key).map(Into::into).unwrap_or_default();
 
     // Set ZEROCLAW_WORKSPACE environment variable for Android
     // This points to the app's files directory where we can write
@@ -95,11 +103,95 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     config.gateway.require_pairing = false;
     config.android.enabled = true;
     config.android.bridge.mode = "http".into();
+    // Use Full distribution — Android OS permissions are the actual gate, not Play restrictions
+    config.android.distribution = crate::config::schema::AndroidDistribution::Full;
+    // Enable all capabilities — Android OS permissions are the actual gate
+    config.android.capabilities = crate::config::schema::AndroidCapabilitiesConfig {
+        sms: true,
+        calls: true,
+        app_launch: true,
+        sensors: true,
+        camera: true,
+        microphone: true,
+        location: true,
+        notifications: true,
+        clipboard: true,
+        network: true,
+        battery: true,
+        contacts: true,
+        calendar: true,
+        ui_automation: true,
+        browser_automation: true,
+        file_system_access: true,
+        event_hooks: true,
+    };
     if !telegram_token_str.is_empty() {
         config.channels_config.telegram = Some(crate::config::schema::TelegramConfig {
             bot_token: telegram_token_str,
             allowed_users: vec![],
+            notify_chat_id: None,
         });
+    }
+    // Set telegram notify_chat_id if provided
+    if !telegram_chat_id_str.is_empty() {
+        if let Some(ref mut tg) = config.channels_config.telegram {
+            tg.notify_chat_id = Some(telegram_chat_id_str);
+        }
+    }
+    // Discord
+    if !discord_bot_token_str.is_empty() {
+        config.channels_config.discord = Some(crate::config::schema::DiscordConfig {
+            bot_token: discord_bot_token_str,
+            guild_id: None,
+            allowed_users: vec![],
+            listen_to_bots: false,
+        });
+    }
+    // Slack
+    if !slack_bot_token_str.is_empty() {
+        config.channels_config.slack = Some(crate::config::schema::SlackConfig {
+            bot_token: slack_bot_token_str,
+            app_token: None,
+            channel_id: None,
+            allowed_users: vec![],
+        });
+    }
+    // Composio
+    if !composio_api_key_str.is_empty() {
+        config.composio.enabled = true;
+        config.composio.api_key = Some(composio_api_key_str);
+    }
+
+    // Enable http_request tool — agent needs to call external APIs and fetch web content.
+    // On Android (user's personal device) public internet access is expected.
+    // Private/local hosts are still blocked by the tool's built-in guard.
+    config.http_request.enabled = true;
+    if config.http_request.allowed_domains.is_empty() {
+        // Allow any public internet domain (subdomain matching: "." prefix).
+        // The tool already blocks 127.x, 10.x, 192.168.x, localhost, etc.
+        config.http_request.allowed_domains = vec![
+            "api.telegram.org".into(),
+            "api.openai.com".into(),
+            "api.anthropic.com".into(),
+            "openrouter.ai".into(),
+            "github.com".into(),
+            "api.github.com".into(),
+            "httpbin.org".into(),
+            "en.wikipedia.org".into(),
+            "wttr.in".into(),
+            "api.weather.gov".into(),
+            "discord.com".into(),
+            "slack.com".into(),
+            "api.slack.com".into(),
+            "composio.dev".into(),
+            "api.composio.dev".into(),
+        ];
+    }
+
+    // Persist overridden config to disk so the agent reads correct capability values
+    if let Err(e) = config.save() {
+        // Non-fatal: daemon still works, agent just may read stale config.toml
+        tracing::warn!("Failed to save android-overridden config: {e}");
     }
 
     // Create runtime and spawn the full daemon (gateway + channels + scheduler)

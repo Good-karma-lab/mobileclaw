@@ -25,6 +25,7 @@ pub mod schedule;
 pub mod schema;
 pub mod screenshot;
 pub mod shell;
+pub mod telegram_notify;
 pub mod traits;
 
 pub use android_device::AndroidDeviceTool;
@@ -51,6 +52,7 @@ pub use memory_recall::MemoryRecallTool;
 pub use memory_store::MemoryStoreTool;
 pub use pushover::PushoverTool;
 pub use schedule::ScheduleTool;
+pub use telegram_notify::TelegramNotifyTool;
 pub use schema::{CleaningStrategy, SchemaCleanr};
 pub use screenshot::ScreenshotTool;
 pub use shell::ShellTool;
@@ -203,6 +205,19 @@ pub fn all_tools_with_runtime(
     if let Some(key) = composio_key {
         if !key.is_empty() {
             tools.push(Box::new(ComposioTool::new(key, composio_entity_id)));
+        }
+    }
+
+    // Add Telegram notification tool when bot token + notify_chat_id are configured
+    if let Some(tg_cfg) = &root_config.channels_config.telegram {
+        if let Some(chat_id) = &tg_cfg.notify_chat_id {
+            if !tg_cfg.bot_token.is_empty() && !chat_id.is_empty() {
+                tools.push(Box::new(TelegramNotifyTool::new(
+                    security.clone(),
+                    tg_cfg.bot_token.clone(),
+                    chat_id.clone(),
+                )));
+            }
         }
     }
 

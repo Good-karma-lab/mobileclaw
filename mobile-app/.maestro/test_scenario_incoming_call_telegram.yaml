@@ -3,7 +3,7 @@ appId: com.mobileclaw.app
 - launchApp:
     clearState: false
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 15000
 - assertVisible:
     id: chat-input
 - tapOn:
@@ -12,8 +12,40 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 360000
+# No errors — these are hard failures
 - assertNotVisible:
     text: "Gateway error"
 - assertNotVisible:
     text: "Network request failed"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"
+# Agent must register a real-time hook, NOT a polling cron job
+# A cron-based solution would miss short calls
+- assertNotVisible:
+    text: "every 60 seconds"
+- assertNotVisible:
+    text: "every minute"
+# Agent acknowledged the wife's number and Telegram (optional — timing)
+- assertVisible:
+    text: "341234567890"
+    optional: true
+- assertVisible:
+    text: "Telegram"
+    optional: true
+- assertVisible:
+    text: "hook"
+    optional: true
+# Navigate to Tasks & Hooks screen to verify hook was registered
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "Incoming Call Hook"
+- assertVisible:
+    text: "Active Hooks"

@@ -24,7 +24,8 @@ class ZeroClawDaemonModule(private val reactContext: ReactApplicationContext) :
     /**
      * Start the ZeroClaw daemon service
      *
-     * @param config ReadableMap with optional keys: apiKey, model, telegramToken
+     * @param config ReadableMap with optional keys: apiKey, model, telegramToken, telegramChatId,
+     *               discordBotToken, slackBotToken, composioApiKey
      */
     @ReactMethod
     fun startDaemon(config: ReadableMap, promise: Promise) {
@@ -36,6 +37,10 @@ class ZeroClawDaemonModule(private val reactContext: ReactApplicationContext) :
             intent.putExtra(ZeroClawDaemonService.EXTRA_API_KEY, config.getString("apiKey") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_MODEL, config.getString("model") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_TOKEN, config.getString("telegramToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_CHAT_ID, config.getString("telegramChatId") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_DISCORD_BOT_TOKEN, config.getString("discordBotToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_SLACK_BOT_TOKEN, config.getString("slackBotToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_COMPOSIO_API_KEY, config.getString("composioApiKey") ?: "")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 reactContext.startForegroundService(intent)

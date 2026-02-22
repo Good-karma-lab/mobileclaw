@@ -24,6 +24,10 @@ export interface DaemonStartConfig {
   apiKey?: string;
   model?: string;
   telegramToken?: string;
+  telegramChatId?: string;
+  discordBotToken?: string;
+  slackBotToken?: string;
+  composioApiKey?: string;
 }
 
 /**
@@ -51,6 +55,10 @@ export async function startDaemon(config: DaemonStartConfig = {}): Promise<void>
       apiKey: config.apiKey ?? '',
       model: config.model ?? '',
       telegramToken: config.telegramToken ?? '',
+      telegramChatId: config.telegramChatId ?? '',
+      discordBotToken: config.discordBotToken ?? '',
+      slackBotToken: config.slackBotToken ?? '',
+      composioApiKey: config.composioApiKey ?? '',
     });
     console.log('[ZeroClawDaemon] Start requested');
   } catch (error) {

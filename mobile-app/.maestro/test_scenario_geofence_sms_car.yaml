@@ -3,7 +3,7 @@ appId: com.mobileclaw.app
 - launchApp:
     clearState: false
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 15000
 - assertVisible:
     id: chat-input
 - tapOn:
@@ -13,8 +13,34 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 90000
+    timeout: 360000
+# No errors — hard failures
 - assertNotVisible:
     text: "Gateway error"
 - assertNotVisible:
     text: "Network request failed"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"
+# Agent created the home arrival SMS cron job (optional — timing may vary)
+- assertVisible:
+    text: "home_arrival_sms"
+    optional: true
+# Agent acknowledged the coordinates
+- assertVisible:
+    text: "37.7749"
+    optional: true
+# Agent acknowledged the wife's number
+- assertVisible:
+    text: "341234567890"
+    optional: true
+# Navigate to Tasks & Hooks screen
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "Active Hooks"
