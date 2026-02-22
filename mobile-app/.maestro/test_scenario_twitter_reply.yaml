@@ -8,7 +8,7 @@ appId: com.mobileclaw.app
     id: chat-input
 - tapOn:
     id: chat-input
-- inputText: "Open Twitter application and reply to all not-replied comments under my 5 recent posts. My Twitter username is @zeroclaw_test"
+- inputText: "Open Twitter application and reply to all not-replied comments under my 5 recent posts. My Twitter username is @QML_RU"
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
@@ -27,5 +27,5 @@ appId: com.mobileclaw.app
     text: "Twitter"
     optional: true
 - assertVisible:
-    text: "zeroclaw_test"
+    text: "QML_RU"
     optional: true

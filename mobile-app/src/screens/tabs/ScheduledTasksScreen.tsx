@@ -1,14 +1,27 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
-import { loadSecurityConfig } from "../../state/mobileclaw";
+import { loadSecurityConfig, loadAgentConfig } from "../../state/mobileclaw";
 import { useActivity, type ActivityItem } from "../../state/activity";
 
 type GatewayHealth = "checking" | "ok" | "error";
+
+interface CronJob {
+  id: string;
+  name: string | null;
+  expression: string;
+  prompt: string | null;
+  command: string;
+  enabled: boolean;
+  created_at: string;
+  last_run: string | null;
+  next_run: string;
+  last_status: string | null;
+}
 
 export function ScheduledTasksScreen() {
   const navigation = useNavigation<any>();
@@ -16,30 +29,21 @@ export function ScheduledTasksScreen() {
   const [callHooksEnabled, setCallHooksEnabled] = useState(false);
   const [smsHooksEnabled, setSmsHooksEnabled] = useState(false);
   const [gatewayHealth, setGatewayHealth] = useState<GatewayHealth>("checking");
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
+  const [cronLoading, setCronLoading] = useState(false);
+  const [gatewayUrl, setGatewayUrl] = useState("http://127.0.0.1:8000");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const security = await loadSecurityConfig();
+      const [security, agentCfg] = await Promise.all([
+        loadSecurityConfig(),
+        loadAgentConfig(),
+      ]);
       if (cancelled) return;
       setCallHooksEnabled(security.incomingCallHooks);
       setSmsHooksEnabled(security.incomingSmsHooks);
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await Promise.race([
-          fetch("http://127.0.0.1:8000/health"),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
-        ]);
-        if (!cancelled) setGatewayHealth(res.ok ? "ok" : "error");
-      } catch {
-        if (!cancelled) setGatewayHealth("error");
-      }
+      if (agentCfg.platformUrl) setGatewayUrl(agentCfg.platformUrl);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -49,7 +53,7 @@ export function ScheduledTasksScreen() {
     (async () => {
       try {
         const res = await Promise.race([
-          fetch("http://127.0.0.1:8000/health"),
+          fetch(`${gatewayUrl}/health`),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
         ]);
         setGatewayHealth(res.ok ? "ok" : "error");
@@ -57,7 +61,60 @@ export function ScheduledTasksScreen() {
         setGatewayHealth("error");
       }
     })();
-  }, []);
+  }, [gatewayUrl]);
+
+  useEffect(() => {
+    checkGateway();
+  }, [checkGateway]);
+
+  const fetchCronJobs = useCallback(() => {
+    setCronLoading(true);
+    (async () => {
+      try {
+        const res = await Promise.race([
+          fetch(`${gatewayUrl}/cron/jobs`),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+        ]);
+        if (res.ok) {
+          const data = (await res.json()) as { jobs: CronJob[] };
+          setCronJobs(data.jobs ?? []);
+        }
+      } catch {
+        // gateway offline — leave existing list
+      } finally {
+        setCronLoading(false);
+      }
+    })();
+  }, [gatewayUrl]);
+
+  useEffect(() => {
+    fetchCronJobs();
+  }, [fetchCronJobs]);
+
+  const deleteJob = useCallback((job: CronJob) => {
+    const label = job.name ?? job.id;
+    Alert.alert(
+      "Delete scheduled task?",
+      `Remove "${label}"? It will no longer run.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            (async () => {
+              try {
+                await fetch(`${gatewayUrl}/cron/jobs/${job.id}`, { method: "DELETE" });
+                setCronJobs((prev) => prev.filter((j) => j.id !== job.id));
+              } catch {
+                Alert.alert("Error", "Failed to delete task. Is the gateway online?");
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [gatewayUrl]);
 
   const runtimeTasks: ActivityItem[] = allItems
     .filter((item) => item.source === "runtime")
@@ -113,7 +170,7 @@ export function ScheduledTasksScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text variant="label">Gateway (127.0.0.1:8000)</Text>
+            <Text variant="label">Gateway ({gatewayUrl})</Text>
             <Pressable onPress={checkGateway}>
               <View
                 style={{
@@ -174,6 +231,108 @@ export function ScheduledTasksScreen() {
           <Text variant="muted" style={{ marginTop: 6 }}>
             Configure hooks in Security settings.
           </Text>
+        </View>
+
+        {/* Scheduled tasks (cron jobs) */}
+        <View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: theme.spacing.sm,
+            }}
+          >
+            <Text variant="heading">Scheduled Tasks</Text>
+            <Pressable
+              onPress={fetchCronJobs}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: theme.radii.sm,
+                backgroundColor: theme.colors.surface.raised,
+                borderWidth: 1,
+                borderColor: theme.colors.stroke.subtle,
+              }}
+            >
+              <Text variant="caption">{cronLoading ? "Loading…" : "Refresh"}</Text>
+            </Pressable>
+          </View>
+          {cronJobs.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: theme.colors.surface.panel,
+                borderRadius: theme.radii.md,
+                borderWidth: 1,
+                borderColor: theme.colors.stroke.subtle,
+                padding: theme.spacing.md,
+              }}
+            >
+              <Text variant="muted">
+                {cronLoading ? "Loading scheduled tasks…" : "No scheduled tasks. Ask the agent to set up reminders or automations."}
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={{
+                backgroundColor: theme.colors.surface.panel,
+                borderRadius: theme.radii.md,
+                borderWidth: 1,
+                borderColor: theme.colors.stroke.subtle,
+                overflow: "hidden",
+              }}
+            >
+              {cronJobs.map((job, idx) => (
+                <View key={job.id}>
+                  {idx > 0 && <View style={{ height: 1, backgroundColor: theme.colors.stroke.subtle }} />}
+                  <View style={{ padding: theme.spacing.md }}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text variant="label">{job.name ?? job.id}</Text>
+                        <Text variant="caption" style={{ color: theme.colors.base.textMuted, marginTop: 2 }}>
+                          {job.expression}
+                        </Text>
+                        {(job.prompt ?? job.command) ? (
+                          <Text variant="muted" style={{ marginTop: 4 }} numberOfLines={2}>
+                            {job.prompt ?? job.command}
+                          </Text>
+                        ) : null}
+                        {job.next_run ? (
+                          <Text variant="caption" style={{ color: theme.colors.base.textMuted, marginTop: 4 }}>
+                            Next: {new Date(job.next_run).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </Text>
+                        ) : null}
+                        {job.last_status ? (
+                          <Text
+                            variant="caption"
+                            style={{
+                              color: job.last_status === "ok" ? theme.colors.base.primary : "#e05252",
+                              marginTop: 2,
+                            }}
+                          >
+                            Last: {job.last_status}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Pressable
+                        onPress={() => deleteJob(job)}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: theme.radii.sm,
+                          backgroundColor: theme.colors.surface.raised,
+                          borderWidth: 1,
+                          borderColor: "#e05252",
+                        }}
+                      >
+                        <Text variant="caption" style={{ color: "#e05252" }}>Delete</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Recent runtime tasks */}

@@ -23,15 +23,29 @@ appId: com.mobileclaw.app
     text: "disabled"
 - assertNotVisible:
     text: "not available"
-# Agent acknowledged the wife's phone number (optional — timing may vary)
+# Agent must register a real-time hook, NOT a polling cron job
+- assertNotVisible:
+    text: "every 60 seconds"
+- assertNotVisible:
+    text: "every minute"
+# Agent acknowledged the request (optional — timing)
 - assertVisible:
     text: "341234567890"
     optional: true
-# Agent mentions Telegram or notification
 - assertVisible:
     text: "Telegram"
     optional: true
-# Agent set up a hook or cron job
 - assertVisible:
-    text: "call hook"
+    text: "hook"
     optional: true
+# Navigate to Tasks & Hooks screen to verify hook was registered
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "Incoming Call Hook"
+- assertVisible:
+    text: "Active Hooks"

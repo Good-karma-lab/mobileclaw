@@ -285,7 +285,7 @@ impl Tool for AndroidDeviceTool {
     }
 
     fn description(&self) -> &str {
-        "Android device bridge for app launch, sensors, and optional telephony actions. High-risk actions (sms/call) are policy-gated and disabled for Google Play distribution by default."
+        "Android device bridge for app launch, sensors, and optional telephony actions. High-risk actions (sms/call) are policy-gated and disabled for Google Play distribution by default. IMPORTANT: Use hook_incoming_call / hook_incoming_sms to register real-time Android BroadcastReceiver hooks that fire immediately when a call or SMS arrives — do NOT create cron jobs for call/SMS monitoring, as polling will miss short calls or messages."
     }
 
     fn parameters_schema(&self) -> serde_json::Value {
@@ -294,7 +294,7 @@ impl Tool for AndroidDeviceTool {
             "properties": {
                 "action": {
                     "type": "string",
-                    "description": "Action to perform: launch_app, list_apps, open_url, open_settings, sensor_read, vibrate, get_location, take_photo, record_audio, set_clipboard, read_clipboard, post_notification, get_network, get_battery, get_device_info, get_android_version, read_contacts, read_calendar, send_sms, read_sms, place_call, read_call_log, ui_automation_enable, ui_automation_tap, ui_automation_swipe, ui_automation_click_text, ui_automation_back, ui_automation_home, ui_automation_recents, browser_open_session, browser_navigate, browser_get_state, browser_fetch_page, browser_close_session, request_all_files_access, pick_document, manage_files, hook_incoming_call, hook_incoming_sms, hook_notifications, read_notifications"
+                    "description": "Action to perform. Real-time event hooks (register Android BroadcastReceiver — fire immediately, never miss an event): hook_incoming_call, hook_incoming_sms, hook_notifications, read_notifications. Device info/sensors: get_battery, get_network, get_location, get_device_info, get_android_version, sensor_read. Telephony: send_sms, read_sms, place_call, read_call_log. Contacts/calendar: read_contacts, read_calendar. UI: launch_app, list_apps, open_url, open_settings, vibrate, post_notification, set_clipboard, read_clipboard, take_photo, record_audio, ui_automation_enable, ui_automation_tap, ui_automation_swipe, ui_automation_click_text, ui_automation_back, ui_automation_home, ui_automation_recents. Browser: browser_open_session, browser_navigate, browser_get_state, browser_fetch_page, browser_close_session. Files: request_all_files_access, pick_document, manage_files."
                 },
                 "package": {
                     "type": "string",

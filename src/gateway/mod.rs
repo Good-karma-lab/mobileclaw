@@ -19,10 +19,10 @@ use crate::util::truncate_with_ellipsis;
 use anyhow::Result;
 use axum::{
     body::Bytes,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Json},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::collections::HashMap;
@@ -387,6 +387,8 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
+        .route("/cron/jobs", get(handle_list_cron_jobs))
+        .route("/cron/jobs/:job_id", delete(handle_delete_cron_job))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -921,6 +923,50 @@ async fn handle_whatsapp_message(
 
     // Acknowledge the webhook
     (StatusCode::OK, Json(serde_json::json!({"status": "ok"})))
+}
+
+/// GET /cron/jobs — list all scheduled cron jobs
+async fn handle_list_cron_jobs(State(state): State<AppState>) -> impl IntoResponse {
+    match crate::cron::list_jobs(&state.config) {
+        Ok(jobs) => {
+            let items: Vec<serde_json::Value> = jobs
+                .iter()
+                .map(|j| {
+                    serde_json::json!({
+                        "id": j.id,
+                        "name": j.name,
+                        "expression": j.expression,
+                        "prompt": j.prompt,
+                        "command": j.command,
+                        "enabled": j.enabled,
+                        "created_at": j.created_at,
+                        "last_run": j.last_run,
+                        "next_run": j.next_run,
+                        "last_status": j.last_status,
+                    })
+                })
+                .collect();
+            (StatusCode::OK, Json(serde_json::json!({"jobs": items})))
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+    }
+}
+
+/// DELETE /cron/jobs/:job_id — cancel and remove a scheduled cron job
+async fn handle_delete_cron_job(
+    State(state): State<AppState>,
+    Path(job_id): Path<String>,
+) -> impl IntoResponse {
+    match crate::cron::remove_job(&state.config, &job_id) {
+        Ok(()) => (StatusCode::OK, Json(serde_json::json!({"status": "deleted", "id": job_id}))),
+        Err(e) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+    }
 }
 
 #[cfg(test)]

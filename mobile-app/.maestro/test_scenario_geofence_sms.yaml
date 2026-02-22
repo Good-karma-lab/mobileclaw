@@ -34,3 +34,12 @@ appId: com.mobileclaw.app
 - assertVisible:
     text: "341234567890"
     optional: true
+# Navigate to Tasks & Hooks screen — gateway should be online after agent responded
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "Active Hooks"
