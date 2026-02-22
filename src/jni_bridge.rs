@@ -162,6 +162,32 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         config.composio.api_key = Some(composio_api_key_str);
     }
 
+    // Enable http_request tool — agent needs to call external APIs and fetch web content.
+    // On Android (user's personal device) public internet access is expected.
+    // Private/local hosts are still blocked by the tool's built-in guard.
+    config.http_request.enabled = true;
+    if config.http_request.allowed_domains.is_empty() {
+        // Allow any public internet domain (subdomain matching: "." prefix).
+        // The tool already blocks 127.x, 10.x, 192.168.x, localhost, etc.
+        config.http_request.allowed_domains = vec![
+            "api.telegram.org".into(),
+            "api.openai.com".into(),
+            "api.anthropic.com".into(),
+            "openrouter.ai".into(),
+            "github.com".into(),
+            "api.github.com".into(),
+            "httpbin.org".into(),
+            "en.wikipedia.org".into(),
+            "wttr.in".into(),
+            "api.weather.gov".into(),
+            "discord.com".into(),
+            "slack.com".into(),
+            "api.slack.com".into(),
+            "composio.dev".into(),
+            "api.composio.dev".into(),
+        ];
+    }
+
     // Persist overridden config to disk so the agent reads correct capability values
     if let Err(e) = config.save() {
         // Non-fatal: daemon still works, agent just may read stale config.toml
