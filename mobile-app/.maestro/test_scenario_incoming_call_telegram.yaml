@@ -12,7 +12,7 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
-    timeout: 180000
+    timeout: 360000
 # No errors — these are hard failures
 - assertNotVisible:
     text: "Gateway error"

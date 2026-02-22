@@ -183,7 +183,7 @@ export function ChatScreen() {
   );
 
   const runTurnWithTimeout = useCallback(async (prompt: string) => {
-    const timeoutMs = 90_000;
+    const timeoutMs = 180_000; // 3 minutes — allow time for complex tool-using agent turns
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         return await Promise.race([
