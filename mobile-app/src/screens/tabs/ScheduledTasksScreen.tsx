@@ -67,35 +67,37 @@ export function ScheduledTasksScreen() {
     checkGateway();
   }, [checkGateway]);
 
-  const fetchCronJobs = useCallback(() => {
-    console.log(`[ScheduledTasks] Fetching cron jobs from ${gatewayUrl}/cron/jobs`);
-    setCronLoading(true);
+  const fetchCronJobs = useCallback((showSpinner = false) => {
+    if (showSpinner) setCronLoading(true);
     (async () => {
       try {
         const res = await Promise.race([
           fetch(`${gatewayUrl}/cron/jobs`),
           new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
         ]);
-        console.log(`[ScheduledTasks] Response status: ${res.status}`);
         if (res.ok) {
           const data = (await res.json()) as { jobs: CronJob[] };
-          console.log(`[ScheduledTasks] Fetched ${data.jobs?.length ?? 0} cron jobs`);
           setCronJobs(data.jobs ?? []);
-        } else {
-          console.warn(`[ScheduledTasks] HTTP error: ${res.status}`);
         }
-      } catch (err) {
-        console.error(`[ScheduledTasks] Fetch error:`, err);
+      } catch {
         // gateway offline — leave existing list
       } finally {
-        setCronLoading(false);
+        if (showSpinner) setCronLoading(false);
       }
     })();
   }, [gatewayUrl]);
 
   useEffect(() => {
-    fetchCronJobs();
+    fetchCronJobs(true);
+    const interval = setInterval(() => fetchCronJobs(false), 10_000);
+    return () => clearInterval(interval);
   }, [fetchCronJobs]);
+
+  useEffect(() => {
+    void refresh();
+    const interval = setInterval(() => { void refresh(); }, 5_000);
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   const deleteJob = useCallback((job: CronJob) => {
     const label = job.name ?? job.id;
@@ -110,7 +112,7 @@ export function ScheduledTasksScreen() {
           onPress: () => {
             (async () => {
               try {
-                await fetch(`${gatewayUrl}/cron/jobs/${job.id}`, { method: "DELETE" });
+                await fetch(`${gatewayUrl}/cron/jobs?id=${job.id}`, { method: "DELETE" });
                 setCronJobs((prev) => prev.filter((j) => j.id !== job.id));
               } catch {
                 Alert.alert("Error", "Failed to delete task. Is the gateway online?");
@@ -251,7 +253,7 @@ export function ScheduledTasksScreen() {
           >
             <Text variant="heading">Scheduled Tasks</Text>
             <Pressable
-              onPress={fetchCronJobs}
+              onPress={() => fetchCronJobs(true)}
               style={{
                 paddingHorizontal: 8,
                 paddingVertical: 4,

@@ -24,7 +24,12 @@ impl Tool for CronAddTool {
     }
 
     fn description(&self) -> &str {
-        "Create a scheduled cron job (shell or agent) with cron/at/every schedules"
+        "Create a scheduled cron job (shell or agent) with cron/at/every schedules. \
+         For agent jobs, use the `context` field to store setup-time information \
+         (user IDs, chat IDs, account names, preferences, credentials) that the agent \
+         will need at execution time. Context is prepended verbatim to the prompt on \
+         every wakeup, so the agent does not need to search memory for it. \
+         Example: context=\"Telegram chat ID: 530732407\\nUser timezone: Europe/Madrid\""
     }
 
     fn parameters_schema(&self) -> serde_json::Value {
@@ -39,6 +44,10 @@ impl Tool for CronAddTool {
                 "job_type": { "type": "string", "enum": ["shell", "agent"] },
                 "command": { "type": "string" },
                 "prompt": { "type": "string" },
+                "context": {
+                    "type": "string",
+                    "description": "Setup-time context prepended verbatim to the prompt on every wakeup. Include user IDs, chat IDs, account names, timezones, and any values the agent will need without searching memory."
+                },
                 "session_target": { "type": "string", "enum": ["isolated", "main"] },
                 "model": { "type": "string" },
                 "delivery": { "type": "object" },
@@ -156,6 +165,12 @@ impl Tool for CronAddTool {
                     None => SessionTarget::Isolated,
                 };
 
+                let context = args
+                    .get("context")
+                    .and_then(serde_json::Value::as_str)
+                    .filter(|s| !s.trim().is_empty())
+                    .map(str::to_string);
+
                 let model = args
                     .get("model")
                     .and_then(serde_json::Value::as_str)
@@ -180,6 +195,7 @@ impl Tool for CronAddTool {
                     name,
                     schedule,
                     prompt,
+                    context,
                     session_target,
                     model,
                     delivery,
