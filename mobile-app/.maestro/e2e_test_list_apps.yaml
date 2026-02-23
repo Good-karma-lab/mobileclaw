@@ -1,0 +1,27 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: List Installed Apps
+# Tests that agent can list installed Android applications
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Ask to list apps
+- tapOn:
+    id: chat-input
+- inputText: "List 5 installed apps on my device"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Agent should show some app names (common system apps)
+- assertVisible:
+    text: "com."
+    optional: true

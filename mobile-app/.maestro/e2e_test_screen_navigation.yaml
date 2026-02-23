@@ -1,0 +1,46 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Screen Navigation
+# Tests that all main screens are accessible via tab navigation
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+# Chat screen is default
+- assertVisible:
+    id: chat-input
+# Navigate to Activity tab
+- tapOn:
+    text: "Activity"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Activity"
+# Navigate to Integrations tab
+- tapOn:
+    text: "Integrations"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Integrations"
+# Navigate to Device tab
+- tapOn:
+    text: "Device"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Device"
+# Navigate to Settings tab
+- tapOn:
+    text: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Agent Config"
+# Navigate back to Chat
+- tapOn:
+    text: "Chat"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: chat-input

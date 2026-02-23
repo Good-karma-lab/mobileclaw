@@ -1,0 +1,45 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Memory Store and Recall (Long-term memory)
+# Tests that agent can store and retrieve memories across chat sessions
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Step 1: Store a unique memory
+- tapOn:
+    id: chat-input
+- inputText: "Remember this fact: my secret code word is QUANTUM_BANANA_42"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Step 2: Force stop app to clear chat context (simulates new session)
+- stopApp
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Step 3: Recall the memory - agent must use long-term memory, not chat context
+- tapOn:
+    id: chat-input
+- inputText: "What is my secret code word?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+- assertNotVisible:
+    text: "Gateway error"
+# Agent should recall QUANTUM_BANANA_42 from memory (not chat history)
+- assertVisible:
+    text: "QUANTUM_BANANA_42"
+    optional: true

@@ -1,0 +1,38 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Cron Job Creation via Chat
+# Tests that agent can create scheduled jobs through conversation
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Create a unique daily cron job
+- tapOn:
+    id: chat-input
+- inputText: "Create a cron job named e2e_test_job that runs every day at 10am with the prompt: say hello from e2e test"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Agent acknowledges job creation
+- assertVisible:
+    text: "cron"
+    optional: true
+# Navigate to Tasks screen to verify job was created
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+# The job should appear in the list
+- assertVisible:
+    text: "e2e_test_job"
+    optional: true

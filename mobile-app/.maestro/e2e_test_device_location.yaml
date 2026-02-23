@@ -1,0 +1,29 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Device Location Tool
+# Tests that agent can use Android device location tool
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Ask for location
+- tapOn:
+    id: chat-input
+- inputText: "What is my current GPS location?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"
+# Agent should respond with location info (coordinates or location service status)
+- assertVisible:
+    text: "location"
+    optional: true

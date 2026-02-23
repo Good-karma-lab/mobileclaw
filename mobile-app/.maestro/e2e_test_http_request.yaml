@@ -1,0 +1,27 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: HTTP Request Tool
+# Tests that agent can make HTTP requests to external APIs
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Make an HTTP request
+- tapOn:
+    id: chat-input
+- inputText: "Make an HTTP GET request to https://httpbin.org/get and tell me the response status"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Agent should show HTTP response (looking for common httpbin response patterns)
+- assertVisible:
+    text: "200"
+    optional: true

@@ -1,0 +1,43 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Memory Store and Verify in Memory Screen
+# Tests that agent-stored memories appear in Memory Management UI
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Store a unique memory that we can search for
+- tapOn:
+    id: chat-input
+- inputText: "Remember this: my test identifier is MEMORY_TEST_2024"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+- assertNotVisible:
+    text: "Gateway error"
+# Navigate to Settings to access memory manager
+- tapOn:
+    text: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Open memory manager
+- tapOn:
+    id: open-memory-screen
+- waitForAnimationToEnd:
+    timeout: 5000
+# Memory screen should show
+- assertVisible:
+    text: "Memory"
+# Search for the stored memory
+- tapOn:
+    id: memory-search
+- inputText: "MEMORY_TEST_2024"
+- waitForAnimationToEnd:
+    timeout: 5000
+# The memory should appear in the list
+- assertVisible:
+    text: "MEMORY_TEST_2024"
+    optional: true

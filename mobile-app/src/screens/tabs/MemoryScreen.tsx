@@ -202,6 +202,7 @@ export function MemoryScreen() {
         </View>
 
         <TextInput
+          testID="memory-search"
           placeholder="Search memories..."
           placeholderTextColor={theme.colors.alpha.textPlaceholder}
           value={searchQuery}
