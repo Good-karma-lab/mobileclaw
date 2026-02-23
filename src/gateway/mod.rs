@@ -340,7 +340,9 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
     println!("  POST /pair          — pair a new client (X-Pairing-Code header)");
     println!("  POST /webhook       — {{\"message\": \"your prompt\"}} (simple chat)");
     println!("  POST /agent/message — {{\"message\": \"your prompt\"}} (full agent with tools)");
-    println!("  POST /agent/event   — {{\"event_type\": \"...\", \"data\": {{...}}}} (device events)");
+    println!(
+        "  POST /agent/event   — {{\"event_type\": \"...\", \"data\": {{...}}}} (device events)"
+    );
     if whatsapp_channel.is_some() {
         println!("  GET  /whatsapp      — Meta webhook verification");
         println!("  POST /whatsapp      — WhatsApp message webhook");
@@ -387,7 +389,16 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
-        .route("/cron/jobs", get(handle_list_cron_jobs).delete(handle_delete_cron_job))
+        .route(
+            "/cron/jobs",
+            get(handle_list_cron_jobs).delete(handle_delete_cron_job),
+        )
+        .route(
+            "/memory",
+            get(handle_list_memories).delete(handle_forget_memory),
+        )
+        .route("/memory/recall", get(handle_recall_memory))
+        .route("/memory/count", get(handle_memory_count))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -933,13 +944,18 @@ async fn handle_list_cron_jobs(State(state): State<AppState>) -> impl IntoRespon
     // Run in blocking task since SQLite I/O is blocking
     let result = tokio::task::spawn_blocking(move || {
         let db_path = config.workspace_dir.join("cron").join("jobs.db");
-        eprintln!("[ZeroClaw] Cron DB path: {:?}, exists: {}", db_path, db_path.exists());
+        eprintln!(
+            "[ZeroClaw] Cron DB path: {:?}, exists: {}",
+            db_path,
+            db_path.exists()
+        );
         let jobs_result = crate::cron::list_jobs(&config);
         if let Ok(ref jobs) = jobs_result {
             eprintln!("[ZeroClaw] list_jobs returned {} jobs", jobs.len());
         }
         jobs_result
-    }).await;
+    })
+    .await;
 
     match result {
         Ok(Ok(jobs)) => {
@@ -990,12 +1006,14 @@ async fn handle_delete_cron_job(
     let job_id_clone = job_id.clone();
 
     // Run in blocking task since SQLite I/O is blocking
-    let result = tokio::task::spawn_blocking(move || {
-        crate::cron::remove_job(&config, &job_id_clone)
-    }).await;
+    let result =
+        tokio::task::spawn_blocking(move || crate::cron::remove_job(&config, &job_id_clone)).await;
 
     match result {
-        Ok(Ok(())) => (StatusCode::OK, Json(serde_json::json!({"status": "deleted", "id": job_id}))),
+        Ok(Ok(())) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "deleted", "id": job_id})),
+        ),
         Ok(Err(e)) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({"error": e.to_string()})),
@@ -1003,6 +1021,142 @@ async fn handle_delete_cron_job(
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct MemoryListQuery {
+    pub category: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct MemoryRecallQuery {
+    pub query: String,
+    #[serde(default = "default_recall_limit")]
+    pub limit: usize,
+}
+
+fn default_recall_limit() -> usize {
+    10
+}
+
+#[derive(serde::Deserialize)]
+pub struct MemoryForgetQuery {
+    pub key: String,
+}
+
+async fn handle_list_memories(
+    State(state): State<AppState>,
+    Query(params): Query<MemoryListQuery>,
+) -> impl IntoResponse {
+    let category = params.category.and_then(|c| match c.as_str() {
+        "core" => Some(MemoryCategory::Core),
+        "daily" => Some(MemoryCategory::Daily),
+        "conversation" => Some(MemoryCategory::Conversation),
+        other if !other.is_empty() => Some(MemoryCategory::Custom(other.to_string())),
+        _ => None,
+    });
+
+    match state.mem.list(category.as_ref(), None).await {
+        Ok(entries) => {
+            let items: Vec<serde_json::Value> = entries
+                .iter()
+                .map(|e| {
+                    serde_json::json!({
+                        "id": e.id,
+                        "key": e.key,
+                        "content": e.content,
+                        "category": e.category.to_string(),
+                        "timestamp": e.timestamp,
+                        "score": e.score,
+                    })
+                })
+                .collect();
+            (StatusCode::OK, Json(serde_json::json!({"memories": items})))
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+    }
+}
+
+async fn handle_recall_memory(
+    State(state): State<AppState>,
+    Query(params): Query<MemoryRecallQuery>,
+) -> impl IntoResponse {
+    let query = params.query.trim();
+    if query.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "query parameter is required"})),
+        );
+    }
+
+    let limit = params.limit.clamp(1, 100);
+
+    match state.mem.recall(query, limit, None).await {
+        Ok(entries) => {
+            let items: Vec<serde_json::Value> = entries
+                .iter()
+                .map(|e| {
+                    serde_json::json!({
+                        "id": e.id,
+                        "key": e.key,
+                        "content": e.content,
+                        "category": e.category.to_string(),
+                        "timestamp": e.timestamp,
+                        "score": e.score,
+                    })
+                })
+                .collect();
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"memories": items, "query": query})),
+            )
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+    }
+}
+
+async fn handle_memory_count(State(state): State<AppState>) -> impl IntoResponse {
+    match state.mem.count().await {
+        Ok(count) => (StatusCode::OK, Json(serde_json::json!({"count": count}))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+    }
+}
+
+async fn handle_forget_memory(
+    State(state): State<AppState>,
+    Query(params): Query<MemoryForgetQuery>,
+) -> impl IntoResponse {
+    let key = params.key.trim();
+    if key.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "key parameter is required"})),
+        );
+    }
+
+    match state.mem.forget(key).await {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "forgotten", "key": key})),
+        ),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": format!("No memory found with key: {}", key)})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
         ),
     }
 }

@@ -397,3 +397,76 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<string[]> 
 
   return Array.from(new Set(ids));
 }
+
+export type MemoryEntry = {
+  id: string;
+  key: string;
+  content: string;
+  category: string;
+  timestamp: string;
+  score?: number;
+};
+
+export async function fetchMemories(
+  platformUrl: string,
+  category?: string,
+): Promise<MemoryEntry[]> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const url = category
+    ? `${gatewayUrl}/memory?category=${encodeURIComponent(category)}`
+    : `${gatewayUrl}/memory`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory list error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { memories?: MemoryEntry[] };
+  return data.memories || [];
+}
+
+export async function recallMemories(
+  platformUrl: string,
+  query: string,
+  limit: number = 10,
+): Promise<MemoryEntry[]> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const url = `${gatewayUrl}/memory/recall?query=${encodeURIComponent(query)}&limit=${limit}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory recall error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { memories?: MemoryEntry[] };
+  return data.memories || [];
+}
+
+export async function fetchMemoryCount(platformUrl: string): Promise<number> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const res = await fetch(`${gatewayUrl}/memory/count`);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory count error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { count?: number };
+  return data.count || 0;
+}
+
+export async function forgetMemory(platformUrl: string, key: string): Promise<boolean> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const res = await fetch(`${gatewayUrl}/memory?key=${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    if (res.status === 404) return false;
+    throw new Error(data?.error || `Memory forget error: ${res.status}`);
+  }
+
+  return true;
+}

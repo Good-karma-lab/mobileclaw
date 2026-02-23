@@ -220,6 +220,17 @@ export function SettingsScreen() {
       <GlassCard>
         <Text variant="title">Advanced</Text>
         <Pressable
+          testID="open-memory-screen"
+          onPress={() => {
+            const root = navigation.getParent("root-stack");
+            if (root) { root.navigate("Memory"); return; }
+            navigation.navigate("Memory");
+          }}
+          style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.stroke.subtle, backgroundColor: theme.colors.surface.panel, marginBottom: theme.spacing.sm }}
+        >
+          <Text variant="bodyMedium">Open memory manager</Text>
+        </Pressable>
+        <Pressable
           testID="open-security-screen"
           onPress={() => {
             const root = navigation.getParent("root-stack");

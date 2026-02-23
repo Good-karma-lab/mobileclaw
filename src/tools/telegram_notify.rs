@@ -31,10 +31,7 @@ impl TelegramNotifyTool {
     }
 
     fn send_message_url(&self) -> String {
-        format!(
-            "https://api.telegram.org/bot{}/sendMessage",
-            self.bot_token
-        )
+        format!("https://api.telegram.org/bot{}/sendMessage", self.bot_token)
     }
 }
 
