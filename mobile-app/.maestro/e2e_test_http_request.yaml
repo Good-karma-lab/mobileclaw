@@ -8,10 +8,10 @@ appId: com.mobileclaw.app
     timeout: 15000
 - assertVisible:
     id: chat-input
-# Make an HTTP request
+# Make an HTTP request to openrouter (which is in allowed_domains and reachable)
 - tapOn:
     id: chat-input
-- inputText: "Make an HTTP GET request to https://httpbin.org/get and tell me the response status"
+- inputText: "Make an HTTP GET request to https://openrouter.ai/api/v1/models and tell me if you get a 200 response"
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
@@ -21,7 +21,7 @@ appId: com.mobileclaw.app
     text: "Gateway error"
 - assertNotVisible:
     text: "disabled"
-# Agent should show HTTP response (looking for common httpbin response patterns)
+# Agent should show HTTP response
 - assertVisible:
     text: "200"
     optional: true
