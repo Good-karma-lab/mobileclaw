@@ -450,21 +450,17 @@ MobileClaw adds features not present in ZeroClaw:
 | **Integrations Screen** | ✅ DONE | 5 channels configured |
 | **Incoming Call/SMS Hooks** | ✅ DONE | Real-time hooks working |
 
-### ⚠️ IN PROGRESS (Medium Priority)
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| **Scheduler Job Creation UI** | ⚠️ PARTIAL | Agent can create jobs, but no direct UI |
-| **Channel Inbound Handling** | ⚠️ PARTIAL | Telegram works, Discord/Slack need webhooks |
-| **Streaming Responses** | ⚠️ NOT STARTED | SSE parsing not in mobile chat |
-
 ### ❌ NOT STARTED (Remaining Features)
 
 | Feature | Priority | Effort | Notes |
 |---------|----------|--------|-------|
+| **Trigger-Action Rules Engine** | High | 3-4 days | "If call from X then Telegram" - NOT IMPLEMENTED |
+| **HTTP Request Tool (Network)** | High | 1-2 days | Fails from emulator - needs network config |
+| **Memory Screen Navigation** | High | 1 day | Screen not loading properly |
 | **More Provider UI** | Medium | 2-3 days | Add 22+ provider configurations |
-| **Web Search Tool** | High | 1-2 days | Brave Search integration |
-| **HTTP Request Tool UI** | Medium | 1 day | Domain allowlist configuration |
+| **Web Search Tool** | Medium | 1-2 days | Brave Search integration |
+| **Streaming Responses** | Medium | 2-3 days | SSE parsing not in mobile chat |
+| **Job Creation UI** | Medium | 2 days | Agent can create jobs, but no direct UI |
 | **Cost/Token Tracking** | Medium | 2 days | Show API usage per conversation |
 | **Conversation History UI** | Low | 2 days | Browse past conversations |
 | **Tool Execution Visualization** | Medium | 2 days | Show which tools are being called |
@@ -552,29 +548,45 @@ MobileClaw adds features not present in ZeroClaw:
 | `e2e_test_memory_store_recall.yaml` | ✅ PASS | "Your secret code word is **QUANTUM_BANANA_42**." | Memory correctly recalled after app restart |
 | `e2e_test_cron_job_create.yaml` | ✅ PASS | "Created cron job **e2e_test_job**..." | Job appeared in Tasks screen |
 | `e2e_test_telegram_notify.yaml` | ✅ PASS | "Done! The Telegram message...has been sent" | Message sent to configured chat |
-| `e2e_test_call_hook_setup.yaml` | ✅ PASS | Hook configured correctly | Tasks screen shows Active Hooks |
+| `e2e_test_call_hook_setup.yaml` | ⚠️ PARTIAL | "I've registered a real-time hook..." | Hook registered but NO trigger-action rules |
 | `e2e_test_battery_status.yaml` | ✅ PASS | "Your battery is at **100%**" | Device sensor query working |
 | `e2e_test_http_request.yaml` | ❌ FAIL | "network connectivity issue" | Agent cannot make HTTP requests from emulator |
 | `e2e_test_memory_screen_verify.yaml` | ❌ FAIL | Memory stored but navigation failed | Memory screen not loading properly |
 | `e2e_test_screen_navigation.yaml` | ⚠️ TIMEOUT | - | Tab navigation slow on emulator |
-| `test_scenario_incoming_call_telegram.yaml` | ✅ PASS | Real-time hook created | Original scenario working |
+| `test_scenario_incoming_call_telegram.yaml` | ⚠️ PARTIAL | Hook created but no automation | Trigger-action rules NOT implemented |
+
+### Critical Issues Found
+
+1. **Trigger-Action Rules Engine NOT IMPLEMENTED**
+   - Agent can enable hooks but cannot create automation rules
+   - "When I receive a call from X, send Telegram" does NOT work
+   - Need to implement rule storage and evaluation engine
+
+2. **HTTP Request Tool Fails**
+   - Network connectivity issue from Android emulator
+   - Need to investigate Rust HTTP client configuration
+
+3. **Memory Screen Navigation Broken**
+   - Screen doesn't render after navigating from Settings
+   - Navigation stack issue in RootNavigator
 
 ### Test Summary
 
-**Passing: 6/9 tests (67%)**
+**Fully Passing: 4/9 tests (44%)**
+**Partially Working: 2/9 tests (22%)**
+**Failing: 3/9 tests (33%)**
 
-**Working Features:**
-- ✅ Memory store and recall (long-term memory)
-- ✅ Cron job creation via chat
+### Working Features (Verified via E2E):
+- ✅ Memory store and recall (long-term memory persists across sessions)
+- ✅ Cron job creation via natural language
 - ✅ Telegram message sending
-- ✅ Incoming call hook setup
-- ✅ Battery status query
-- ✅ Device sensor queries
+- ✅ Device sensors (battery)
+- ⚠️ Incoming call hook registration (enables detection, but no automation)
 
-**Failing:**
+### Not Working:
 - ❌ HTTP requests (network connectivity from emulator)
 - ❌ Memory screen navigation
-- ⚠️ Screen navigation performance
+- ❌ Trigger-action rules (if X then Y automation)
 
 ---
 
