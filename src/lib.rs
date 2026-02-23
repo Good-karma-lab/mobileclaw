@@ -59,6 +59,7 @@ pub mod onboard;
 pub mod peripherals;
 pub mod providers;
 pub mod rag;
+pub mod rules;
 pub mod runtime;
 pub mod security;
 pub mod service;

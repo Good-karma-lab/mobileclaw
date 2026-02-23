@@ -562,14 +562,22 @@ mod tests {
     }
 
     #[test]
-    fn validate_requires_allowlist() {
+    fn validate_allows_public_domains_with_empty_allowlist() {
+        let security = Arc::new(SecurityPolicy::default());
+        let tool = HttpRequestTool::new(security, vec![], 1_000_000, 30);
+        // Empty allowlist now means "allow all public domains"
+        assert!(tool.validate_url("https://example.com").is_ok());
+    }
+
+    #[test]
+    fn validate_blocks_private_host_with_empty_allowlist() {
         let security = Arc::new(SecurityPolicy::default());
         let tool = HttpRequestTool::new(security, vec![], 1_000_000, 30);
         let err = tool
-            .validate_url("https://example.com")
+            .validate_url("http://localhost:8080")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("allowed_domains"));
+        assert!(err.contains("local/private host"));
     }
 
     #[test]

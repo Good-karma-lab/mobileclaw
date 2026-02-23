@@ -12,6 +12,7 @@ use crate::config::Config;
 use crate::memory::{self, Memory, MemoryCategory};
 use crate::providers::{self, Provider};
 use crate::runtime;
+use crate::rules;
 use crate::security::pairing::{constant_time_eq, is_public_bind, PairingGuard};
 use crate::security::SecurityPolicy;
 use crate::tools;
@@ -399,6 +400,9 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         )
         .route("/memory/recall", get(handle_recall_memory))
         .route("/memory/count", get(handle_memory_count))
+        .route("/rules", get(handle_list_rules).post(handle_create_rule))
+        .route("/rules/:id", get(handle_get_rule).delete(handle_delete_rule))
+        .route("/rules/:id/toggle", post(handle_toggle_rule))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -754,6 +758,37 @@ async fn handle_agent_event(
         "Device event received"
     );
 
+    // ── Evaluate rules for this event ──
+    let rules_db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    let event_type = event_body.event_type.clone();
+    let event_data = event_body.data.clone();
+    let config = (*state.config).clone();
+    let tg_config = state.config.channels_config.telegram.clone();
+    
+    // Create rules event
+    let rules_event = create_rules_event(&event_type, &event_data);
+    
+    // Evaluate rules and execute actions (spawned async)
+    tokio::spawn(async move {
+        // Evaluate rules
+        let engine = rules::RulesEngine::new(rules_db_path);
+        match engine.evaluate(&rules_event) {
+            Ok(matching_rules) => {
+                tracing::info!("Rules engine: {} matching rules", matching_rules.len());
+                
+                for rule in matching_rules {
+                    tracing::info!("Executing rule: {} ({})", rule.name, rule.id);
+                    if let Err(e) = execute_rule_action(&rule, &event_data, &tg_config, &config).await {
+                        tracing::error!("Rule action execution failed: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Rules engine evaluation error: {}", e);
+            }
+        }
+    });
+
     // Spawn agent processing for this device event (async — return immediately)
     let prompt = format!(
         "Device event received: {} — {}",
@@ -772,6 +807,166 @@ async fn handle_agent_event(
         "processing": true
     });
     (StatusCode::OK, Json(body))
+}
+
+/// Create a rules Event from device event
+fn create_rules_event(event_type: &str, data: &serde_json::Value) -> rules::Event {
+    use rules::TriggerType;
+    
+    let trigger_type = match event_type.to_lowercase().as_str() {
+        "incoming_call" | "phone_call" => TriggerType::IncomingCall,
+        "incoming_sms" | "sms" | "text_message" => TriggerType::IncomingSms,
+        "geofence" | "location" => TriggerType::Geofence,
+        _ => TriggerType::Webhook,
+    };
+    
+    rules::Event {
+        event_type: trigger_type,
+        timestamp: chrono::Utc::now(),
+        data: data.clone(),
+    }
+}
+
+/// Execute a rule's action
+async fn execute_rule_action(
+    rule: &rules::Rule,
+    event_data: &serde_json::Value,
+    tg_config: &Option<crate::config::schema::TelegramConfig>,
+    config: &crate::config::Config,
+) -> anyhow::Result<()> {
+    use rules::ActionType;
+    
+    match rule.action.action_type {
+        ActionType::TelegramNotify => {
+            // Get message template and substitute variables
+            let template = rule.action.params.get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Event triggered");
+            
+            let message = substitute_template(template, event_data);
+            
+            // Send via Telegram
+            if let Some(tg) = tg_config {
+                if !tg.bot_token.is_empty() {
+                    if let Some(chat_id) = &tg.notify_chat_id {
+                        let client = reqwest::Client::new();
+                        let url = format!(
+                            "https://api.telegram.org/bot{}/sendMessage",
+                            tg.bot_token
+                        );
+                        
+                        let response = client
+                            .post(&url)
+                            .json(&serde_json::json!({
+                                "chat_id": chat_id,
+                                "text": message
+                            }))
+                            .send()
+                            .await?;
+                        
+                        if !response.status().is_success() {
+                            tracing::warn!("Telegram notification failed: {}", response.status());
+                        } else {
+                            tracing::info!("Telegram notification sent for rule: {}", rule.name);
+                        }
+                    }
+                }
+            } else {
+                tracing::warn!("Telegram not configured for rule action");
+            }
+        }
+        ActionType::PostNotification => {
+            let message = rule.action.params.get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Event triggered");
+            
+            let message = substitute_template(message, event_data);
+            tracing::info!("Notification: {}", message);
+            // TODO: Integrate with Android notification system via JNI
+        }
+        ActionType::AgentPrompt => {
+            let prompt = rule.action.params.get("prompt")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Process this event");
+            
+            let prompt = substitute_template(prompt, event_data);
+            let config = config.clone();
+            
+            tokio::spawn(async move {
+                if let Err(e) = crate::agent::loop_::process_message(config, &prompt).await {
+                    tracing::error!("Rule agent prompt execution failed: {}", e);
+                }
+            });
+        }
+        ActionType::MemoryStore => {
+            let key = rule.action.params.get("key")
+                .and_then(|v| v.as_str())
+                .unwrap_or("event_memory");
+            
+            let content = rule.action.params.get("content")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            
+            let content = substitute_template(content, event_data);
+            tracing::info!("Memory store: {} = {}", key, content);
+            // TODO: Store in memory
+        }
+        ActionType::HttpRequest => {
+            let url = rule.action.params.get("url")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            
+            if !url.is_empty() {
+                let client = reqwest::Client::new();
+                let method = rule.action.params.get("method")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("POST");
+                
+                let body = rule.action.params.get("body").cloned();
+                
+                let mut req = match method.to_uppercase().as_str() {
+                    "GET" => client.get(url),
+                    "PUT" => client.put(url),
+                    "DELETE" => client.delete(url),
+                    _ => client.post(url),
+                };
+                
+                if let Some(b) = body {
+                    req = req.json(&b);
+                }
+                
+                let response = req.send().await?;
+                tracing::info!("HTTP request for rule {}: {}", rule.name, response.status());
+            }
+        }
+        ActionType::SendSms | ActionType::PlaceCall => {
+            tracing::warn!("Action {:?} not yet implemented on Android", rule.action.action_type);
+        }
+    }
+    
+    Ok(())
+}
+
+/// Substitute {{variable}} placeholders in a template
+fn substitute_template(template: &str, data: &serde_json::Value) -> String {
+    let mut result = template.to_string();
+    
+    // Replace {{field}} with values from data
+    if let Some(obj) = data.as_object() {
+        for (key, value) in obj {
+            let placeholder = format!("{{{{{}}}}}", key);
+            let replacement = if let Some(s) = value.as_str() {
+                s.to_string()
+            } else if let Some(n) = value.as_number() {
+                n.to_string()
+            } else {
+                value.to_string()
+            };
+            result = result.replace(&placeholder, &replacement);
+        }
+    }
+    
+    result
 }
 
 /// `WhatsApp` verification query params
@@ -1159,6 +1354,318 @@ async fn handle_forget_memory(
             Json(serde_json::json!({"error": e.to_string()})),
         ),
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RULES HANDLERS
+// ══════════════════════════════════════════════════════════════════════════════
+
+#[derive(serde::Deserialize)]
+pub struct CreateRuleRequest {
+    pub name: String,
+    pub trigger_type: String,
+    #[serde(default)]
+    pub conditions: Vec<ConditionSpec>,
+    pub action_type: String,
+    pub action_params: serde_json::Value,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ConditionSpec {
+    pub condition_type: String,
+    pub value: String,
+    #[serde(default)]
+    pub negate: bool,
+}
+
+async fn handle_list_rules(State(state): State<AppState>) -> impl IntoResponse {
+    let db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    
+    let result = tokio::task::spawn_blocking(move || {
+        rules::storage::list_rules(&db_path)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(rules)) => {
+            let items: Vec<serde_json::Value> = rules
+                .iter()
+                .map(|r| {
+                    serde_json::json!({
+                        "id": r.id,
+                        "name": r.name,
+                        "enabled": r.enabled,
+                        "trigger_type": r.trigger.trigger_type,
+                        "conditions": r.trigger.conditions,
+                        "action_type": r.action.action_type,
+                        "action_params": r.action.params,
+                        "created_at": r.created_at,
+                        "updated_at": r.updated_at,
+                    })
+                })
+                .collect();
+            (StatusCode::OK, Json(serde_json::json!({"rules": items})))
+        }
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+async fn handle_create_rule(
+    State(state): State<AppState>,
+    body: Result<Json<CreateRuleRequest>, axum::extract::rejection::JsonRejection>,
+) -> impl IntoResponse {
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => {
+            let err = serde_json::json!({"error": format!("Invalid JSON: {}", e)});
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    let trigger_type = match parse_trigger_type(&req.trigger_type) {
+        Ok(t) => t,
+        Err(e) => {
+            let err = serde_json::json!({"error": e.to_string()});
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    let action_type = match parse_action_type(&req.action_type) {
+        Ok(a) => a,
+        Err(e) => {
+            let err = serde_json::json!({"error": e.to_string()});
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    let conditions = match parse_conditions(req.conditions) {
+        Ok(c) => c,
+        Err(e) => {
+            let err = serde_json::json!({"error": e.to_string()});
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    let rule = rules::Rule {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: req.name,
+        enabled: true,
+        trigger: rules::RuleTrigger {
+            trigger_type,
+            conditions,
+        },
+        action: rules::Action {
+            action_type,
+            params: req.action_params,
+        },
+        created_at: chrono::Utc::now(),
+        updated_at: chrono::Utc::now(),
+    };
+
+    let rule_id = rule.id.clone();
+    let db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    
+    let result = tokio::task::spawn_blocking(move || {
+        if let Some(parent) = db_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        rules::storage::add_rule(&db_path, &rule)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "created", "id": rule_id})),
+        ),
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct RuleIdPath {
+    pub id: String,
+}
+
+async fn handle_get_rule(
+    State(state): State<AppState>,
+    axum::extract::Path(RuleIdPath { id }): axum::extract::Path<RuleIdPath>,
+) -> impl IntoResponse {
+    let db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    let id_clone = id.clone();
+
+    let result = tokio::task::spawn_blocking(move || {
+        rules::storage::get_rule(&db_path, &id_clone)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(Some(rule))) => {
+            let json = serde_json::json!({
+                "id": rule.id,
+                "name": rule.name,
+                "enabled": rule.enabled,
+                "trigger_type": rule.trigger.trigger_type,
+                "conditions": rule.trigger.conditions,
+                "action_type": rule.action.action_type,
+                "action_params": rule.action.params,
+                "created_at": rule.created_at,
+                "updated_at": rule.updated_at,
+            });
+            (StatusCode::OK, Json(json))
+        }
+        Ok(Ok(None)) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": format!("Rule {} not found", id)})),
+        ),
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+async fn handle_delete_rule(
+    State(state): State<AppState>,
+    axum::extract::Path(RuleIdPath { id }): axum::extract::Path<RuleIdPath>,
+) -> impl IntoResponse {
+    let db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    let id_clone = id.clone();
+
+    let result = tokio::task::spawn_blocking(move || {
+        rules::storage::delete_rule(&db_path, &id_clone)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(true)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "deleted", "id": id})),
+        ),
+        Ok(Ok(false)) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": format!("Rule {} not found", id)})),
+        ),
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct ToggleRuleRequest {
+    pub enabled: bool,
+}
+
+async fn handle_toggle_rule(
+    State(state): State<AppState>,
+    axum::extract::Path(RuleIdPath { id }): axum::extract::Path<RuleIdPath>,
+    body: Result<Json<ToggleRuleRequest>, axum::extract::rejection::JsonRejection>,
+) -> impl IntoResponse {
+    let Json(req) = match body {
+        Ok(b) => b,
+        Err(e) => {
+            let err = serde_json::json!({"error": format!("Invalid JSON: {}", e)});
+            return (StatusCode::BAD_REQUEST, Json(err));
+        }
+    };
+
+    let db_path = state.config.workspace_dir.join("rules").join("rules.db");
+    let id_clone = id.clone();
+
+    let result = tokio::task::spawn_blocking(move || {
+        rules::storage::toggle_rule(&db_path, &id_clone, req.enabled)
+    })
+    .await;
+
+    match result {
+        Ok(Ok(true)) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "updated", "id": id, "enabled": req.enabled})),
+        ),
+        Ok(Ok(false)) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": format!("Rule {} not found", id)})),
+        ),
+        Ok(Err(e)) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Task error: {}", e)})),
+        ),
+    }
+}
+
+fn parse_trigger_type(s: &str) -> anyhow::Result<rules::TriggerType> {
+    match s.to_lowercase().as_str() {
+        "incoming_call" => Ok(rules::TriggerType::IncomingCall),
+        "incoming_sms" => Ok(rules::TriggerType::IncomingSms),
+        "geofence" => Ok(rules::TriggerType::Geofence),
+        "schedule" => Ok(rules::TriggerType::Schedule),
+        "webhook" => Ok(rules::TriggerType::Webhook),
+        _ => anyhow::bail!("Unknown trigger type: {}", s),
+    }
+}
+
+fn parse_action_type(s: &str) -> anyhow::Result<rules::ActionType> {
+    match s.to_lowercase().as_str() {
+        "telegram_notify" => Ok(rules::ActionType::TelegramNotify),
+        "send_sms" => Ok(rules::ActionType::SendSms),
+        "place_call" => Ok(rules::ActionType::PlaceCall),
+        "post_notification" => Ok(rules::ActionType::PostNotification),
+        "agent_prompt" => Ok(rules::ActionType::AgentPrompt),
+        "http_request" => Ok(rules::ActionType::HttpRequest),
+        "memory_store" => Ok(rules::ActionType::MemoryStore),
+        _ => anyhow::bail!("Unknown action type: {}", s),
+    }
+}
+
+fn parse_conditions(specs: Vec<ConditionSpec>) -> anyhow::Result<Vec<rules::Condition>> {
+    specs
+        .into_iter()
+        .map(|spec| {
+            let cond_type = match spec.condition_type.to_lowercase().as_str() {
+                "phone_number" => rules::ConditionType::PhoneNumber,
+                "sms_content" => rules::ConditionType::SmsContent,
+                "location" => rules::ConditionType::Location,
+                "time_of_day" => rules::ConditionType::TimeOfDay,
+                "day_of_week" => rules::ConditionType::DayOfWeek,
+                "custom_field" => rules::ConditionType::CustomField,
+                _ => anyhow::bail!("Unknown condition type: {}", spec.condition_type),
+            };
+
+            Ok(rules::Condition {
+                condition_type: cond_type,
+                value: spec.value,
+                negate: spec.negate,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

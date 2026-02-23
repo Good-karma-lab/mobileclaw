@@ -455,8 +455,6 @@ MobileClaw adds features not present in ZeroClaw:
 | Feature | Priority | Effort | Notes |
 |---------|----------|--------|-------|
 | **Trigger-Action Rules Engine** | High | 3-4 days | "If call from X then Telegram" - NOT IMPLEMENTED |
-| **HTTP Request Tool (Network)** | High | 1-2 days | Fails from emulator - needs network config |
-| **Memory Screen Navigation** | High | 1 day | Screen not loading properly |
 | **More Provider UI** | Medium | 2-3 days | Add 22+ provider configurations |
 | **Web Search Tool** | Medium | 1-2 days | Brave Search integration |
 | **Streaming Responses** | Medium | 2-3 days | SSE parsing not in mobile chat |

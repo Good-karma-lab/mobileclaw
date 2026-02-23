@@ -21,6 +21,7 @@ pub mod memory_forget;
 pub mod memory_recall;
 pub mod memory_store;
 pub mod pushover;
+pub mod rules;
 pub mod schedule;
 pub mod schema;
 pub mod screenshot;
@@ -51,6 +52,7 @@ pub use memory_forget::MemoryForgetTool;
 pub use memory_recall::MemoryRecallTool;
 pub use memory_store::MemoryStoreTool;
 pub use pushover::PushoverTool;
+pub use rules::RulesTool;
 pub use schedule::ScheduleTool;
 pub use schema::{CleaningStrategy, SchemaCleanr};
 pub use screenshot::ScreenshotTool;
@@ -201,6 +203,10 @@ pub fn all_tools_with_runtime(
     // Vision tools are always available
     tools.push(Box::new(ScreenshotTool::new(security.clone())));
     tools.push(Box::new(ImageInfoTool::new(security.clone())));
+
+    // Rules tool for automation rules
+    let rules_db_path = workspace_dir.join("rules").join("rules.db");
+    tools.push(Box::new(RulesTool::with_db_path(rules_db_path)));
 
     if let Some(key) = composio_key {
         if !key.is_empty() {
