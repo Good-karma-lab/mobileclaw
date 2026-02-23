@@ -1,9 +1,12 @@
 use super::traits::{Tool, ToolResult};
 use crate::security::SecurityPolicy;
 use async_trait::async_trait;
+use reqwest::Client;
 use serde_json::json;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+
+static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// HTTP request tool for API interactions.
 /// Supports GET, POST, PUT, DELETE methods with configurable security.
@@ -44,19 +47,18 @@ impl HttpRequestTool {
             anyhow::bail!("Only http:// and https:// URLs are allowed");
         }
 
-        if self.allowed_domains.is_empty() {
-            anyhow::bail!(
-                "HTTP request tool is enabled but no allowed_domains are configured. Add [http_request].allowed_domains in config.toml"
-            );
-        }
-
         let host = extract_host(url)?;
 
+        // Always block local/private hosts regardless of allowlist
         if is_private_or_local_host(&host) {
             anyhow::bail!("Blocked local/private host: {host}");
         }
 
-        if !host_matches_allowlist(&host, &self.allowed_domains) {
+        // If allowlist is empty or contains "*", allow all public domains
+        let allow_all = self.allowed_domains.is_empty() 
+            || self.allowed_domains.iter().any(|d| d == "*");
+        
+        if !allow_all && !host_matches_allowlist(&host, &self.allowed_domains) {
             anyhow::bail!("Host '{host}' is not in http_request.allowed_domains");
         }
 
@@ -114,21 +116,46 @@ impl HttpRequestTool {
         headers: Vec<(String, String)>,
         body: Option<&str>,
     ) -> anyhow::Result<reqwest::Response> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(self.timeout_secs))
-            .build()?;
+        // Use static client - same pattern as working Telegram/provider tools
+        let client = HTTP_CLIENT.get_or_init(|| {
+            Client::builder()
+                .timeout(Duration::from_secs(60))
+                .connect_timeout(Duration::from_secs(10))
+                .build()
+                .unwrap_or_else(|_| Client::new())
+        });
 
-        let mut request = client.request(method, url);
+        let response = match method {
+            reqwest::Method::GET => {
+                let mut req = client.get(url);
+                for (key, value) in &headers {
+                    req = req.header(key, value);
+                }
+                req.send().await?
+            }
+            reqwest::Method::POST => {
+                let mut req = client.post(url);
+                for (key, value) in &headers {
+                    req = req.header(key, value);
+                }
+                if let Some(b) = body {
+                    req = req.body(b.to_string());
+                }
+                req.send().await?
+            }
+            _ => {
+                let mut req = client.request(method, url);
+                for (key, value) in &headers {
+                    req = req.header(key, value);
+                }
+                if let Some(b) = body {
+                    req = req.body(b.to_string());
+                }
+                req.send().await?
+            }
+        };
 
-        for (key, value) in headers {
-            request = request.header(&key, &value);
-        }
-
-        if let Some(body_str) = body {
-            request = request.body(body_str.to_string());
-        }
-
-        Ok(request.send().await?)
+        Ok(response)
     }
 
     fn truncate_response(&self, text: &str) -> String {
