@@ -215,10 +215,18 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
 
     let daemon_config = config.clone();
     runtime.spawn(async move {
+        // Set up panic hook to log instead of abort
+        std::panic::set_hook(Box::new(|info| {
+            eprintln!("[ZeroClaw] PANIC: {:?}", info);
+        }));
+        
         if let Err(e) = crate::daemon::run(daemon_config, "127.0.0.1".into(), 8000).await {
             eprintln!("[ZeroClaw] Daemon exited: {}", e);
         }
     });
+
+    // Give the daemon a moment to start
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     let handle = AgentHandle { runtime, config };
 

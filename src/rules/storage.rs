@@ -11,7 +11,14 @@ use std::path::Path;
 
 /// Initialize the rules database and return a connection
 fn with_connection<T, P: AsRef<Path>>(path: P, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
-    let conn = Connection::open(path.as_ref())?;
+    let path = path.as_ref();
+    
+    // Ensure parent directory exists
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    
+    let conn = Connection::open(path)?;
     
     conn.execute_batch(
         r#"
