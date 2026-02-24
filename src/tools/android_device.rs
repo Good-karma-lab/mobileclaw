@@ -508,16 +508,16 @@ impl Tool for AndroidDeviceTool {
             }
             "get_location" => self.execute_bridge_call("get_location", json!({})).await,
             "take_photo" => {
-                let lens = args
-                    .get("lens")
-                    .and_then(serde_json::Value::as_str)
-                    .map_or("rear", |v| {
-                        if v.eq_ignore_ascii_case("front") {
-                            "front"
-                        } else {
-                            "rear"
-                        }
-                    });
+                let lens =
+                    args.get("lens")
+                        .and_then(serde_json::Value::as_str)
+                        .map_or("rear", |v| {
+                            if v.eq_ignore_ascii_case("front") {
+                                "front"
+                            } else {
+                                "rear"
+                            }
+                        });
                 self.execute_bridge_call("take_photo", json!({ "lens": lens }))
                     .await
             }
@@ -658,10 +658,22 @@ impl Tool for AndroidDeviceTool {
                     .await
             }
             "ui_automation_swipe" => {
-                let x1 = args.get("x1").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
-                let y1 = args.get("y1").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
-                let x2 = args.get("x2").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
-                let y2 = args.get("y2").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32;
+                let x1 = args
+                    .get("x1")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
+                let y1 = args
+                    .get("y1")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
+                let x2 = args
+                    .get("x2")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
+                let y2 = args
+                    .get("y2")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0) as u32;
                 let duration_ms = args
                     .get("duration_ms")
                     .and_then(serde_json::Value::as_u64)
@@ -800,8 +812,11 @@ impl Tool for AndroidDeviceTool {
                         error: Some("browser_close_session requires 'session_id'".into()),
                     });
                 }
-                self.execute_bridge_call("browser_close_session", json!({ "session_id": session_id }))
-                    .await
+                self.execute_bridge_call(
+                    "browser_close_session",
+                    json!({ "session_id": session_id }),
+                )
+                .await
             }
             // ── File System Access ───────────────────────────────────
             "request_all_files_access" => {

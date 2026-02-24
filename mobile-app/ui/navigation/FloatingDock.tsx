@@ -131,7 +131,8 @@ export function FloatingDock(props: BottomTabBarProps) {
                     : route.name;
 
               const onPress = () => {
-                if (!isFocused) {
+                const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+                if (!isFocused && !event.defaultPrevented) {
                   navigation.navigate(route.name);
                 }
               };

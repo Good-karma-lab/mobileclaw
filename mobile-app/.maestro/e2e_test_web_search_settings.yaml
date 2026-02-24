@@ -1,0 +1,40 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Web Search Settings UI
+# Tests that Web Search settings card is visible and accepts Brave API key
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 30000
+# Navigate to Settings tab using dock
+- tapOn:
+    id: dock-tab-settings
+- tapOn:
+    id: dock-tab-settings
+- extendedWaitUntil:
+    visible:
+      id: screen-settings
+    timeout: 10000
+# Scroll down to Web Search section (use scrollUntilVisible for reliability)
+- scrollUntilVisible:
+    element:
+      text: "Web Search"
+    direction: DOWN
+    speed: 40
+    timeout: 8000
+# Assert Brave API key input exists
+- scrollUntilVisible:
+    element:
+      id: brave-api-key-input
+    direction: DOWN
+    speed: 40
+    timeout: 5000
+# Enter test key
+- tapOn:
+    id: brave-api-key-input
+- eraseText: 30
+- inputText: "test-brave-key-12345"
+- waitForAnimationToEnd:
+    timeout: 2000

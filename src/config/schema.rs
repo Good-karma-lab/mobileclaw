@@ -80,6 +80,9 @@ pub struct Config {
     pub http_request: HttpRequestConfig,
 
     #[serde(default)]
+    pub web_search: WebSearchConfig,
+
+    #[serde(default)]
     pub identity: IdentityConfig,
 
     #[serde(default)]
@@ -708,6 +711,25 @@ fn default_http_max_response_size() -> usize {
 
 fn default_http_timeout_secs() -> u64 {
     30
+}
+
+// ── Web Search ───────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WebSearchConfig {
+    /// Enable `web_search` tool for web search
+    #[serde(default)]
+    pub enabled: bool,
+    /// Brave Search API key (optional - falls back to DuckDuckGo if not set)
+    #[serde(default)]
+    pub brave_api_key: Option<String>,
+    /// Number of results to return (default: 5, max: 10)
+    #[serde(default = "default_web_search_count")]
+    pub default_count: usize,
+}
+
+fn default_web_search_count() -> usize {
+    5
 }
 
 // ── Memory ───────────────────────────────────────────────────
@@ -1851,6 +1873,7 @@ impl Default for Config {
             secrets: SecretsConfig::default(),
             browser: BrowserConfig::default(),
             http_request: HttpRequestConfig::default(),
+            web_search: WebSearchConfig::default(),
             identity: IdentityConfig::default(),
             cost: CostConfig::default(),
             peripherals: PeripheralsConfig::default(),

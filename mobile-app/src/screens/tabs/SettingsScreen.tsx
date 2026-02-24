@@ -33,6 +33,20 @@ const MODELS_BY_PROVIDER: Record<ProviderId, string[]> = {
   anthropic: ["claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"],
   gemini: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash-exp"],
   copilot: ["gpt-4o-mini", "gpt-4.1", "claude-3-5-sonnet"],
+  mistral: ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"],
+  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  xai: ["grok-beta", "grok-vision-beta"],
+  groq: ["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"],
+  together: ["meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
+  fireworks: ["accounts/fireworks/models/llama-v3p1-70b-instruct"],
+  perplexity: ["llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-small-128k-online"],
+  cohere: ["command-r-plus", "command-r"],
+  minimax: ["MiniMax-Text-01", "abab6.5s-chat"],
+  venice: ["llama-3.3-70b", "mistral-31-24b"],
+  moonshot: ["moonshot-v1-8k", "moonshot-v1-32k"],
+  glm: ["glm-4", "glm-4-air"],
+  qwen: ["qwen-max", "qwen-plus", "qwen-turbo"],
+  "lm-studio": ["local-model"],
 };
 
 const PROVIDERS: ProviderPreset[] = [
@@ -42,6 +56,20 @@ const PROVIDERS: ProviderPreset[] = [
   { id: "anthropic", title: "Anthropic", endpoint: "https://api.anthropic.com/v1", model: "claude-3-5-sonnet-latest", supportsOauthToken: true, docsHint: "Anthropic key or supported OAuth token." },
   { id: "gemini", title: "Google Gemini", endpoint: "https://generativelanguage.googleapis.com/v1beta", model: "gemini-1.5-pro", supportsOauthToken: true, docsHint: "Gemini API key or OAuth token." },
   { id: "copilot", title: "GitHub Copilot", endpoint: "https://api.githubcopilot.com", model: "gpt-4o-mini", supportsOauthToken: true, docsHint: "Token for Copilot-enabled account." },
+  { id: "mistral", title: "Mistral AI", endpoint: "https://api.mistral.ai/v1", model: "mistral-large-latest", supportsOauthToken: false, docsHint: "Mistral API key from console.mistral.ai." },
+  { id: "deepseek", title: "DeepSeek", endpoint: "https://api.deepseek.com", model: "deepseek-chat", supportsOauthToken: false, docsHint: "DeepSeek API key from platform.deepseek.com." },
+  { id: "xai", title: "xAI / Grok", endpoint: "https://api.x.ai", model: "grok-beta", supportsOauthToken: false, docsHint: "xAI API key from console.x.ai." },
+  { id: "groq", title: "Groq", endpoint: "https://api.groq.com/openai", model: "llama-3.1-70b-versatile", supportsOauthToken: false, docsHint: "Groq API key from console.groq.com." },
+  { id: "together", title: "Together AI", endpoint: "https://api.together.xyz", model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", supportsOauthToken: false, docsHint: "Together API key from api.together.ai." },
+  { id: "fireworks", title: "Fireworks AI", endpoint: "https://api.fireworks.ai/inference/v1", model: "accounts/fireworks/models/llama-v3p1-70b-instruct", supportsOauthToken: false, docsHint: "Fireworks API key from fireworks.ai." },
+  { id: "perplexity", title: "Perplexity", endpoint: "https://api.perplexity.ai", model: "llama-3.1-sonar-large-128k-online", supportsOauthToken: false, docsHint: "Perplexity API key from perplexity.ai/settings." },
+  { id: "cohere", title: "Cohere", endpoint: "https://api.cohere.com/compatibility", model: "command-r-plus", supportsOauthToken: false, docsHint: "Cohere API key from dashboard.cohere.com." },
+  { id: "minimax", title: "MiniMax", endpoint: "https://api.minimaxi.com/v1", model: "MiniMax-Text-01", supportsOauthToken: false, docsHint: "MiniMax API key from platform.minimaxi.com." },
+  { id: "venice", title: "Venice AI", endpoint: "https://api.venice.ai", model: "llama-3.3-70b", supportsOauthToken: false, docsHint: "Venice API key from venice.ai." },
+  { id: "moonshot", title: "Moonshot / Kimi", endpoint: "https://api.moonshot.cn/v1", model: "moonshot-v1-8k", supportsOauthToken: false, docsHint: "Moonshot API key from platform.moonshot.cn." },
+  { id: "glm", title: "GLM / Zhipu AI", endpoint: "https://open.bigmodel.cn/api/paas/v4", model: "glm-4", supportsOauthToken: false, docsHint: "Zhipu AI API key from bigmodel.cn." },
+  { id: "qwen", title: "Qwen / Dashscope", endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-max", supportsOauthToken: false, docsHint: "Alibaba Cloud API key from dashscope.aliyuncs.com." },
+  { id: "lm-studio", title: "LM Studio (local)", endpoint: "http://10.0.2.2:1234/v1", model: "local-model", supportsOauthToken: false, docsHint: "LM Studio running locally on host machine." },
 ];
 
 function GlassCard({ children }: { children: React.ReactNode }) {
@@ -220,9 +248,20 @@ export function SettingsScreen() {
       <GlassCard>
         <Text variant="title">Advanced</Text>
         <Pressable
+          testID="open-memory-screen"
+          onPress={() => {
+            const root = navigation.getParent();
+            if (root) { root.navigate("Memory"); return; }
+            navigation.navigate("Memory");
+          }}
+          style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.stroke.subtle, backgroundColor: theme.colors.surface.panel, marginBottom: theme.spacing.sm }}
+        >
+          <Text variant="bodyMedium">Open memory manager</Text>
+        </Pressable>
+        <Pressable
           testID="open-security-screen"
           onPress={() => {
-            const root = navigation.getParent("root-stack");
+            const root = navigation.getParent();
             if (root) { root.navigate("Security"); return; }
             navigation.navigate("Security");
           }}
@@ -236,6 +275,18 @@ export function SettingsScreen() {
         <Text variant="title">Voice Mode</Text>
         <Text variant="muted">Deepgram API key is required for chat voice transcription.</Text>
         <LabeledInput label="Deepgram API key" testID="deepgram-key-input" value={form.deepgramApiKey} onChangeText={(value) => setForm((prev) => ({ ...prev, deepgramApiKey: value }))} secureTextEntry />
+      </GlassCard>
+
+      <GlassCard>
+        <Text variant="title">Web Search</Text>
+        <Text variant="muted">Brave Search API key enables rich web search results. Falls back to DuckDuckGo if not set.</Text>
+        <LabeledInput
+          label="Brave Search API key"
+          testID="brave-api-key-input"
+          value={form.braveApiKey}
+          onChangeText={(value) => setForm((prev) => ({ ...prev, braveApiKey: value }))}
+          secureTextEntry
+        />
       </GlassCard>
 
       <Modal animationType="slide" transparent visible={providerPickerOpen} onRequestClose={() => setProviderPickerOpen(false)}>

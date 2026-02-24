@@ -261,7 +261,8 @@ export async function runAgentChat(
     case "gemini":
       return sendGeminiMessages(config, messages);
     default:
-      throw new Error(`Unsupported provider: ${provider}`);
+      // All unlisted providers use OpenAI-compatible API with Bearer auth
+      return sendOpenAiCompatibleMessages(config, messages);
   }
 }
 
@@ -342,6 +343,39 @@ export async function synthesizeSpeechWithDeepgram(text: string, apiKey: string)
   return outputUri;
 }
 
+export async function* runZeroClawAgentStream(
+  message: string,
+  gatewayUrl: string,
+): AsyncGenerator<string> {
+  const res = await fetch(`${gatewayUrl}/agent/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok || !res.body) throw new Error(`Gateway ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6).trim();
+        if (data && data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data) as { delta?: string };
+            if (parsed.delta) yield parsed.delta;
+          } catch { /* skip malformed frames */ }
+        }
+      }
+    }
+  }
+}
+
 export async function runZeroClawAgent(
   message: string,
   config: AgentRuntimeConfig,
@@ -396,4 +430,77 @@ export async function fetchOpenRouterModels(apiKey?: string): Promise<string[]> 
     .sort((a, b) => a.localeCompare(b));
 
   return Array.from(new Set(ids));
+}
+
+export type MemoryEntry = {
+  id: string;
+  key: string;
+  content: string;
+  category: string;
+  timestamp: string;
+  score?: number;
+};
+
+export async function fetchMemories(
+  platformUrl: string,
+  category?: string,
+): Promise<MemoryEntry[]> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const url = category
+    ? `${gatewayUrl}/memory?category=${encodeURIComponent(category)}`
+    : `${gatewayUrl}/memory`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory list error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { memories?: MemoryEntry[] };
+  return data.memories || [];
+}
+
+export async function recallMemories(
+  platformUrl: string,
+  query: string,
+  limit: number = 10,
+): Promise<MemoryEntry[]> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const url = `${gatewayUrl}/memory/recall?query=${encodeURIComponent(query)}&limit=${limit}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory recall error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { memories?: MemoryEntry[] };
+  return data.memories || [];
+}
+
+export async function fetchMemoryCount(platformUrl: string): Promise<number> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const res = await fetch(`${gatewayUrl}/memory/count`);
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    throw new Error(data?.error || `Memory count error: ${res.status}`);
+  }
+
+  const data = (await readJsonResponse(res)) as { count?: number };
+  return data.count || 0;
+}
+
+export async function forgetMemory(platformUrl: string, key: string): Promise<boolean> {
+  const gatewayUrl = platformUrl.trim() || "http://127.0.0.1:8000";
+  const res = await fetch(`${gatewayUrl}/memory?key=${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const data = await readJsonResponse(res);
+    if (res.status === 404) return false;
+    throw new Error(data?.error || `Memory forget error: ${res.status}`);
+  }
+
+  return true;
 }

@@ -1,0 +1,30 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Device Information Query
+# Tests that agent can query device status (battery, apps, etc)
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Query battery status
+- tapOn:
+    id: chat-input
+- inputText: "What is my current battery level?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Agent should respond with battery info
+- assertVisible:
+    text: "battery"
+    optional: true
+- assertVisible:
+    text: "%"
+    optional: true

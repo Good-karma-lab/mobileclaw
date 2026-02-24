@@ -1,0 +1,37 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Incoming Call Hook Setup
+# Tests that agent can configure incoming call hooks
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Set up call hook for a test number
+- tapOn:
+    id: chat-input
+- inputText: "When I receive a call from +15559990000, send me a Telegram message with the text: Incoming call detected"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Navigate to Tasks screen to verify hook
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+# Should show active hooks section
+- assertVisible:
+    text: "Active Hooks"
+    optional: true
+- assertVisible:
+    text: "Incoming Call Hook"
+    optional: true

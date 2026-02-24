@@ -58,6 +58,7 @@ mod observability;
 mod onboard;
 mod peripherals;
 mod providers;
+mod rules;
 mod runtime;
 mod security;
 mod service;

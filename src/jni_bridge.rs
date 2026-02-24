@@ -26,7 +26,6 @@ struct AgentHandle {
     config: Config,
 }
 
-
 /// Initialize the agent handle registry
 fn init_handles() {
     let mut handles = AGENT_HANDLES.lock().unwrap();
@@ -57,6 +56,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     discord_bot_token: JString,
     slack_bot_token: JString,
     composio_api_key: JString,
+    brave_api_key: JString,
 ) -> jlong {
     init_handles();
 
@@ -64,18 +64,40 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     let config_path_str: String = match env.get_string(&config_path) {
         Ok(s) => s.into(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Invalid config path: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Invalid config path: {}", e),
+            );
             return 0;
         }
     };
 
     let api_key_str: String = env.get_string(&api_key).map(Into::into).unwrap_or_default();
     let model_str: String = env.get_string(&model).map(Into::into).unwrap_or_default();
-    let telegram_token_str: String = env.get_string(&telegram_token).map(Into::into).unwrap_or_default();
-    let telegram_chat_id_str: String = env.get_string(&telegram_chat_id).map(Into::into).unwrap_or_default();
-    let discord_bot_token_str: String = env.get_string(&discord_bot_token).map(Into::into).unwrap_or_default();
-    let slack_bot_token_str: String = env.get_string(&slack_bot_token).map(Into::into).unwrap_or_default();
-    let composio_api_key_str: String = env.get_string(&composio_api_key).map(Into::into).unwrap_or_default();
+    let telegram_token_str: String = env
+        .get_string(&telegram_token)
+        .map(Into::into)
+        .unwrap_or_default();
+    let telegram_chat_id_str: String = env
+        .get_string(&telegram_chat_id)
+        .map(Into::into)
+        .unwrap_or_default();
+    let discord_bot_token_str: String = env
+        .get_string(&discord_bot_token)
+        .map(Into::into)
+        .unwrap_or_default();
+    let slack_bot_token_str: String = env
+        .get_string(&slack_bot_token)
+        .map(Into::into)
+        .unwrap_or_default();
+    let composio_api_key_str: String = env
+        .get_string(&composio_api_key)
+        .map(Into::into)
+        .unwrap_or_default();
+    let brave_api_key_str: String = env
+        .get_string(&brave_api_key)
+        .map(Into::into)
+        .unwrap_or_default();
 
     // Set ZEROCLAW_WORKSPACE environment variable for Android
     // This points to the app's files directory where we can write
@@ -94,8 +116,16 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     };
 
     // Apply Android overrides from caller
-    config.api_key = if api_key_str.is_empty() { config.api_key } else { Some(api_key_str) };
-    config.default_model = if model_str.is_empty() { config.default_model } else { Some(model_str) };
+    config.api_key = if api_key_str.is_empty() {
+        config.api_key
+    } else {
+        Some(api_key_str)
+    };
+    config.default_model = if model_str.is_empty() {
+        config.default_model
+    } else {
+        Some(model_str)
+    };
     if config.default_provider.is_none() {
         config.default_provider = Some("openrouter".into());
     }
@@ -162,32 +192,17 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         config.composio.enabled = true;
         config.composio.api_key = Some(composio_api_key_str);
     }
+    // Brave Search
+    if !brave_api_key_str.is_empty() {
+        config.web_search.brave_api_key = Some(brave_api_key_str);
+    }
 
     // Enable http_request tool — agent needs to call external APIs and fetch web content.
     // On Android (user's personal device) public internet access is expected.
     // Private/local hosts are still blocked by the tool's built-in guard.
     config.http_request.enabled = true;
-    if config.http_request.allowed_domains.is_empty() {
-        // Allow any public internet domain (subdomain matching: "." prefix).
-        // The tool already blocks 127.x, 10.x, 192.168.x, localhost, etc.
-        config.http_request.allowed_domains = vec![
-            "api.telegram.org".into(),
-            "api.openai.com".into(),
-            "api.anthropic.com".into(),
-            "openrouter.ai".into(),
-            "github.com".into(),
-            "api.github.com".into(),
-            "httpbin.org".into(),
-            "en.wikipedia.org".into(),
-            "wttr.in".into(),
-            "api.weather.gov".into(),
-            "discord.com".into(),
-            "slack.com".into(),
-            "api.slack.com".into(),
-            "composio.dev".into(),
-            "api.composio.dev".into(),
-        ];
-    }
+    // Use "*" to allow all public internet domains (local/private already blocked)
+    config.http_request.allowed_domains = vec!["*".into()];
 
     // Persist overridden config to disk so the agent reads correct capability values
     if let Err(e) = config.save() {
@@ -209,10 +224,18 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
 
     let daemon_config = config.clone();
     runtime.spawn(async move {
+        // Set up panic hook to log instead of abort
+        std::panic::set_hook(Box::new(|info| {
+            eprintln!("[ZeroClaw] PANIC: {:?}", info);
+        }));
+
         if let Err(e) = crate::daemon::run(daemon_config, "127.0.0.1".into(), 8000).await {
             eprintln!("[ZeroClaw] Daemon exited: {}", e);
         }
     });
+
+    // Give the daemon a moment to start
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     let handle = AgentHandle { runtime, config };
 
@@ -251,7 +274,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_processMessage(
     let message_str: String = match env.get_string(&message) {
         Ok(s) => s.into(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Invalid message: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Invalid message: {}", e),
+            );
             return JObject::null().into_raw();
         }
     };
@@ -269,7 +295,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_processMessage(
     match env.new_string(&response) {
         Ok(s) => s.into_raw(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Failed to create response string: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Failed to create response string: {}", e),
+            );
             JObject::null().into_raw()
         }
     }
@@ -285,7 +314,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_isHealthy(
     let handles = AGENT_HANDLES.lock().unwrap();
     match handles.as_ref().and_then(|m| m.get(&handle_id)) {
         Some(_) => 1, // true
-        None => 0,     // false
+        None => 0,    // false
     }
 }
 
@@ -322,14 +351,16 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_getGatewayUrl(
 
     let url = format!(
         "http://{}:{}",
-        &handle.config.gateway.host,
-        handle.config.gateway.port
+        &handle.config.gateway.host, handle.config.gateway.port
     );
 
     match env.new_string(&url) {
         Ok(s) => s.into_raw(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Failed to create URL string: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Failed to create URL string: {}", e),
+            );
             JObject::null().into_raw()
         }
     }
@@ -362,7 +393,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_executeTool(
     let tool_name_str: String = match env.get_string(&tool_name) {
         Ok(s) => s.into(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Invalid tool name: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Invalid tool name: {}", e),
+            );
             return JObject::null().into_raw();
         }
     };
@@ -370,14 +404,20 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_executeTool(
     let params_str: String = match env.get_string(&params_json) {
         Ok(s) => s.into(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Invalid params: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Invalid params: {}", e),
+            );
             return JObject::null().into_raw();
         }
     };
 
     // For now, we'll construct a message to the agent asking it to execute the tool
     // In future, could add direct tool execution API
-    let message = format!("Execute tool: {} with params: {}", tool_name_str, params_str);
+    let message = format!(
+        "Execute tool: {} with params: {}",
+        tool_name_str, params_str
+    );
 
     let config = handle.config.clone();
     let result = handle.runtime.block_on(async move {
@@ -398,7 +438,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_executeTool(
     match env.new_string(&result_str) {
         Ok(s) => s.into_raw(),
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("Failed to create result string: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("Failed to create result string: {}", e),
+            );
             JObject::null().into_raw()
         }
     }

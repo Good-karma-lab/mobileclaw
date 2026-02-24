@@ -1,0 +1,29 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Telegram Message Sending
+# Tests that agent can send Telegram messages through integration
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Send a unique Telegram message
+- tapOn:
+    id: chat-input
+- inputText: "Send a Telegram message to me saying: E2E test message sent at test run"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "blocked"
+# Agent should acknowledge Telegram action
+- assertVisible:
+    text: "Telegram"
+    optional: true

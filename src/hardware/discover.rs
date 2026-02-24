@@ -1,10 +1,10 @@
 //! USB device discovery — enumerate devices and enrich with board registry.
 
+#[cfg(all(feature = "hardware", not(target_os = "android")))]
+use super::registry;
 use anyhow::Result;
 #[cfg(all(feature = "hardware", not(target_os = "android")))]
 use nusb::MaybeFuture;
-#[cfg(all(feature = "hardware", not(target_os = "android")))]
-use super::registry;
 
 /// Information about a discovered USB device.
 #[derive(Debug, Clone)]

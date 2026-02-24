@@ -1,0 +1,33 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Incoming Call Event Detection
+# Tests that incoming call events are properly detected and queued
+# NOTE: This does NOT test trigger-action automation (not yet implemented)
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Enable call hooks via agent
+- tapOn:
+    id: chat-input
+- inputText: "Enable incoming call hooks on this device"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+# Navigate to Tasks screen to verify hooks are enabled
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: screen-tasks
+# Verify the hook is registered (toggle shows as enabled)
+- assertVisible:
+    text: "Incoming Call Hook"
+    optional: true

@@ -21,12 +21,14 @@ pub mod memory_forget;
 pub mod memory_recall;
 pub mod memory_store;
 pub mod pushover;
+pub mod rules;
 pub mod schedule;
 pub mod schema;
 pub mod screenshot;
 pub mod shell;
 pub mod telegram_notify;
 pub mod traits;
+pub mod web_search;
 
 pub use android_device::AndroidDeviceTool;
 pub use browser::{BrowserTool, ComputerUseConfig};
@@ -51,14 +53,16 @@ pub use memory_forget::MemoryForgetTool;
 pub use memory_recall::MemoryRecallTool;
 pub use memory_store::MemoryStoreTool;
 pub use pushover::PushoverTool;
+pub use rules::RulesTool;
 pub use schedule::ScheduleTool;
-pub use telegram_notify::TelegramNotifyTool;
 pub use schema::{CleaningStrategy, SchemaCleanr};
 pub use screenshot::ScreenshotTool;
 pub use shell::ShellTool;
+pub use telegram_notify::TelegramNotifyTool;
 pub use traits::Tool;
 #[allow(unused_imports)]
 pub use traits::{ToolResult, ToolSpec};
+pub use web_search::WebSearchTool;
 
 use crate::config::{Config, DelegateAgentConfig};
 use crate::memory::Memory;
@@ -201,6 +205,14 @@ pub fn all_tools_with_runtime(
     // Vision tools are always available
     tools.push(Box::new(ScreenshotTool::new(security.clone())));
     tools.push(Box::new(ImageInfoTool::new(security.clone())));
+
+    // Rules tool for automation rules
+    let rules_db_path = workspace_dir.join("rules").join("rules.db");
+    tools.push(Box::new(RulesTool::with_db_path(rules_db_path)));
+
+    // Web search tool (uses Brave Search API if configured, falls back to DuckDuckGo)
+    let web_search_api_key = root_config.web_search.brave_api_key.clone();
+    tools.push(Box::new(WebSearchTool::new(web_search_api_key)));
 
     if let Some(key) = composio_key {
         if !key.is_empty() {

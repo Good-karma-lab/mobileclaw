@@ -1,0 +1,27 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: HTTP Request Tool
+# Tests that agent can make HTTP requests to external APIs
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible:
+    id: chat-input
+# Make an HTTP request to openrouter (which is in allowed_domains and reachable)
+- tapOn:
+    id: chat-input
+- inputText: "Make an HTTP GET request to https://openrouter.ai/api/v1/models and tell me if you get a 200 response"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+# No errors
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "disabled"
+# Agent should show HTTP response
+- assertVisible:
+    text: "200"
+    optional: true

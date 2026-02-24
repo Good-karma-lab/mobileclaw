@@ -8,11 +8,23 @@ appId: com.mobileclaw.app
 - waitForAnimationToEnd:
     timeout: 20000
 
+# Ensure we're on Chat tab first
+- tapOn:
+    id: dock-tab-chat
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 10000
+
 # Navigate to Activity screen to check daemon status
 - tapOn:
     id: dock-tab-activity
-- assertVisible:
-    id: screen-activity
+- tapOn:
+    id: dock-tab-activity
+- extendedWaitUntil:
+    visible:
+      id: screen-activity
+    timeout: 15000
 
 # Verify activity screen loaded
 - assertVisible:
@@ -30,6 +42,10 @@ appId: com.mobileclaw.app
 # Return to chat
 - tapOn:
     id: dock-tab-chat
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 10000
 
 # Test basic message functionality
 - tapOn:

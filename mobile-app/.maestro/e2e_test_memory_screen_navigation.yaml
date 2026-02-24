@@ -1,0 +1,25 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Memory Screen Navigation
+# Tests that user can navigate to Memory screen from Settings
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+# Navigate to Settings tab
+- tapOn:
+    text: "Settings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Agent Config"
+# Find and tap memory manager button
+- tapOn:
+    id: open-memory-screen
+- waitForAnimationToEnd:
+    timeout: 5000
+# Memory screen should be visible
+- assertVisible:
+    text: "Memory"
+- assertVisible:
+    id: memory-search

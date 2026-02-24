@@ -1,0 +1,42 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Memory Screen Navigation
+# Tests that user can navigate to Memory screen from Settings
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 30000
+# Ensure we are on Chat tab first
+- tapOn:
+    id: dock-tab-chat
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 10000
+# Navigate to Settings tab
+- tapOn:
+    id: dock-tab-settings
+- extendedWaitUntil:
+    visible:
+      id: screen-settings
+    timeout: 10000
+# Scroll to reveal Advanced section and tap open-memory-screen
+- swipe:
+    direction: UP
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    id: open-memory-screen
+# Memory screen should show
+- extendedWaitUntil:
+    visible:
+      id: screen-memory
+    timeout: 15000
+# Search input may be below the fold if memories exist; scroll to find it
+- extendedWaitUntil:
+    visible:
+      id: memory-search
+    timeout: 10000

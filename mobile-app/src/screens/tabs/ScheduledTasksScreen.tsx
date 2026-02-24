@@ -199,7 +199,7 @@ export function ScheduledTasksScreen() {
                     backgroundColor: healthColor,
                   }}
                 />
-                <Text variant="caption" style={{ color: healthColor }}>
+                <Text variant="muted" style={{ color: healthColor, fontSize: 12 }}>
                   {healthLabel}
                 </Text>
               </View>
@@ -212,7 +212,7 @@ export function ScheduledTasksScreen() {
 
         {/* Active hooks */}
         <View>
-          <Text variant="heading" style={{ marginBottom: theme.spacing.sm }}>
+          <Text variant="title" style={{ marginBottom: theme.spacing.sm }}>
             Active Hooks
           </Text>
           <View
@@ -251,7 +251,7 @@ export function ScheduledTasksScreen() {
               marginBottom: theme.spacing.sm,
             }}
           >
-            <Text variant="heading">Scheduled Tasks</Text>
+            <Text variant="title">Scheduled Tasks</Text>
             <Pressable
               onPress={() => fetchCronJobs(true)}
               style={{
@@ -263,7 +263,7 @@ export function ScheduledTasksScreen() {
                 borderColor: theme.colors.stroke.subtle,
               }}
             >
-              <Text variant="caption">{cronLoading ? "Loading…" : "Refresh"}</Text>
+              <Text variant="muted" style={{ fontSize: 12 }}>{cronLoading ? "Loading…" : "Refresh"}</Text>
             </Pressable>
           </View>
           {cronJobs.length === 0 ? (
@@ -297,7 +297,7 @@ export function ScheduledTasksScreen() {
                     <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
                       <View style={{ flex: 1, marginRight: 8 }}>
                         <Text variant="label">{job.name ?? job.id}</Text>
-                        <Text variant="caption" style={{ color: theme.colors.base.textMuted, marginTop: 2 }}>
+                        <Text variant="muted" style={{ color: theme.colors.base.textMuted, marginTop: 2, fontSize: 12 }}>
                           {job.expression}
                         </Text>
                         {(job.prompt ?? job.command) ? (
@@ -306,16 +306,17 @@ export function ScheduledTasksScreen() {
                           </Text>
                         ) : null}
                         {job.next_run ? (
-                          <Text variant="caption" style={{ color: theme.colors.base.textMuted, marginTop: 4 }}>
+                          <Text variant="muted" style={{ color: theme.colors.base.textMuted, marginTop: 4, fontSize: 12 }}>
                             Next: {new Date(job.next_run).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         ) : null}
                         {job.last_status ? (
                           <Text
-                            variant="caption"
+                            variant="muted"
                             style={{
                               color: job.last_status === "ok" ? theme.colors.base.primary : "#e05252",
                               marginTop: 2,
+                              fontSize: 12,
                             }}
                           >
                             Last: {job.last_status}
@@ -333,7 +334,7 @@ export function ScheduledTasksScreen() {
                           borderColor: "#e05252",
                         }}
                       >
-                        <Text variant="caption" style={{ color: "#e05252" }}>Delete</Text>
+                        <Text variant="muted" style={{ color: "#e05252", fontSize: 12 }}>Delete</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -353,7 +354,7 @@ export function ScheduledTasksScreen() {
               marginBottom: theme.spacing.sm,
             }}
           >
-            <Text variant="heading">Recent Agent Tasks</Text>
+            <Text variant="title">Recent Agent Tasks</Text>
             <Pressable
               onPress={() => { void refresh(); }}
               style={{
@@ -365,7 +366,7 @@ export function ScheduledTasksScreen() {
                 borderColor: theme.colors.stroke.subtle,
               }}
             >
-              <Text variant="caption">Refresh</Text>
+              <Text variant="muted" style={{ fontSize: 12 }}>Refresh</Text>
             </Pressable>
           </View>
           {runtimeTasks.length === 0 ? (
@@ -396,7 +397,7 @@ export function ScheduledTasksScreen() {
                   <View style={{ padding: theme.spacing.md }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <Text variant="label" style={{ flex: 1 }}>{item.title}</Text>
-                      <Text variant="caption" style={{ color: theme.colors.base.textMuted, marginLeft: 8 }}>
+                      <Text variant="muted" style={{ color: theme.colors.base.textMuted, marginLeft: 8, fontSize: 12 }}>
                         {new Date(item.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </Text>
                     </View>
@@ -440,8 +441,8 @@ function HookRow({
         }}
       >
         <Text
-          variant="caption"
-          style={{ color: enabled ? "#fff" : theme.colors.base.textMuted }}
+          variant="muted"
+          style={{ color: enabled ? "#fff" : theme.colors.base.textMuted, fontSize: 12 }}
         >
           {enabled ? "On" : "Off"}
         </Text>

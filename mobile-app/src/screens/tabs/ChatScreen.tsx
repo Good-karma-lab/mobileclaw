@@ -16,7 +16,7 @@ import { appendChat, loadChat, sanitizeAssistantArtifacts, type ChatMessage } fr
 import { addActivity } from "../../state/activity";
 import { loadAgentConfig } from "../../state/mobileclaw";
 import { runAgentTurnWithGateway } from "../../runtime/session";
-import { synthesizeSpeechWithDeepgram } from "../../api/mobileclaw";
+import { synthesizeSpeechWithDeepgram, runZeroClawAgentStream } from "../../api/mobileclaw";
 import { useLayoutContext } from "../../state/layout";
 
 const BUBBLE_USER = SlideInRight.duration(280).springify().damping(18).stiffness(180);
@@ -258,44 +258,55 @@ export function ChatScreen() {
       const runNonce = runNonceRef.current + 1;
       runNonceRef.current = runNonce;
       setBusy(true);
+
+      const assistantMsgId = `a_${Date.now()}_${Math.random()}`;
+      const assistantMsg: ChatMessage = {
+        id: assistantMsgId,
+        role: "assistant",
+        text: "",
+        ts: Date.now(),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
       try {
-        const result = await runTurnWithTimeout(userMsg.text);
-        if (runNonceRef.current !== runNonce) return;
+        const runtime = await loadAgentConfig();
+        const gatewayUrl = runtime.platformUrl?.trim() || "http://127.0.0.1:8000";
+        let fullText = "";
 
-        const assistantMsg: ChatMessage = {
-          id: `a_${Date.now()}_${Math.random()}`,
-          role: "assistant",
-          text: sanitizeAssistantArtifacts(result.assistantText || "(empty response)"),
-          ts: Date.now(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        await appendChat(assistantMsg);
-        await addActivity({ kind: "action", source: "chat", title: "Agent response", detail: assistantMsg.text.slice(0, 120) });
-
-        if (voiceText) {
-          await speakAssistantReply(assistantMsg.text);
+        try {
+          for await (const chunk of runZeroClawAgentStream(userMsg.text, gatewayUrl)) {
+            if (runNonceRef.current !== runNonce) return;
+            fullText += chunk;
+            setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, text: fullText } : m));
+          }
+        } catch {
+          // Streaming failed — fall back to non-streaming
+          if (runNonceRef.current !== runNonce) return;
+          const result = await runTurnWithTimeout(userMsg.text);
+          if (runNonceRef.current !== runNonce) return;
+          fullText = result.assistantText || "(empty response)";
+          for (const event of result.toolEvents) {
+            await addActivity({ kind: "action", source: "chat", title: `Tool ${event.status}`, detail: `${event.tool}: ${event.detail}` });
+          }
         }
 
-        for (const event of result.toolEvents) {
-          await addActivity({
-            kind: "action",
-            source: "chat",
-            title: `Tool ${event.status}`,
-            detail: `${event.tool}: ${event.detail}`,
-          });
+        if (runNonceRef.current !== runNonce) return;
+
+        const finalText = sanitizeAssistantArtifacts(fullText || "(empty response)");
+        setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, text: finalText } : m));
+        await appendChat({ ...assistantMsg, text: finalText });
+        await addActivity({ kind: "action", source: "chat", title: "Agent response", detail: finalText.slice(0, 120) });
+
+        if (voiceText) {
+          await speakAssistantReply(finalText);
         }
       } catch (error) {
         if (runNonceRef.current !== runNonce) return;
         const detail = error instanceof Error ? error.message : "Unknown error";
         toast.show(detail);
-        const assistantMsg: ChatMessage = {
-          id: `a_err_${Date.now()}_${Math.random()}`,
-          role: "assistant",
-          text: sanitizeAssistantArtifacts(`Agent error: ${detail}. Please retry your request.`),
-          ts: Date.now(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        await appendChat(assistantMsg);
+        const errText = sanitizeAssistantArtifacts(`Agent error: ${detail}. Please retry your request.`);
+        setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, text: errText } : m));
+        await appendChat({ ...assistantMsg, text: errText });
         await addActivity({ kind: "log", source: "chat", title: "Agent error", detail });
       } finally {
         if (runNonceRef.current === runNonce) {

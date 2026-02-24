@@ -88,6 +88,7 @@ export default function App() {
                 discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
                 slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
                 composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
+                braveApiKey: agentCfg.braveApiKey || '',
               });
               console.log("[app] daemon start requested, waiting for ready...");
 

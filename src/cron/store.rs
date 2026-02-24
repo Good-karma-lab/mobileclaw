@@ -457,7 +457,10 @@ fn add_column_if_missing(conn: &Connection, name: &str, sql_type: &str) -> Resul
 
 fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
     let db_path = config.workspace_dir.join("cron").join("jobs.db");
-    eprintln!("[ZeroClaw CRON] with_connection: workspace_dir={:?}, db_path={:?}", config.workspace_dir, db_path);
+    eprintln!(
+        "[ZeroClaw CRON] with_connection: workspace_dir={:?}, db_path={:?}",
+        config.workspace_dir, db_path
+    );
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create cron directory: {}", parent.display()))?;
@@ -465,7 +468,10 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
 
     let conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open cron DB: {}", db_path.display()))?;
-    eprintln!("[ZeroClaw CRON] Successfully opened database: {:?}", db_path);
+    eprintln!(
+        "[ZeroClaw CRON] Successfully opened database: {:?}",
+        db_path
+    );
 
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
