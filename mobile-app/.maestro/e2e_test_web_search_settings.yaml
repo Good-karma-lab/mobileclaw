@@ -17,23 +17,20 @@ appId: com.mobileclaw.app
     visible:
       id: screen-settings
     timeout: 10000
-# Scroll down to Web Search section
-- swipe:
-    direction: UP
-    duration: 800
-- waitForAnimationToEnd:
-    timeout: 2000
-- swipe:
-    direction: UP
-    duration: 800
-- waitForAnimationToEnd:
-    timeout: 2000
-# Assert Web Search section is visible
-- assertVisible:
-    text: "Web Search"
+# Scroll down to Web Search section (use scrollUntilVisible for reliability)
+- scrollUntilVisible:
+    element:
+      text: "Web Search"
+    direction: DOWN
+    speed: 40
+    timeout: 8000
 # Assert Brave API key input exists
-- assertVisible:
-    id: brave-api-key-input
+- scrollUntilVisible:
+    element:
+      id: brave-api-key-input
+    direction: DOWN
+    speed: 40
+    timeout: 5000
 # Enter test key
 - tapOn:
     id: brave-api-key-input

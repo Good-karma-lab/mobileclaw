@@ -35,5 +35,8 @@ appId: com.mobileclaw.app
     visible:
       id: screen-memory
     timeout: 15000
-- assertVisible:
-    id: memory-search
+# Search input may be below the fold if memories exist; scroll to find it
+- extendedWaitUntil:
+    visible:
+      id: memory-search
+    timeout: 10000

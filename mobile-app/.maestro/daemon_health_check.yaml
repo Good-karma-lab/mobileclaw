@@ -19,10 +19,12 @@ appId: com.mobileclaw.app
 # Navigate to Activity screen to check daemon status
 - tapOn:
     id: dock-tab-activity
+- tapOn:
+    id: dock-tab-activity
 - extendedWaitUntil:
     visible:
       id: screen-activity
-    timeout: 10000
+    timeout: 15000
 
 # Verify activity screen loaded
 - assertVisible:

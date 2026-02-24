@@ -22,13 +22,25 @@ appId: com.mobileclaw.app
     id: provider-dropdown
 - waitForAnimationToEnd:
     timeout: 3000
-# Assert new providers are visible
-- assertVisible:
-    text: "Mistral AI"
-- assertVisible:
-    text: "Groq"
-- assertVisible:
-    text: "DeepSeek"
+# Assert new providers are visible (scroll to find them in case list needs scrolling)
+- scrollUntilVisible:
+    element:
+      text: "Mistral AI"
+    direction: DOWN
+    speed: 40
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: "Groq"
+    direction: DOWN
+    speed: 40
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: "DeepSeek"
+    direction: DOWN
+    speed: 40
+    timeout: 5000
 # Select Groq
 - tapOn:
     id: provider-option-groq
