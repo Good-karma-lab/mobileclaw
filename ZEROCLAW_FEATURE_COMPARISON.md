@@ -1,7 +1,7 @@
 # ZeroClaw vs MobileClaw Feature Comparison Report
 
-**Generated:** 2026-02-23  
-**Updated:** 2026-02-23  
+**Generated:** 2026-02-23
+**Updated:** 2026-02-24
 **Purpose:** Comprehensive analysis of ZeroClaw features vs MobileClaw implementation status for Android port.
 
 ---
@@ -13,17 +13,17 @@ MobileClaw is a **partial port** of ZeroClaw to Android with a mobile UI. The co
 | Category | ZeroClaw | MobileClaw | Coverage |
 |----------|----------|------------|----------|
 | **Core Agent Runtime** | Full | Full (via JNI) | ✅ 100% |
-| **Providers** | 28+ providers | 6 providers in UI | ⚠️ 21% |
+| **Providers** | 28+ providers | 20 providers in UI | ✅ 71% |
 | **Channels** | 13+ channels | 5 configured, limited functionality | ⚠️ 38% |
-| **Tools** | 20+ core tools | 20 tools via gateway + 40 Android tools | ✅ 70% |
+| **Tools** | 20+ core tools | 21 tools via gateway + 40 Android tools | ✅ 75% |
 | **Memory System** | 5 backends + hybrid search | SQLite + Memory UI + API | ✅ 80% |
 | **Scheduler** | Full cron + delivery | Read-only UI + full backend | ⚠️ 70% |
-| **Gateway** | Full HTTP/WebSocket | Full endpoints for Android | ✅ 90% |
+| **Gateway** | Full HTTP/WebSocket | Full endpoints + SSE streaming | ✅ 95% |
 | **Security** | 5-layer defense | Simplified security controls | ⚠️ 40% |
 | **Hardware Tools** | GPIO, STM32, Arduino | Hardware board tools (limited) | ⚠️ 30% |
 | **Mobile UI** | CLI/Chat only | Full React Native mobile app | ✅ New |
 
-**Overall Coverage: ~55-60%** (up from ~35-40%)
+**Overall Coverage: ~70-75%** (up from ~55-60%)
 
 ---
 
@@ -41,26 +41,26 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | `gemini` | ✅ Working | ✅ Yes |
 | `ollama` | ✅ Working | ✅ Yes |
 | `copilot` | ✅ Working | ✅ Yes |
-| `mistral` | ✅ Rust ready | ❌ No UI |
-| `deepseek` | ✅ Rust ready | ❌ No UI |
-| `xai`/`grok` | ✅ Rust ready | ❌ No UI |
-| `groq` | ✅ Rust ready | ❌ No UI |
-| `venice` | ✅ Rust ready | ❌ No UI |
-| `together` | ✅ Rust ready | ❌ No UI |
-| `fireworks` | ✅ Rust ready | ❌ No UI |
-| `perplexity` | ✅ Rust ready | ❌ No UI |
-| `cohere` | ✅ Rust ready | ❌ No UI |
-| `moonshot`/`kimi` | ✅ Rust ready | ❌ No UI |
-| `glm`/`zhipu` | ✅ Rust ready | ❌ No UI |
-| `minimax` | ✅ Rust ready | ❌ No UI |
-| `qwen`/`dashscope` | ✅ Rust ready | ❌ No UI |
+| `mistral` | ✅ Rust ready | ✅ Yes |
+| `deepseek` | ✅ Rust ready | ✅ Yes |
+| `xai`/`grok` | ✅ Rust ready | ✅ Yes |
+| `groq` | ✅ Rust ready | ✅ Yes |
+| `venice` | ✅ Rust ready | ✅ Yes |
+| `together` | ✅ Rust ready | ✅ Yes |
+| `fireworks` | ✅ Rust ready | ✅ Yes |
+| `perplexity` | ✅ Rust ready | ✅ Yes |
+| `cohere` | ✅ Rust ready | ✅ Yes |
+| `moonshot`/`kimi` | ✅ Rust ready | ✅ Yes |
+| `glm`/`zhipu` | ✅ Rust ready | ✅ Yes |
+| `minimax` | ✅ Rust ready | ✅ Yes |
+| `qwen`/`dashscope` | ✅ Rust ready | ✅ Yes |
+| `lm-studio` | ✅ Rust ready | ✅ Yes (local, host via 10.0.2.2) |
 | `zai`/`z.ai` | ✅ Rust ready | ❌ No UI |
 | `nvidia`/`nvidia-nim` | ✅ Rust ready | ❌ No UI |
-| `lm-studio` | ✅ Rust ready | ❌ No UI |
 | `astrai` | ✅ Rust ready | ❌ No UI |
 | Custom endpoints | ✅ Rust ready | ❌ No UI |
 
-**Gap:** Only 6 of 28+ providers have UI configuration. The underlying Rust supports all providers, but the mobile app UI is limited.
+**Gap:** 20 of 28+ providers now have UI configuration (up from 6). The underlying Rust supports all providers via the OpenAI-compatible API path.
 
 ### Provider Features Missing
 
@@ -71,7 +71,7 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | **Provider Aliases** | ✅ China region aliases | ❌ Not exposed |
 | **Model Routes** | ✅ Hint-based routing | ❌ Not exposed |
 | **OAuth Flows** | ✅ Codex, Anthropic, Gemini | ⚠️ Partial (token input only) |
-| **Streaming** | ✅ SSE parsing | ❌ Not implemented in mobile chat |
+| **Streaming** | ✅ SSE parsing | ✅ SSE via `/agent/stream` + React Native async generator |
 
 ---
 
@@ -143,7 +143,7 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | `cron_runs` | ✅ | ✅ | ❌ No UI |
 | `android_device` | ✅ | ✅ | ✅ Device Screen |
 | `browser_open` | ✅ | ✅ | ❌ No UI |
-| `web_search` | ✅ Brave Search | ❌ Missing | ❌ No UI |
+| `web_search` | ✅ Brave Search | ✅ Brave + DuckDuckGo fallback | ✅ Settings UI (Brave API key) |
 
 ### ZeroClaw Integration Tools
 
@@ -295,9 +295,10 @@ MobileClaw adds Android-specific tools not in ZeroClaw:
 | `DELETE /memory` | ❌ Internal only | ✅ **NEW** |
 | `GET /rules` | ❌ Internal only | ✅ **NEW** |
 | `POST /rules` | ❌ Internal only | ✅ **NEW** |
-| `GET /rules/:id` | ❌ Internal only | ✅ **NEW** |
-| `DELETE /rules/:id` | ❌ Internal only | ✅ **NEW** |
-| `POST /rules/:id/toggle` | ❌ Internal only | ✅ **NEW** |
+| `GET /rules/{id}` | ❌ Internal only | ✅ **NEW** |
+| `DELETE /rules/{id}` | ❌ Internal only | ✅ **NEW** |
+| `POST /rules/{id}/toggle` | ❌ Internal only | ✅ **NEW** |
+| `POST /agent/stream` | ❌ Missing | ✅ **NEW** — SSE streaming endpoint |
 
 ### ZeroClaw Gateway Security Features
 
@@ -379,7 +380,7 @@ MobileClaw adds Android-specific tools not in ZeroClaw:
 
 | Config Section | ZeroClaw | MobileClaw |
 |----------------|----------|------------|
-| **Provider Config** | ✅ Full | ⚠️ Simplified (6 providers) |
+| **Provider Config** | ✅ Full | ⚠️ Simplified (20 providers) |
 | **Agent Config** | ✅ | ✅ Settings Screen |
 | **Channels Config** | ✅ 13+ channels | ⚠️ 5 channels |
 | **Memory Config** | ✅ 5 backends | ❌ Hardcoded SQLite |
@@ -455,14 +456,14 @@ MobileClaw adds features not present in ZeroClaw:
 | **Integrations Screen** | ✅ DONE | 5 channels configured |
 | **Incoming Call/SMS Hooks** | ✅ DONE | Real-time hooks working |
 | **Trigger-Action Rules Engine** | ✅ DONE | Rules with triggers, conditions, actions |
+| **More Provider UI** | ✅ DONE | 20 providers in UI (mistral, deepseek, xai, groq, together, fireworks, perplexity, cohere, minimax, venice, moonshot, glm, qwen, lm-studio added) |
+| **Web Search Tool** | ✅ DONE | `web_search` Rust tool with Brave Search + DuckDuckGo fallback; Settings UI for Brave API key; `braveApiKey` threaded through TS → Kotlin → JNI |
+| **Streaming Responses** | ✅ DONE | SSE endpoint `POST /agent/stream`; `runZeroClawAgentStream` async generator; ChatScreen streams with non-streaming fallback |
 
 ### ❌ NOT STARTED (Remaining Features)
 
 | Feature | Priority | Effort | Notes |
 |---------|----------|--------|-------|
-| **More Provider UI** | Medium | 2-3 days | Add 22+ provider configurations |
-| **Web Search Tool** | Medium | 1-2 days | Brave Search integration |
-| **Streaming Responses** | Medium | 2-3 days | SSE parsing not in mobile chat |
 | **Job Creation UI** | Medium | 2 days | Agent can create jobs, but no direct UI |
 | **Cost/Token Tracking** | Medium | 2 days | Show API usage per conversation |
 | **Conversation History UI** | Low | 2 days | Browse past conversations |
@@ -544,49 +545,65 @@ MobileClaw adds features not present in ZeroClaw:
 
 ## 14. Test Coverage
 
-### E2E Maestro Test Results (2026-02-23)
+### E2E Maestro Test Results (2026-02-24)
 
 | Test | Result | Agent Response | Notes |
 |------|--------|----------------|-------|
+| `mobile_smoke_minimal.yaml` | ✅ PASS | Chat input visible | App launches without crash |
+| `daemon_health_check.yaml` | ✅ PASS | Activity screen shows daemon healthy | Double-tap dock + 15s timeout |
 | `e2e_test_memory_store_recall.yaml` | ✅ PASS | "Your secret code word is **QUANTUM_BANANA_42**" | Memory correctly recalled after app restart |
+| `e2e_test_battery_status.yaml` | ✅ PASS | "Your battery is at **100%**" | Device sensor query working |
+| `e2e_test_http_request.yaml` | ✅ PASS | "returned a **200 OK**" | HTTP request tool working |
 | `e2e_test_cron_job_create.yaml` | ✅ PASS | "Created cron job **e2e_test_job**..." | Job appeared in Tasks screen |
 | `e2e_test_telegram_notify.yaml` | ✅ PASS | "Done! The Telegram message...has been sent" | Message sent to configured chat |
-| `e2e_test_battery_status.yaml` | ✅ PASS | "Your battery is at **100%**" | Device sensor query working |
-| `e2e_test_http_request.yaml` | ✅ PASS | "returned a **200 OK**" | HTTP request tool working (FIXED!) |
-| `e2e_test_memory_screen_verify.yaml` | ⚠️ PARTIAL | Memory stored | Navigation works, visibility check needs timing |
-| `e2e_test_call_hook_setup.yaml` | ✅ PASS | "I've registered a real-time hook..." | Hook registered + rules engine now works |
+| `e2e_test_call_hook_setup.yaml` | ✅ PASS | "I've registered a real-time hook..." | Hook registered + rules engine works |
+| `e2e_test_memory_screen_verify.yaml` | ✅ PASS | Memory screen shows memories | Fixed navigation + `extendedWaitUntil` for scroll |
+| `e2e_test_provider_extended.yaml` | ✅ PASS | Mistral AI, Groq, DeepSeek visible | New providers selectable from picker |
+| `e2e_test_web_search_settings.yaml` | ✅ PASS | Web Search section + Brave API key input visible | Settings UI for web search config |
+| `e2e_test_web_search_agent.yaml` | ✅ PASS | Agent returns web search results | Agent uses `web_search` tool end-to-end |
 
-### Fixes Applied This Session
+### Fixes Applied This Session (2026-02-24)
 
-1. **HTTP Request Tool** ✅ FIXED
-   - Root cause: Client was created per-request + limited allowlist
-   - Fix: Static `OnceLock<Client>` pattern + `"*"` wildcard for all public domains
-   - Now returns 200 OK for external API calls
+1. **`src/config/schema.rs` corruption** ✅ FIXED
+   - Root cause: commit `24181a0` introduced duplicate `agent:` field, stray `;`, and test code inside `fn default()`
+   - Fix: reconstructed file from git history — lines 1-1876 from HEAD + correct closing + HEAD~1 tail
 
-2. **Memory Screen Navigation** ✅ FIXED
-   - Added testID to back button
-   - Updated test to use correct navigation flow
+2. **Axum 0.8 route syntax crash (SIGABRT)** ✅ FIXED
+   - Root cause: `/rules/:id` Express-style syntax invalid in Axum 0.8; caused SIGABRT at startup
+   - Fix: → `/rules/{id}` and `/rules/{id}/toggle`
 
-3. **Trigger-Action Rules Engine** ✅ IMPLEMENTED
-   - Rules API: GET/POST/DELETE /rules
-   - Rule triggers: incoming_call, incoming_sms, geofence, schedule, webhook
-   - Rule actions: telegram_notify, send_sms, post_notification, agent_prompt, http_request, memory_store
-   - Template substitution: {{phone_number}}, {{content}}, etc.
-   - Event evaluation in /agent/event handler
+3. **Android 14+ `ForegroundServiceStartNotAllowedException`** ✅ FIXED
+   - Root cause: foreground service dataSync quota exhausted from repeated test runs
+   - Fix: `tryStartForeground()` try-catch wrapper in `ZeroClawDaemonService.kt` + emulator reboot
+
+4. **Memory Screen navigation broken (React Navigation v7)** ✅ FIXED
+   - Root cause: `navigation.getParent("root-stack")` returned `undefined` in React Navigation v7
+   - Fix: `navigation.getParent()` without ID argument
+
+5. **FloatingDock: tap on already-focused tab was no-op** ✅ FIXED
+   - Root cause: `tabPress` event not emitted when tab already focused → navigation state stale
+   - Fix: always emit `tabPress` event before checking `isFocused`
+
+6. **Maestro scroll-dependent test failures** ✅ FIXED
+   - `memory-search`, "Mistral AI", "Web Search" elements below fold when asserted
+   - Fix: `extendedWaitUntil` for memory-search; `scrollUntilVisible` for providers and Settings sections
 
 ### Test Summary
 
-**Fully Passing: 6/7 tests (86%)**
-**Partially Working: 1/7 tests (14%)**
+**Fully Passing: 12/12 tests (100%)**
 
 ### Working Features (Verified via E2E):
-- ✅ Memory store and recall (long-term memory persists across sessions
+- ✅ App launch and daemon health
+- ✅ Memory store and recall (long-term memory persists across sessions)
 - ✅ Cron job creation via natural language
 - ✅ Telegram message sending
 - ✅ Device sensors (battery)
-- ✅ HTTP requests to external APIs (FIXED!)
+- ✅ HTTP requests to external APIs
 - ✅ Incoming call hook registration with automation rules
-- ⚠️ Memory screen navigation (works, test timing issue)
+- ✅ Memory screen navigation and search
+- ✅ Extended provider UI (20 providers, Mistral/Groq/DeepSeek visible and selectable)
+- ✅ Web Search settings UI (Brave API key configuration)
+- ✅ Web Search agent queries (DuckDuckGo fallback working)
 
 ---
 
@@ -601,18 +618,19 @@ MobileClaw successfully ports the ZeroClaw core runtime to Android and adds exce
 - ✅ Scheduler with job listing UI
 - ✅ Telegram integration (send/receive)
 - ✅ Incoming call/SMS hooks
-- ✅ Gateway with full endpoints
+- ✅ Gateway with full endpoints including SSE streaming
 - ✅ Activity feed and observability
+- ✅ 20 providers in UI (expanded from 6)
+- ✅ Web search tool (Brave Search + DuckDuckGo fallback) with Settings UI
+- ✅ Streaming chat responses (SSE via `/agent/stream`)
 
 **Major Gaps Remaining:**
-- ⚠️ No streaming responses
-- ⚠️ Limited provider UI (6 of 28+)
 - ⚠️ No job creation UI (agent-only)
 - ⚠️ Discord/Slack inbound webhooks not wired
 - ⚠️ No cost/token tracking
-- ⚠️ No web search tool
+- ⚠️ No secret/credential encryption
 
-**Coverage Estimate:** MobileClaw now covers approximately **55-60%** of ZeroClaw's feature set (up from ~35-40%), with Android device tools being the primary addition.
+**Coverage Estimate:** MobileClaw now covers approximately **70-75%** of ZeroClaw's feature set (up from ~55-60%), with significant improvements to provider coverage, web search, and streaming.
 
 ---
 
@@ -650,4 +668,4 @@ MobileClaw successfully ports the ZeroClaw core runtime to Android and adds exce
 
 ---
 
-*End of Report - Updated 2026-02-23*
+*End of Report - Updated 2026-02-24*
