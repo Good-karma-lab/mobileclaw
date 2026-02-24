@@ -1,7 +1,7 @@
 # ZeroClaw vs MobileClaw Feature Comparison Report
 
 **Generated:** 2026-02-23
-**Updated:** 2026-02-24
+**Updated:** 2026-02-24 (v0.1.7 upstream sync analysis)
 **Purpose:** Comprehensive analysis of ZeroClaw features vs MobileClaw implementation status for Android port.
 
 ---
@@ -38,7 +38,7 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | `openrouter` | ✅ Working | ✅ Yes |
 | `openai` | ✅ Working | ✅ Yes |
 | `anthropic` | ✅ Working | ✅ Yes |
-| `gemini` | ✅ Working | ✅ Yes |
+| `gemini` | ✅ Working (v0.1.7: auto token refresh) | ✅ Yes |
 | `ollama` | ✅ Working | ✅ Yes |
 | `copilot` | ✅ Working | ✅ Yes |
 | `mistral` | ✅ Rust ready | ✅ Yes |
@@ -52,15 +52,16 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | `cohere` | ✅ Rust ready | ✅ Yes |
 | `moonshot`/`kimi` | ✅ Rust ready | ✅ Yes |
 | `glm`/`zhipu` | ✅ Rust ready | ✅ Yes |
-| `minimax` | ✅ Rust ready | ✅ Yes |
+| `minimax` | ✅ Rust ready (⚠️ v0.1.7: native tool-calling disabled to fix 5xx) | ✅ Yes |
 | `qwen`/`dashscope` | ✅ Rust ready | ✅ Yes |
 | `lm-studio` | ✅ Rust ready | ✅ Yes (local, host via 10.0.2.2) |
 | `zai`/`z.ai` | ✅ Rust ready | ❌ No UI |
 | `nvidia`/`nvidia-nim` | ✅ Rust ready | ❌ No UI |
 | `astrai` | ✅ Rust ready | ❌ No UI |
+| `novita` | ✅ v0.1.7 (OpenAI-compatible) | ❌ No UI |
 | Custom endpoints | ✅ Rust ready | ❌ No UI |
 
-**Gap:** 20 of 28+ providers now have UI configuration (up from 6). The underlying Rust supports all providers via the OpenAI-compatible API path.
+**Gap:** 20 of 28+ providers now have UI configuration (up from 6). The underlying Rust supports all providers via the OpenAI-compatible API path. Upstream v0.1.7 adds Novita (OpenAI-compatible), improves Gemini (auto token refresh), and disables MiniMax native tool-calling to fix 5xx errors.
 
 ### Provider Features Missing
 
@@ -82,13 +83,15 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | Channel | ZeroClaw | MobileClaw Config | MobileClaw Inbound |
 |---------|----------|-------------------|---------------------|
 | **CLI** | ✅ | N/A | N/A |
-| **Telegram** | ✅ Full | ✅ Bot token + Chat ID | ✅ Working |
+| **Telegram** | ✅ Full (v0.1.7: per-topic thread isolation, `/new` context-clear, configurable mention-only mode) | ✅ Bot token + Chat ID | ✅ Working |
 | **Discord** | ✅ Full | ✅ Bot token only | ❌ No webhook |
 | **Slack** | ✅ Full | ✅ Bot token only | ❌ No webhook |
 | **WhatsApp** | ✅ Full (Cloud API) | ✅ Access token only | ⚠️ Gateway endpoint exists |
+| **WATI** | ✅ v0.1.7 (WhatsApp Business API) | ❌ Missing | ❌ Missing |
 | **Matrix** | ✅ E2EE support | ❌ Missing | ❌ Missing |
 | **Email** | ✅ IMAP/SMTP | ❌ Missing | ❌ Missing |
-| **Lark/Feishu** | ✅ WebSocket | ❌ Missing | ❌ Missing |
+| **Lark** | ✅ v0.1.7 (split from Feishu) | ❌ Missing | ❌ Missing |
+| **Feishu** | ✅ v0.1.7 (separated from Lark) | ❌ Missing | ❌ Missing |
 | **Mattermost** | ✅ REST API | ❌ Missing | ❌ Missing |
 | **DingTalk** | ✅ Stream WebSocket | ❌ Missing | ❌ Missing |
 | **IRC** | ✅ IRC protocol | ❌ Missing | ❌ Missing |
@@ -99,8 +102,9 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 **Gap:** MobileClaw has integration config UI for 5 channels but lacks:
 - Webhook verification for WhatsApp (gateway endpoint exists but not wired)
 - Proper message ingestion for Discord/Slack
-- All China-specific channels (DingTalk, QQ, Lark)
+- All China-specific channels (DingTalk, QQ, Lark, Feishu — Lark/Feishu split into separate integrations in v0.1.7)
 - Email, Matrix, Signal, IRC
+- WATI (WhatsApp Business API) — new in v0.1.7
 
 ### Channel Features Missing
 
@@ -144,6 +148,9 @@ ZeroClaw supports 28+ LLM providers through a unified interface:
 | `android_device` | ✅ | ✅ | ✅ Device Screen |
 | `browser_open` | ✅ | ✅ | ❌ No UI |
 | `web_search` | ✅ Brave Search | ✅ Brave + DuckDuckGo fallback | ✅ Settings UI (Brave API key) |
+| `web_fetch` | ✅ v0.1.7 (readable text + SSRF domain controls) | ❌ Not in MobileClaw | ❌ No UI |
+
+**Note (v0.1.7):** Agent messages now auto-include current timestamp — improves temporal reasoning across all tools.
 
 ### ZeroClaw Integration Tools
 
@@ -328,6 +335,10 @@ MobileClaw adds Android-specific tools not in ZeroClaw:
 | **Authorization** | ✅ AutonomyLevel | ⚠️ Simplified |
 | **Isolation** | ✅ Workspace scoping | ⚠️ Simplified |
 | **Data Protection** | ✅ ChaCha20-Poly1305 | ❌ Not implemented |
+| **PromptGuard** | ✅ v0.1.7 (prompt injection detection) | ❌ Not ported |
+| **LeakDetector** | ✅ v0.1.7 (sensitive data leak detection) | ❌ Not ported |
+| **Cipher Migration** | ✅ enc: (XOR) → enc2: (ChaCha20) auto-migrate | ⚠️ enc2: exists, no migration helper |
+| **Config Permissions** | ✅ 0600 on Unix | ⚠️ Not enforced |
 
 ### ZeroClaw Autonomy Levels
 
@@ -439,6 +450,34 @@ MobileClaw adds features not present in ZeroClaw:
 
 ---
 
+## 11b. Android Build Target Analysis
+
+### Upstream v0.1.7 Support
+
+Upstream v0.1.7 officially supports two Android ABIs:
+- `aarch64-linux-android` (64-bit ARM) — all modern phones (2019+)
+- `armv7-linux-androideabi` (32-bit ARM) — older/budget phones (Android 5+)
+
+### MobileClaw Current State
+
+| ABI dir | Binary present | Correct? |
+|---------|----------------|----------|
+| `arm64-v8a` | ✅ | ✅ Proper aarch64 shared library |
+| `x86_64` | ✅ | ✅ Proper x86_64 shared library |
+| `armeabi-v7a` | ⚠️ | ❌ **BUG**: contains aarch64 binary (wrong arch) |
+| `x86` | ⚠️ | ❌ Contains aarch64 binary (unused on emulators) |
+
+### Architecture Impact
+
+Our JNI bridge, gateway, and React Native layer are fully architecture-agnostic. Adding real armv7 support is a build-pipeline-only change — no Rust source modifications are needed. The fix involves:
+1. Adding the `armv7-linux-androideabi` rustup target
+2. Adding armv7 env vars to `build_android_jni.sh`
+3. Replacing the wrong binary in `jniLibs/armeabi-v7a/`
+
+**Impact:** 32-bit Android devices (older/budget phones) currently crash on JNI load due to arch mismatch.
+
+---
+
 ## 12. Implementation Status by Priority
 
 ### ✅ COMPLETED (High Priority)
@@ -477,6 +516,10 @@ MobileClaw adds features not present in ZeroClaw:
 | **Webhook Verification UI** | Low | 1 day | WhatsApp/Discord/Slack verification |
 | **Memory Backend Selection** | Low | 2 days | Allow PostgreSQL, Markdown backends |
 | **Embedding Provider Config** | Low | 2 days | Hybrid search configuration |
+| **PromptGuard / LeakDetector** | High | 1-2 days | Port from upstream `src/security/`; injection + credential leak risk |
+| **armv7 JNI binary (bug fix)** | High | 0.5 days | Wrong aarch64 binary in `armeabi-v7a/`; breaks 32-bit Android |
+| **web_fetch tool** | Medium | 0.5 days | Readable HTML text + SSRF domain guard; port from upstream |
+| **Novita AI provider UI** | Low | 0.5 days | OpenAI-compatible; trivial port to Settings provider picker |
 
 ---
 
@@ -588,6 +631,14 @@ MobileClaw adds features not present in ZeroClaw:
    - `memory-search`, "Mistral AI", "Web Search" elements below fold when asserted
    - Fix: `extendedWaitUntil` for memory-search; `scrollUntilVisible` for providers and Settings sections
 
+### Upstream v0.1.7 Test Infrastructure
+
+Upstream v0.1.7 ships additional CI coverage not yet in MobileClaw:
+- **Fuzzing** (`test-fuzz.yml`) — property-based fuzzing of parser/security surfaces
+- **CodeQL** (`sec-codeql.yml`) — static security analysis
+
+MobileClaw has 12/12 Maestro tests passing (2026-02-24) but no injection or credential leak detection coverage yet. PromptGuard/LeakDetector port (Section 12) would address this gap.
+
 ### Test Summary
 
 **Fully Passing: 12/12 tests (100%)**
@@ -629,8 +680,10 @@ MobileClaw successfully ports the ZeroClaw core runtime to Android and adds exce
 - ⚠️ Discord/Slack inbound webhooks not wired
 - ⚠️ No cost/token tracking
 - ⚠️ No secret/credential encryption
+- ⚠️ PromptGuard / LeakDetector not ported (injection + credential leak risk)
+- ⚠️ armeabi-v7a contains wrong aarch64 binary (breaks 32-bit Android devices)
 
-**Coverage Estimate:** MobileClaw now covers approximately **70-75%** of ZeroClaw's feature set (up from ~55-60%), with significant improvements to provider coverage, web search, and streaming.
+**Coverage Estimate:** MobileClaw covers approximately **70-75%** of ZeroClaw's feature set (up from ~55-60%). New upstream v0.1.7 features (PromptGuard, LeakDetector, WATI, Lark/Feishu split, web_fetch, Novita) add new gaps that offset recent MobileClaw gains — coverage stays roughly constant until the v0.1.7 merge is executed.
 
 ---
 
@@ -668,4 +721,4 @@ MobileClaw successfully ports the ZeroClaw core runtime to Android and adds exce
 
 ---
 
-*End of Report - Updated 2026-02-24*
+*End of Report - Updated 2026-02-24 (upstream v0.1.7 sync analysis)*
