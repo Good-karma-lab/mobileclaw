@@ -5,7 +5,9 @@
 use async_trait::async_trait;
 use serde::Deserialize;
 
-use crate::rules::{Action, ActionType, Condition, ConditionType, Rule, RuleTrigger, TriggerType, RulesEngine};
+use crate::rules::{
+    Action, ActionType, Condition, ConditionType, Rule, RuleTrigger, RulesEngine, TriggerType,
+};
 use crate::tools::traits::{Tool, ToolResult};
 
 use std::path::PathBuf;
@@ -19,7 +21,7 @@ impl RulesTool {
     pub fn new(engine: Arc<RulesEngine>) -> Self {
         Self { engine }
     }
-    
+
     /// Create with database path directly
     pub fn with_db_path(db_path: PathBuf) -> Self {
         Self {
@@ -39,9 +41,16 @@ enum RulesRequest {
         action_params: serde_json::Value,
     },
     List,
-    Get { id: String },
-    Delete { id: String },
-    Toggle { id: String, enabled: bool },
+    Get {
+        id: String,
+    },
+    Delete {
+        id: String,
+    },
+    Toggle {
+        id: String,
+        enabled: bool,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,7 +134,13 @@ impl Tool for RulesTool {
         let request: RulesRequest = serde_json::from_value(args)?;
 
         match request {
-            RulesRequest::Create { name, trigger_type, conditions, action_type, action_params } => {
+            RulesRequest::Create {
+                name,
+                trigger_type,
+                conditions,
+                action_type,
+                action_params,
+            } => {
                 let trigger = parse_trigger_type(&trigger_type)?;
                 let conds = parse_conditions(conditions)?;
                 let action = parse_action_type(&action_type)?;
@@ -165,13 +180,16 @@ impl Tool for RulesTool {
                 } else {
                     rules
                         .iter()
-                        .map(|r| format!("- {} [{}]: {} ({:?} -> {:?})", 
-                            r.id, 
-                            if r.enabled { "enabled" } else { "disabled" },
-                            r.name,
-                            r.trigger.trigger_type,
-                            r.action.action_type
-                        ))
+                        .map(|r| {
+                            format!(
+                                "- {} [{}]: {} ({:?} -> {:?})",
+                                r.id,
+                                if r.enabled { "enabled" } else { "disabled" },
+                                r.name,
+                                r.trigger.trigger_type,
+                                r.action.action_type
+                            )
+                        })
                         .collect::<Vec<_>>()
                         .join("\n")
                 };
@@ -183,53 +201,51 @@ impl Tool for RulesTool {
                 })
             }
 
-            RulesRequest::Get { id } => {
-                match self.engine.get_rule(&id)? {
-                    Some(rule) => {
-                        let json = serde_json::to_string_pretty(&rule)?;
-                        Ok(ToolResult {
-                            success: true,
-                            output: json,
-                            error: None,
-                        })
-                    }
-                    None => Ok(ToolResult {
-                        success: false,
-                        output: String::new(),
-                        error: Some(format!("Rule {} not found", id)),
-                    }),
-                }
-            }
-
-            RulesRequest::Delete { id } => {
-                match self.engine.delete_rule(&id)? {
-                    true => Ok(ToolResult {
+            RulesRequest::Get { id } => match self.engine.get_rule(&id)? {
+                Some(rule) => {
+                    let json = serde_json::to_string_pretty(&rule)?;
+                    Ok(ToolResult {
                         success: true,
-                        output: format!("Deleted rule {}", id),
+                        output: json,
                         error: None,
-                    }),
-                    false => Ok(ToolResult {
-                        success: false,
-                        output: String::new(),
-                        error: Some(format!("Rule {} not found", id)),
-                    }),
+                    })
                 }
-            }
+                None => Ok(ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(format!("Rule {} not found", id)),
+                }),
+            },
 
-            RulesRequest::Toggle { id, enabled } => {
-                match self.engine.toggle_rule(&id, enabled)? {
-                    true => Ok(ToolResult {
-                        success: true,
-                        output: format!("Rule {} is now {}", id, if enabled { "enabled" } else { "disabled" }),
-                        error: None,
-                    }),
-                    false => Ok(ToolResult {
-                        success: false,
-                        output: String::new(),
-                        error: Some(format!("Rule {} not found", id)),
-                    }),
-                }
-            }
+            RulesRequest::Delete { id } => match self.engine.delete_rule(&id)? {
+                true => Ok(ToolResult {
+                    success: true,
+                    output: format!("Deleted rule {}", id),
+                    error: None,
+                }),
+                false => Ok(ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(format!("Rule {} not found", id)),
+                }),
+            },
+
+            RulesRequest::Toggle { id, enabled } => match self.engine.toggle_rule(&id, enabled)? {
+                true => Ok(ToolResult {
+                    success: true,
+                    output: format!(
+                        "Rule {} is now {}",
+                        id,
+                        if enabled { "enabled" } else { "disabled" }
+                    ),
+                    error: None,
+                }),
+                false => Ok(ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(format!("Rule {} not found", id)),
+                }),
+            },
         }
     }
 }

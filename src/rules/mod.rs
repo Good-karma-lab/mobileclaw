@@ -11,4 +11,6 @@ mod schema;
 pub mod storage;
 
 pub use engine::RulesEngine;
-pub use schema::{Action, ActionType, Condition, ConditionType, Event, Rule, RuleTrigger, TriggerType};
+pub use schema::{
+    Action, ActionType, Condition, ConditionType, Event, Rule, RuleTrigger, TriggerType,
+};

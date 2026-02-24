@@ -1,0 +1,39 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Extended Provider Selection
+# Tests that new providers (Mistral, Groq, DeepSeek) are visible in the picker
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 30000
+# Navigate to Settings tab using dock
+- tapOn:
+    id: dock-tab-settings
+- tapOn:
+    id: dock-tab-settings
+- extendedWaitUntil:
+    visible:
+      id: screen-settings
+    timeout: 10000
+# Open provider picker
+- tapOn:
+    id: provider-dropdown
+- waitForAnimationToEnd:
+    timeout: 3000
+# Assert new providers are visible
+- assertVisible:
+    text: "Mistral AI"
+- assertVisible:
+    text: "Groq"
+- assertVisible:
+    text: "DeepSeek"
+# Select Groq
+- tapOn:
+    id: provider-option-groq
+- waitForAnimationToEnd:
+    timeout: 3000
+# Verify Groq is now selected
+- assertVisible:
+    text: "Groq"

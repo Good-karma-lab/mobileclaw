@@ -55,9 +55,9 @@ impl HttpRequestTool {
         }
 
         // If allowlist is empty or contains "*", allow all public domains
-        let allow_all = self.allowed_domains.is_empty() 
-            || self.allowed_domains.iter().any(|d| d == "*");
-        
+        let allow_all =
+            self.allowed_domains.is_empty() || self.allowed_domains.iter().any(|d| d == "*");
+
         if !allow_all && !host_matches_allowlist(&host, &self.allowed_domains) {
             anyhow::bail!("Host '{host}' is not in http_request.allowed_domains");
         }

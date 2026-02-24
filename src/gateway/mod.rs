@@ -11,8 +11,8 @@ use crate::channels::{Channel, WhatsAppChannel};
 use crate::config::Config;
 use crate::memory::{self, Memory, MemoryCategory};
 use crate::providers::{self, Provider};
-use crate::runtime;
 use crate::rules;
+use crate::runtime;
 use crate::security::pairing::{constant_time_eq, is_public_bind, PairingGuard};
 use crate::security::SecurityPolicy;
 use crate::tools;
@@ -387,6 +387,7 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/pair", post(handle_pair))
         .route("/webhook", post(handle_webhook))
         .route("/agent/message", post(handle_agent_message))
+        .route("/agent/stream", post(handle_agent_stream))
         .route("/agent/event", post(handle_agent_event))
         .route("/whatsapp", get(handle_whatsapp_verify))
         .route("/whatsapp", post(handle_whatsapp_message))
@@ -401,8 +402,11 @@ pub async fn run_gateway(host: &str, port: u16, config: Config) -> Result<()> {
         .route("/memory/recall", get(handle_recall_memory))
         .route("/memory/count", get(handle_memory_count))
         .route("/rules", get(handle_list_rules).post(handle_create_rule))
-        .route("/rules/:id", get(handle_get_rule).delete(handle_delete_rule))
-        .route("/rules/:id/toggle", post(handle_toggle_rule))
+        .route(
+            "/rules/{id}",
+            get(handle_get_rule).delete(handle_delete_rule),
+        )
+        .route("/rules/{id}/toggle", post(handle_toggle_rule))
         .with_state(state)
         .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .layer(TimeoutLayer::with_status_code(
@@ -707,6 +711,81 @@ async fn handle_agent_message(
     }
 }
 
+/// POST /agent/stream — full agent runtime response as SSE stream
+///
+/// Runs the agent and streams the complete response as Server-Sent Events.
+/// Format: `data: {"delta":"<chunk>"}\n\n` followed by `data: [DONE]\n\n`.
+async fn handle_agent_stream(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Result<Json<AgentMessageRequest>, axum::extract::rejection::JsonRejection>,
+) -> impl IntoResponse {
+    use axum::body::Body;
+    use axum::response::Response;
+
+    // ── Bearer token auth (pairing) ──
+    if state.pairing.require_pairing() {
+        let auth = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let token = auth.strip_prefix("Bearer ").unwrap_or("");
+        if !state.pairing.is_authenticated(token) {
+            let err = serde_json::json!({"error": "Unauthorized"});
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(err.to_string()))
+                .unwrap_or_default();
+        }
+    }
+
+    // ── Parse body ──
+    let Json(agent_body) = match body {
+        Ok(b) => b,
+        Err(_) => {
+            let err = serde_json::json!({"error": "Invalid JSON body"});
+            return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(err.to_string()))
+                .unwrap_or_default();
+        }
+    };
+
+    // Run agent and stream result as SSE
+    let message = agent_body.message.clone();
+    let config = (*state.config).clone();
+
+    let response_text = match crate::agent::loop_::process_message(config, &message).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(
+                "Agent stream error: {}",
+                providers::sanitize_api_error(&e.to_string())
+            );
+            let err = serde_json::json!({"error": "Agent execution failed"});
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(err.to_string()))
+                .unwrap_or_default();
+        }
+    };
+
+    // Build SSE body: send full response as one delta chunk, then [DONE]
+    let delta_frame = serde_json::json!({"delta": response_text});
+    let sse_body = format!("data: {}\n\ndata: [DONE]\n\n", delta_frame);
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/event-stream")
+        .header("Cache-Control", "no-cache")
+        .header("X-Accel-Buffering", "no")
+        .body(Body::from(sse_body))
+        .unwrap_or_default()
+}
+
 /// POST /agent/event — device event webhook for autonomous reactions
 async fn handle_agent_event(
     State(state): State<AppState>,
@@ -764,10 +843,10 @@ async fn handle_agent_event(
     let event_data = event_body.data.clone();
     let config = (*state.config).clone();
     let tg_config = state.config.channels_config.telegram.clone();
-    
+
     // Create rules event
     let rules_event = create_rules_event(&event_type, &event_data);
-    
+
     // Evaluate rules and execute actions (spawned async)
     tokio::spawn(async move {
         // Evaluate rules
@@ -775,10 +854,12 @@ async fn handle_agent_event(
         match engine.evaluate(&rules_event) {
             Ok(matching_rules) => {
                 tracing::info!("Rules engine: {} matching rules", matching_rules.len());
-                
+
                 for rule in matching_rules {
                     tracing::info!("Executing rule: {} ({})", rule.name, rule.id);
-                    if let Err(e) = execute_rule_action(&rule, &event_data, &tg_config, &config).await {
+                    if let Err(e) =
+                        execute_rule_action(&rule, &event_data, &tg_config, &config).await
+                    {
                         tracing::error!("Rule action execution failed: {}", e);
                     }
                 }
@@ -812,14 +893,14 @@ async fn handle_agent_event(
 /// Create a rules Event from device event
 fn create_rules_event(event_type: &str, data: &serde_json::Value) -> rules::Event {
     use rules::TriggerType;
-    
+
     let trigger_type = match event_type.to_lowercase().as_str() {
         "incoming_call" | "phone_call" => TriggerType::IncomingCall,
         "incoming_sms" | "sms" | "text_message" => TriggerType::IncomingSms,
         "geofence" | "location" => TriggerType::Geofence,
         _ => TriggerType::Webhook,
     };
-    
+
     rules::Event {
         event_type: trigger_type,
         timestamp: chrono::Utc::now(),
@@ -835,26 +916,27 @@ async fn execute_rule_action(
     config: &crate::config::Config,
 ) -> anyhow::Result<()> {
     use rules::ActionType;
-    
+
     match rule.action.action_type {
         ActionType::TelegramNotify => {
             // Get message template and substitute variables
-            let template = rule.action.params.get("message")
+            let template = rule
+                .action
+                .params
+                .get("message")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Event triggered");
-            
+
             let message = substitute_template(template, event_data);
-            
+
             // Send via Telegram
             if let Some(tg) = tg_config {
                 if !tg.bot_token.is_empty() {
                     if let Some(chat_id) = &tg.notify_chat_id {
                         let client = reqwest::Client::new();
-                        let url = format!(
-                            "https://api.telegram.org/bot{}/sendMessage",
-                            tg.bot_token
-                        );
-                        
+                        let url =
+                            format!("https://api.telegram.org/bot{}/sendMessage", tg.bot_token);
+
                         let response = client
                             .post(&url)
                             .json(&serde_json::json!({
@@ -863,7 +945,7 @@ async fn execute_rule_action(
                             }))
                             .send()
                             .await?;
-                        
+
                         if !response.status().is_success() {
                             tracing::warn!("Telegram notification failed: {}", response.status());
                         } else {
@@ -876,22 +958,28 @@ async fn execute_rule_action(
             }
         }
         ActionType::PostNotification => {
-            let message = rule.action.params.get("message")
+            let message = rule
+                .action
+                .params
+                .get("message")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Event triggered");
-            
+
             let message = substitute_template(message, event_data);
             tracing::info!("Notification: {}", message);
             // TODO: Integrate with Android notification system via JNI
         }
         ActionType::AgentPrompt => {
-            let prompt = rule.action.params.get("prompt")
+            let prompt = rule
+                .action
+                .params
+                .get("prompt")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Process this event");
-            
+
             let prompt = substitute_template(prompt, event_data);
             let config = config.clone();
-            
+
             tokio::spawn(async move {
                 if let Err(e) = crate::agent::loop_::process_message(config, &prompt).await {
                     tracing::error!("Rule agent prompt execution failed: {}", e);
@@ -899,58 +987,73 @@ async fn execute_rule_action(
             });
         }
         ActionType::MemoryStore => {
-            let key = rule.action.params.get("key")
+            let key = rule
+                .action
+                .params
+                .get("key")
                 .and_then(|v| v.as_str())
                 .unwrap_or("event_memory");
-            
-            let content = rule.action.params.get("content")
+
+            let content = rule
+                .action
+                .params
+                .get("content")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            
+
             let content = substitute_template(content, event_data);
             tracing::info!("Memory store: {} = {}", key, content);
             // TODO: Store in memory
         }
         ActionType::HttpRequest => {
-            let url = rule.action.params.get("url")
+            let url = rule
+                .action
+                .params
+                .get("url")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            
+
             if !url.is_empty() {
                 let client = reqwest::Client::new();
-                let method = rule.action.params.get("method")
+                let method = rule
+                    .action
+                    .params
+                    .get("method")
                     .and_then(|v| v.as_str())
                     .unwrap_or("POST");
-                
+
                 let body = rule.action.params.get("body").cloned();
-                
+
                 let mut req = match method.to_uppercase().as_str() {
                     "GET" => client.get(url),
                     "PUT" => client.put(url),
                     "DELETE" => client.delete(url),
                     _ => client.post(url),
                 };
-                
+
                 if let Some(b) = body {
                     req = req.json(&b);
                 }
-                
+
                 let response = req.send().await?;
                 tracing::info!("HTTP request for rule {}: {}", rule.name, response.status());
             }
         }
         ActionType::SendSms | ActionType::PlaceCall => {
-            tracing::warn!("Action {:?} not yet implemented on Android", rule.action.action_type);
+            tracing::warn!(
+                "Action {:?} not yet implemented on Android",
+                rule.action.action_type
+            );
         }
     }
-    
+
     Ok(())
 }
 
 /// Substitute {{variable}} placeholders in a template
 fn substitute_template(template: &str, data: &serde_json::Value) -> String {
     let mut result = template.to_string();
-    
+
     // Replace {{field}} with values from data
     if let Some(obj) = data.as_object() {
         for (key, value) in obj {
@@ -965,7 +1068,7 @@ fn substitute_template(template: &str, data: &serde_json::Value) -> String {
             result = result.replace(&placeholder, &replacement);
         }
     }
-    
+
     result
 }
 
@@ -1380,11 +1483,8 @@ pub struct ConditionSpec {
 
 async fn handle_list_rules(State(state): State<AppState>) -> impl IntoResponse {
     let db_path = state.config.workspace_dir.join("rules").join("rules.db");
-    
-    let result = tokio::task::spawn_blocking(move || {
-        rules::storage::list_rules(&db_path)
-    })
-    .await;
+
+    let result = tokio::task::spawn_blocking(move || rules::storage::list_rules(&db_path)).await;
 
     match result {
         Ok(Ok(rules)) => {
@@ -1471,7 +1571,7 @@ async fn handle_create_rule(
 
     let rule_id = rule.id.clone();
     let db_path = state.config.workspace_dir.join("rules").join("rules.db");
-    
+
     let result = tokio::task::spawn_blocking(move || {
         if let Some(parent) = db_path.parent() {
             let _ = std::fs::create_dir_all(parent);
@@ -1508,10 +1608,8 @@ async fn handle_get_rule(
     let db_path = state.config.workspace_dir.join("rules").join("rules.db");
     let id_clone = id.clone();
 
-    let result = tokio::task::spawn_blocking(move || {
-        rules::storage::get_rule(&db_path, &id_clone)
-    })
-    .await;
+    let result =
+        tokio::task::spawn_blocking(move || rules::storage::get_rule(&db_path, &id_clone)).await;
 
     match result {
         Ok(Ok(Some(rule))) => {
@@ -1550,10 +1648,8 @@ async fn handle_delete_rule(
     let db_path = state.config.workspace_dir.join("rules").join("rules.db");
     let id_clone = id.clone();
 
-    let result = tokio::task::spawn_blocking(move || {
-        rules::storage::delete_rule(&db_path, &id_clone)
-    })
-    .await;
+    let result =
+        tokio::task::spawn_blocking(move || rules::storage::delete_rule(&db_path, &id_clone)).await;
 
     match result {
         Ok(Ok(true)) => (

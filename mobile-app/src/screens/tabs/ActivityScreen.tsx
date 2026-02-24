@@ -60,7 +60,7 @@ export function ActivityScreen() {
   if (useSidebar) {
     const statusInfo = runtimeStatusLabel(runtimeState);
     return (
-      <Screen>
+      <Screen testID="screen-activity">
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: theme.spacing.lg,
@@ -70,7 +70,7 @@ export function ActivityScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text testID="screen-activity" variant="display">Activity</Text>
+            <Text variant="display">Activity</Text>
             <Pressable
               onPress={() => setShowRaw((v) => !v)}
               style={{
@@ -168,9 +168,9 @@ export function ActivityScreen() {
   }
 
   return (
-    <Screen>
+    <Screen testID="screen-activity">
       <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: 140 }}>
-        <Text testID="screen-activity" variant="display">Activity</Text>
+        <Text variant="display">Activity</Text>
         <Text variant="muted" style={{ marginTop: theme.spacing.xs }}>
           Agent actions, messages, and runtime logs.
         </Text>

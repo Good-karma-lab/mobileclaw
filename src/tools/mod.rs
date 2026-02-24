@@ -60,9 +60,9 @@ pub use screenshot::ScreenshotTool;
 pub use shell::ShellTool;
 pub use telegram_notify::TelegramNotifyTool;
 pub use traits::Tool;
-pub use web_search::WebSearchTool;
 #[allow(unused_imports)]
 pub use traits::{ToolResult, ToolSpec};
+pub use web_search::WebSearchTool;
 
 use crate::config::{Config, DelegateAgentConfig};
 use crate::memory::Memory;

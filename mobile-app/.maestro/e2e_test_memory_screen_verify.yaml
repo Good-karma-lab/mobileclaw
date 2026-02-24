@@ -4,22 +4,36 @@ appId: com.mobileclaw.app
 # Tests that user can navigate to Memory screen from Settings
 - launchApp:
     clearState: false
-- waitForAnimationToEnd:
-    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 30000
+# Ensure we are on Chat tab first
+- tapOn:
+    id: dock-tab-chat
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 10000
 # Navigate to Settings tab
 - tapOn:
-    text: "Settings"
+    id: dock-tab-settings
+- extendedWaitUntil:
+    visible:
+      id: screen-settings
+    timeout: 10000
+# Scroll to reveal Advanced section and tap open-memory-screen
+- swipe:
+    direction: UP
+    duration: 500
 - waitForAnimationToEnd:
-    timeout: 5000
-- assertVisible:
-    text: "Agent Config"
-# Open memory manager
+    timeout: 1000
 - tapOn:
     id: open-memory-screen
-- waitForAnimationToEnd:
-    timeout: 5000
-# Memory screen should show - use testID
-- assertVisible:
-    id: screen-memory
+# Memory screen should show
+- extendedWaitUntil:
+    visible:
+      id: screen-memory
+    timeout: 15000
 - assertVisible:
     id: memory-search

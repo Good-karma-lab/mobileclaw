@@ -48,6 +48,7 @@ class ZeroClawBackend {
             discordBotToken: String,
             slackBotToken: String,
             composioApiKey: String,
+            braveApiKey: String,
         ): Long
 
         /**

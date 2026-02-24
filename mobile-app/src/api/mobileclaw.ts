@@ -261,7 +261,8 @@ export async function runAgentChat(
     case "gemini":
       return sendGeminiMessages(config, messages);
     default:
-      throw new Error(`Unsupported provider: ${provider}`);
+      // All unlisted providers use OpenAI-compatible API with Bearer auth
+      return sendOpenAiCompatibleMessages(config, messages);
   }
 }
 
@@ -340,6 +341,39 @@ export async function synthesizeSpeechWithDeepgram(text: string, apiKey: string)
     encoding: FileSystem.EncodingType.Base64,
   });
   return outputUri;
+}
+
+export async function* runZeroClawAgentStream(
+  message: string,
+  gatewayUrl: string,
+): AsyncGenerator<string> {
+  const res = await fetch(`${gatewayUrl}/agent/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok || !res.body) throw new Error(`Gateway ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6).trim();
+        if (data && data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data) as { delta?: string };
+            if (parsed.delta) yield parsed.delta;
+          } catch { /* skip malformed frames */ }
+        }
+      }
+    }
+  }
 }
 
 export async function runZeroClawAgent(

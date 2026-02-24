@@ -44,6 +44,7 @@ class ZeroClawDaemonService : Service() {
         const val EXTRA_DISCORD_BOT_TOKEN = "discord_bot_token"
         const val EXTRA_SLACK_BOT_TOKEN = "slack_bot_token"
         const val EXTRA_COMPOSIO_API_KEY = "composio_api_key"
+        const val EXTRA_BRAVE_API_KEY = "brave_api_key"
 
         @Volatile
         private var isRunning = false
@@ -63,6 +64,7 @@ class ZeroClawDaemonService : Service() {
     private var discordBotToken: String = ""
     private var slackBotToken: String = ""
     private var composioApiKey: String = ""
+    private var braveApiKey: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -80,12 +82,13 @@ class ZeroClawDaemonService : Service() {
             discordBotToken = intent?.getStringExtra(EXTRA_DISCORD_BOT_TOKEN) ?: ""
             slackBotToken = intent?.getStringExtra(EXTRA_SLACK_BOT_TOKEN) ?: ""
             composioApiKey = intent?.getStringExtra(EXTRA_COMPOSIO_API_KEY) ?: ""
+            braveApiKey = intent?.getStringExtra(EXTRA_BRAVE_API_KEY) ?: ""
         }
 
         when (intent?.action) {
             ACTION_START -> {
                 Log.d(TAG, "Received START action")
-                startForeground(NOTIFICATION_ID, createNotification("Starting ZeroClaw...", "Initializing agent runtime"))
+                tryStartForeground("Starting ZeroClaw...", "Initializing agent runtime")
                 startAgent()
             }
             ACTION_STOP -> {
@@ -102,7 +105,7 @@ class ZeroClawDaemonService : Service() {
             else -> {
                 // Default action is to start
                 Log.d(TAG, "Default START action")
-                startForeground(NOTIFICATION_ID, createNotification("Starting ZeroClaw...", "Initializing agent runtime"))
+                tryStartForeground("Starting ZeroClaw...", "Initializing agent runtime")
                 startAgent()
             }
         }
@@ -140,7 +143,7 @@ class ZeroClawDaemonService : Service() {
                 // Start agent runtime via JNI with config params
                 agentHandle = ZeroClawBackend.startAgent(
                     configPath, apiKey, model, telegramToken,
-                    telegramChatId, discordBotToken, slackBotToken, composioApiKey
+                    telegramChatId, discordBotToken, slackBotToken, composioApiKey, braveApiKey
                 )
 
                 if (agentHandle == 0L) {
@@ -266,5 +269,16 @@ class ZeroClawDaemonService : Service() {
         val notification = createNotification(title, text)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun tryStartForeground(title: String, text: String) {
+        try {
+            startForeground(NOTIFICATION_ID, createNotification(title, text))
+        } catch (e: Exception) {
+            // Android 14+ may throw ForegroundServiceStartNotAllowedException when the
+            // dataSync quota is exhausted (common during repeated test runs). Log and continue
+            // as a background service rather than crashing the app.
+            Log.w(TAG, "Could not start foreground service: ${e.message}. Running as background service.")
+        }
     }
 }

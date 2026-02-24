@@ -18,13 +18,13 @@ impl RulesEngine {
     /// Process an event and return matching rules
     pub fn evaluate(&self, event: &Event) -> Result<Vec<Rule>> {
         let rules = storage::list_enabled_rules(&self.db_path)?;
-        
+
         let matching: Vec<Rule> = rules
             .into_iter()
             .filter(|rule| rule.trigger.trigger_type == event.event_type)
             .filter(|rule| self.matches_conditions(&rule.trigger, event))
             .collect();
-        
+
         Ok(matching)
     }
 
@@ -34,7 +34,10 @@ impl RulesEngine {
             return true;
         }
 
-        trigger.conditions.iter().all(|condition| self.matches_condition(condition, event))
+        trigger
+            .conditions
+            .iter()
+            .all(|condition| self.matches_condition(condition, event))
     }
 
     /// Check if a single condition matches
@@ -89,7 +92,10 @@ impl RulesEngine {
         }
 
         // Check for contains match
-        if value.to_lowercase().contains(&condition.value.to_lowercase()) {
+        if value
+            .to_lowercase()
+            .contains(&condition.value.to_lowercase())
+        {
             return !condition.negate;
         }
 

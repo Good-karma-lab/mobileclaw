@@ -115,7 +115,11 @@ impl Tool for WebSearchTool {
                     "{}. **{}**\n   {}\n   <{}>",
                     i + 1,
                     r.title,
-                    if r.description.is_empty() { "No description" } else { &r.description },
+                    if r.description.is_empty() {
+                        "No description"
+                    } else {
+                        &r.description
+                    },
                     r.url
                 )
             })

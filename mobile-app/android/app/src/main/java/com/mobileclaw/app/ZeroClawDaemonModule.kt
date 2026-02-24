@@ -41,6 +41,7 @@ class ZeroClawDaemonModule(private val reactContext: ReactApplicationContext) :
             intent.putExtra(ZeroClawDaemonService.EXTRA_DISCORD_BOT_TOKEN, config.getString("discordBotToken") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_SLACK_BOT_TOKEN, config.getString("slackBotToken") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_COMPOSIO_API_KEY, config.getString("composioApiKey") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_BRAVE_API_KEY, config.getString("braveApiKey") ?: "")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 reactContext.startForegroundService(intent)

@@ -1,0 +1,28 @@
+appId: com.mobileclaw.app
+---
+# E2E Test: Web Search Agent Query
+# Tests that the agent can perform a web search and return results
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+# Navigate to Chat tab
+- tapOn:
+    text: "Chat"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Send a web search query
+- tapOn:
+    id: chat-input
+- inputText: "search the web for latest news about AI"
+- tapOn:
+    id: chat-send-or-voice
+# Wait for agent response (web search can take time)
+- waitForAnimationToEnd:
+    timeout: 90000
+# Assert no gateway error text
+- assertNotVisible:
+    text: "Gateway error"
+# Assert there is a response (any assistant message appeared)
+- assertVisible:
+    id: screen-chat

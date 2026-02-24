@@ -1,6 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type ProviderId = "ollama" | "openrouter" | "openai" | "anthropic" | "gemini" | "copilot";
+export type ProviderId =
+  | "ollama" | "openrouter" | "openai" | "anthropic" | "gemini" | "copilot"
+  | "mistral" | "deepseek" | "xai" | "groq" | "together" | "fireworks"
+  | "perplexity" | "cohere" | "minimax" | "venice" | "moonshot" | "glm" | "qwen" | "lm-studio";
 export type AuthMode = "api_key" | "oauth_token";
 
 export type AgentRuntimeConfig = {
@@ -16,6 +19,7 @@ export type AgentRuntimeConfig = {
   enterpriseUrl: string;
   temperature: number;
   deepgramApiKey: string;
+  braveApiKey: string;
   platformUrl: string; // ZeroClaw backend gateway URL (e.g., "http://10.0.2.2:8000")
 };
 
@@ -78,6 +82,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   enterpriseUrl: "",
   temperature: 0.1,
   deepgramApiKey: "",
+  braveApiKey: "",
   platformUrl: "http://127.0.0.1:8000", // Embedded daemon on localhost
 };
 

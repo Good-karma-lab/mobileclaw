@@ -320,7 +320,7 @@ export function MemoryScreen() {
 
   if (useSidebar) {
     return (
-      <Screen>
+      <Screen testID="screen-memory">
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: theme.spacing.lg,
@@ -329,7 +329,7 @@ export function MemoryScreen() {
             gap: theme.spacing.md,
           }}
         >
-          <Text testID="screen-memory" variant="display">
+          <Text variant="display">
             Memory
           </Text>
           {content}
@@ -339,7 +339,7 @@ export function MemoryScreen() {
   }
 
   return (
-    <Screen>
+    <Screen testID="screen-memory">
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: theme.spacing.lg,
@@ -349,7 +349,7 @@ export function MemoryScreen() {
         }}
       >
         <View>
-          <Text testID="screen-memory" variant="display">
+          <Text variant="display">
             Memory
           </Text>
           <Text variant="muted" style={{ marginTop: theme.spacing.xs }}>

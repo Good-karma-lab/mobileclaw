@@ -28,6 +28,7 @@ export interface DaemonStartConfig {
   discordBotToken?: string;
   slackBotToken?: string;
   composioApiKey?: string;
+  braveApiKey?: string;
 }
 
 /**
@@ -59,6 +60,7 @@ export async function startDaemon(config: DaemonStartConfig = {}): Promise<void>
       discordBotToken: config.discordBotToken ?? '',
       slackBotToken: config.slackBotToken ?? '',
       composioApiKey: config.composioApiKey ?? '',
+      braveApiKey: config.braveApiKey ?? '',
     });
     console.log('[ZeroClawDaemon] Start requested');
   } catch (error) {

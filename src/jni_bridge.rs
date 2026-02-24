@@ -56,6 +56,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     discord_bot_token: JString,
     slack_bot_token: JString,
     composio_api_key: JString,
+    brave_api_key: JString,
 ) -> jlong {
     init_handles();
 
@@ -91,6 +92,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         .unwrap_or_default();
     let composio_api_key_str: String = env
         .get_string(&composio_api_key)
+        .map(Into::into)
+        .unwrap_or_default();
+    let brave_api_key_str: String = env
+        .get_string(&brave_api_key)
         .map(Into::into)
         .unwrap_or_default();
 
@@ -187,6 +192,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         config.composio.enabled = true;
         config.composio.api_key = Some(composio_api_key_str);
     }
+    // Brave Search
+    if !brave_api_key_str.is_empty() {
+        config.web_search.brave_api_key = Some(brave_api_key_str);
+    }
 
     // Enable http_request tool — agent needs to call external APIs and fetch web content.
     // On Android (user's personal device) public internet access is expected.
@@ -219,7 +228,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         std::panic::set_hook(Box::new(|info| {
             eprintln!("[ZeroClaw] PANIC: {:?}", info);
         }));
-        
+
         if let Err(e) = crate::daemon::run(daemon_config, "127.0.0.1".into(), 8000).await {
             eprintln!("[ZeroClaw] Daemon exited: {}", e);
         }

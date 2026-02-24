@@ -10,16 +10,19 @@ use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 
 /// Initialize the rules database and return a connection
-fn with_connection<T, P: AsRef<Path>>(path: P, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+fn with_connection<T, P: AsRef<Path>>(
+    path: P,
+    f: impl FnOnce(&Connection) -> Result<T>,
+) -> Result<T> {
     let path = path.as_ref();
-    
+
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    
+
     let conn = Connection::open(path)?;
-    
+
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS rules (
@@ -36,7 +39,7 @@ fn with_connection<T, P: AsRef<Path>>(path: P, f: impl FnOnce(&Connection) -> Re
         CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules(enabled);
         "#,
     )?;
-    
+
     f(&conn)
 }
 
@@ -73,8 +76,10 @@ pub fn get_rule<P: AsRef<Path>>(path: P, id: &str) -> Result<Option<Rule>> {
             FROM rules WHERE id = ?1
             "#,
         )?;
-        
-        let rule = stmt.query_row(params![id], |row| row_to_rule(row)).optional()?;
+
+        let rule = stmt
+            .query_row(params![id], |row| row_to_rule(row))
+            .optional()?;
         Ok(rule)
     })
 }
@@ -88,8 +93,10 @@ pub fn list_rules<P: AsRef<Path>>(path: P) -> Result<Vec<Rule>> {
             FROM rules ORDER BY created_at DESC
             "#,
         )?;
-        
-        let rules = stmt.query_map([], |row| row_to_rule(row))?.collect::<Result<Vec<_>, _>>()?;
+
+        let rules = stmt
+            .query_map([], |row| row_to_rule(row))?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(rules)
     })
 }
@@ -103,8 +110,10 @@ pub fn list_enabled_rules<P: AsRef<Path>>(path: P) -> Result<Vec<Rule>> {
             FROM rules WHERE enabled = 1 ORDER BY created_at DESC
             "#,
         )?;
-        
-        let rules = stmt.query_map([], |row| row_to_rule(row))?.collect::<Result<Vec<_>, _>>()?;
+
+        let rules = stmt
+            .query_map([], |row| row_to_rule(row))?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(rules)
     })
 }
@@ -169,14 +178,14 @@ fn row_to_rule(row: &rusqlite::Row) -> Result<Rule, rusqlite::Error> {
     let created_at_str: String = row.get(7)?;
     let updated_at_str: String = row.get(8)?;
 
-    let trigger_type: TriggerType = serde_json::from_str(&trigger_type_str)
-        .map_err(|_| rusqlite::Error::InvalidQuery)?;
-    let conditions: Vec<Condition> = serde_json::from_str(&conditions_str)
-        .map_err(|_| rusqlite::Error::InvalidQuery)?;
-    let action_type: ActionType = serde_json::from_str(&action_type_str)
-        .map_err(|_| rusqlite::Error::InvalidQuery)?;
-    let action_params: serde_json::Value = serde_json::from_str(&action_params_str)
-        .map_err(|_| rusqlite::Error::InvalidQuery)?;
+    let trigger_type: TriggerType =
+        serde_json::from_str(&trigger_type_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
+    let conditions: Vec<Condition> =
+        serde_json::from_str(&conditions_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
+    let action_type: ActionType =
+        serde_json::from_str(&action_type_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
+    let action_params: serde_json::Value =
+        serde_json::from_str(&action_params_str).map_err(|_| rusqlite::Error::InvalidQuery)?;
 
     let created_at = DateTime::parse_from_rfc3339(&created_at_str)
         .map(|dt| dt.with_timezone(&Utc))
@@ -234,10 +243,10 @@ mod tests {
     fn rule_add_and_get() {
         let tmp = TempDir::new().unwrap();
         let db_path = tmp.path().join("rules.db");
-        
+
         let rule = test_rule();
         add_rule(&db_path, &rule).unwrap();
-        
+
         let retrieved = get_rule(&db_path, "test-rule-1").unwrap();
         assert!(retrieved.is_some());
         let retrieved = retrieved.unwrap();
@@ -250,18 +259,18 @@ mod tests {
     fn rule_list_all() {
         let tmp = TempDir::new().unwrap();
         let db_path = tmp.path().join("rules.db");
-        
+
         let mut rule1 = test_rule();
         rule1.id = "rule-1".to_string();
         rule1.name = "First rule".to_string();
-        
+
         let mut rule2 = test_rule();
         rule2.id = "rule-2".to_string();
         rule2.name = "Second rule".to_string();
-        
+
         add_rule(&db_path, &rule1).unwrap();
         add_rule(&db_path, &rule2).unwrap();
-        
+
         let rules = list_rules(&db_path).unwrap();
         assert_eq!(rules.len(), 2);
     }
@@ -270,18 +279,18 @@ mod tests {
     fn rule_list_enabled() {
         let tmp = TempDir::new().unwrap();
         let db_path = tmp.path().join("rules.db");
-        
+
         let mut rule1 = test_rule();
         rule1.id = "rule-1".to_string();
         rule1.enabled = true;
-        
+
         let mut rule2 = test_rule();
         rule2.id = "rule-2".to_string();
         rule2.enabled = false;
-        
+
         add_rule(&db_path, &rule1).unwrap();
         add_rule(&db_path, &rule2).unwrap();
-        
+
         let enabled = list_enabled_rules(&db_path).unwrap();
         assert_eq!(enabled.len(), 1);
         assert_eq!(enabled[0].id, "rule-1");
@@ -291,16 +300,16 @@ mod tests {
     fn rule_delete() {
         let tmp = TempDir::new().unwrap();
         let db_path = tmp.path().join("rules.db");
-        
+
         let rule = test_rule();
         add_rule(&db_path, &rule).unwrap();
-        
+
         let deleted = delete_rule(&db_path, "test-rule-1").unwrap();
         assert!(deleted);
-        
+
         let retrieved = get_rule(&db_path, "test-rule-1").unwrap();
         assert!(retrieved.is_none());
-        
+
         let deleted_again = delete_rule(&db_path, "test-rule-1").unwrap();
         assert!(!deleted_again);
     }
@@ -309,16 +318,16 @@ mod tests {
     fn rule_toggle() {
         let tmp = TempDir::new().unwrap();
         let db_path = tmp.path().join("rules.db");
-        
+
         let rule = test_rule();
         add_rule(&db_path, &rule).unwrap();
-        
+
         let toggled = toggle_rule(&db_path, "test-rule-1", false).unwrap();
         assert!(toggled);
-        
+
         let retrieved = get_rule(&db_path, "test-rule-1").unwrap().unwrap();
         assert!(!retrieved.enabled);
-        
+
         let enabled_rules = list_enabled_rules(&db_path).unwrap();
         assert_eq!(enabled_rules.len(), 0);
     }
