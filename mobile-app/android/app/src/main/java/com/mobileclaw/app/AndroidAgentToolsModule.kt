@@ -68,7 +68,17 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
                 .put("phone", phone ?: "")
                 .put("ts", System.currentTimeMillis())
 
-            RuntimeBridge.enqueueHookEvent(context, "incoming_call", "$state from ${phone ?: "unknown"}")
+            RuntimeBridge.enqueueHookEvent(
+                context,
+                "incoming_call",
+                "$state from ${phone ?: "unknown"}",
+                JSONObject()
+                    .put("state", state)
+                    .put("phone_number", phone ?: "unknown")
+                    .put("phone", phone ?: "unknown")
+                    .put("source", "incoming_call_receiver")
+                    .put("ts", System.currentTimeMillis()),
+            )
 
             val react = reactContext?.get()
             if (react?.hasActiveReactInstance() == true) {
@@ -91,7 +101,18 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
                 .put("ts", System.currentTimeMillis())
 
             val condensedBody = (body ?: "").replace("\n", " ").take(180)
-            RuntimeBridge.enqueueHookEvent(context, "incoming_sms", "from ${address ?: "unknown"} | $condensedBody")
+            RuntimeBridge.enqueueHookEvent(
+                context,
+                "incoming_sms",
+                "from ${address ?: "unknown"} | $condensedBody",
+                JSONObject()
+                    .put("phone_number", address ?: "unknown")
+                    .put("address", address ?: "unknown")
+                    .put("content", body ?: "")
+                    .put("body", body ?: "")
+                    .put("source", "incoming_sms_receiver")
+                    .put("ts", System.currentTimeMillis()),
+            )
 
             val react = reactContext?.get()
             if (react?.hasActiveReactInstance() == true) {

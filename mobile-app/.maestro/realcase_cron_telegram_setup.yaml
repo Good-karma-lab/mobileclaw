@@ -1,0 +1,28 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "Create a cron job named real_case_cron_telegram that runs every minute and sends a Telegram message saying REAL_CASE_CRON_20260225."
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 240000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "REAL_CASE_CRON_20260225"
+    optional: true

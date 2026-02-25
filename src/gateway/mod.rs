@@ -1620,13 +1620,12 @@ async fn execute_rule_action(
             // Send via Telegram
             if let Some(tg) = tg_config {
                 if !tg.bot_token.is_empty() {
-                    // chat_id must be supplied via action params since TelegramConfig
-                    // does not carry a dedicated notify_chat_id field.
                     let chat_id_opt = rule
                         .action
                         .params
                         .get("chat_id")
-                        .and_then(|v| v.as_str());
+                        .and_then(|v| v.as_str())
+                        .or(tg.notify_chat_id.as_deref());
                     if let Some(chat_id) = chat_id_opt {
                         let client = reqwest::Client::new();
                         let url =
@@ -1647,7 +1646,10 @@ async fn execute_rule_action(
                             tracing::info!("Telegram notification sent for rule: {}", rule.name);
                         }
                     } else {
-                        tracing::warn!("Telegram notify: no chat_id in action params for rule: {}", rule.name);
+                        tracing::warn!(
+                            "Telegram notify: missing chat_id (rule params and telegram.notify_chat_id) for rule: {}",
+                            rule.name
+                        );
                     }
                 }
             } else {

@@ -185,14 +185,17 @@ object RuntimeBridge {
         scheduleImmediate(context)
     }
 
-    fun enqueueHookEvent(context: Context, kind: String, detail: String) {
+    fun enqueueHookEvent(context: Context, kind: String, detail: String, eventData: JSONObject? = null) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (kind == "incoming_call" && !prefs.getBoolean(INCOMING_CALL_HOOKS, true)) return
         if (kind == "incoming_sms" && !prefs.getBoolean(INCOMING_SMS_HOOKS, true)) return
 
+        val normalizedData = eventData ?: JSONObject().put("detail", detail)
         val payload = JSONObject()
             .put("id", UUID.randomUUID().toString())
             .put("kind", kind)
+            .put("event_type", kind)
+            .put("data", normalizedData)
             .put("message", if (kind == "incoming_sms") "Incoming SMS event: $detail" else "Incoming call event: $detail")
             .put("telegramChatId", "")
             .put("attempts", 0)
@@ -570,8 +573,16 @@ object RuntimeBridge {
                 continue
             }
 
-            val webhookRes = postWebhook("$LOCAL_GATEWAY/webhook", message)
-            if (!webhookRes.ok) {
+            val eventType = item.optString("event_type", "").trim()
+            val eventData = item.optJSONObject("data")
+            val deliveryRes = if (eventType.isNotBlank() && eventData != null) {
+                val eventRes = postAgentEvent("$LOCAL_GATEWAY/agent/event", eventType, eventData)
+                if (eventRes.ok) eventRes else postWebhook("$LOCAL_GATEWAY/webhook", message)
+            } else {
+                postWebhook("$LOCAL_GATEWAY/webhook", message)
+            }
+
+            if (!deliveryRes.ok) {
                 failed += 1
                 prefs.edit()
                     .putLong(WEBHOOK_FAIL_COUNT, prefs.getLong(WEBHOOK_FAIL_COUNT, 0L) + 1L)
@@ -636,6 +647,21 @@ object RuntimeBridge {
     private fun postWebhook(endpoint: String, message: String): WebhookResult {
         return try {
             val response = httpPostJson(endpoint, JSONObject().put("message", message).toString())
+            if (response == null) WebhookResult(false, "") else WebhookResult(true, response)
+        } catch (_: Throwable) {
+            WebhookResult(false, "")
+        }
+    }
+
+    private fun postAgentEvent(endpoint: String, eventType: String, data: JSONObject): WebhookResult {
+        return try {
+            val response = httpPostJson(
+                endpoint,
+                JSONObject()
+                    .put("event_type", eventType)
+                    .put("data", data)
+                    .toString(),
+            )
             if (response == null) WebhookResult(false, "") else WebhookResult(true, response)
         } catch (_: Throwable) {
             WebhookResult(false, "")
