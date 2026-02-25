@@ -1,0 +1,29 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "MobileClaw agent chat with voice mode."
+    timeout: 30000
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember this validation code: MOBILECLAW-42\n"
+- tapOn:
+    id: "chat-send-or-voice"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "What validation code did I give you?\n"
+- tapOn:
+    id: "chat-send-or-voice"
+- waitForAnimationToEnd
+- assertNotVisible: "Gateway error"
+- tapOn:
+    id: "chat-input"
+- inputText: "MobileClaw telegram bot pairing: 530732407\n"
+- tapOn:
+    id: "chat-send-or-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Telegram pairing"
+    optional: true

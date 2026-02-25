@@ -143,9 +143,10 @@ android {
     }
 }
 
-tasks.register("buildZeroClawAndroidBinaries", Exec) {
-    workingDir repoRoot
-    commandLine cargoBin, "ndk", "-t", "x86_64-linux-android", "-t", "arm64-v8a", "build", "--bin", "zeroclaw", "--release", "--no-default-features"
+// JNI libs are pre-built via build_android_jni.sh and placed in src/main/jniLibs/.
+// This task is a no-op placeholder so the preBuild dependency chain stays intact.
+tasks.register("buildZeroClawAndroidBinaries") {
+    doLast { /* no-op: JNI .so files placed manually */ }
 }
 
 tasks.register("prepareZeroClawAndroidAssets", Copy) {
@@ -163,15 +164,7 @@ tasks.register("prepareZeroClawAndroidAssets", Copy) {
 
 tasks.register("prepareZeroClawAndroidJniLibs", Copy) {
     dependsOn "buildZeroClawAndroidBinaries"
-    into rustJniLibsDir
-    from("$repoRoot/target/x86_64-linux-android/release/zeroclaw") {
-        into "x86_64"
-        rename { "libzeroclaw.so" }
-    }
-    from("$repoRoot/target/aarch64-linux-android/release/zeroclaw") {
-        into "arm64-v8a"
-        rename { "libzeroclaw.so" }
-    }
+    doLast { /* JNI libs are provided by build_android_jni.sh in src/main/jniLibs */ }
 }
 
 preBuild.dependsOn("prepareZeroClawAndroidAssets")

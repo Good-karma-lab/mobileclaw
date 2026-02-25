@@ -2,6 +2,27 @@
 
 Thanks for your interest in contributing to ZeroClaw! This guide will help you get started.
 
+## First-Time Contributors
+
+Welcome — contributions of all sizes are valued. If this is your first contribution, here is how to get started:
+
+1. **Find an issue.** Look for issues labeled [`good first issue`](https://github.com/zeroclaw-labs/zeroclaw/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — these are scoped for newcomers and include context to get moving quickly.
+
+2. **Pick a scope.** Good first contributions include:
+   - Typo and documentation fixes
+   - Test additions or improvements
+   - Small bug fixes with clear reproduction steps
+
+3. **Follow the fork → branch → change → test → PR workflow:**
+   - Fork the repository and clone your fork
+   - Create a feature branch (`git checkout -b fix/my-change`)
+   - Make your changes and run `cargo fmt && cargo clippy && cargo test`
+   - Open a PR against `dev` using the PR template
+
+4. **Start with Track A.** ZeroClaw uses three [collaboration tracks](#collaboration-tracks-risk-based) (A/B/C) based on risk. First-time contributors should target **Track A** (docs, tests, chore) — these require lighter review and are the fastest path to a merged PR.
+
+If you get stuck, open a draft PR early and ask questions in the description.
+
 ## Development Setup
 
 ```bash
@@ -33,7 +54,7 @@ cargo test --locked
 # Optional docs links gate (checks only links added on changed lines)
 ./scripts/ci/docs_links_gate.sh
 
-# Release build (~3.4MB)
+# Release build
 cargo build --release --locked
 ```
 
@@ -188,15 +209,21 @@ To keep docs useful under high PR volume, we use these rules:
 - **Risk-proportionate detail**: high-risk paths need deeper evidence; low-risk paths stay lightweight.
 - **Side-effect visibility**: document blast radius, failure modes, and rollback before merge.
 - **Automation assists, humans decide**: bots triage and label, but merge accountability stays human.
+- **Index-first discoverability**: `docs/README.md` is the first entry point for operational documentation.
+- **Template-first authoring**: start new operational docs from `docs/doc-template.md`.
 
 ### Documentation System Map
 
 | Doc | Primary purpose | When to update |
 |---|---|---|
+| `docs/README.md` | canonical docs index and taxonomy | add/remove docs or change documentation ownership/navigation |
+| `docs/doc-template.md` | standard skeleton for new operational documentation | when required sections or documentation quality bar changes |
 | `CONTRIBUTING.md` | contributor contract and readiness baseline | contributor expectations or policy changes |
 | `docs/pr-workflow.md` | governance logic and merge contract | workflow/risk/merge gate changes |
 | `docs/reviewer-playbook.md` | reviewer operating checklist | review depth or triage behavior changes |
 | `docs/ci-map.md` | CI ownership and triage entry points | workflow trigger/job ownership changes |
+| `docs/network-deployment.md` | runtime deployment and network operating guide | gateway/channel/tunnel/network runtime behavior changes |
+| `docs/proxy-agent-playbook.md` | agent-operable proxy runbook and rollback recipes | proxy scope/selector/tooling behavior changes |
 
 ## PR Definition of Ready (DoR)
 
@@ -209,6 +236,8 @@ Before requesting review, ensure all of the following are true:
 - No personal/sensitive data is introduced in code/docs/tests/fixtures/logs/examples/commit messages.
 - Tests/fixtures/examples use neutral project-scoped wording (no identity-specific or first-person phrasing).
 - If identity-like wording is required, use ZeroClaw-centric labels only (for example: `ZeroClawAgent`, `ZeroClawOperator`, `zeroclaw_user`).
+- If docs were changed, update `docs/README.md` navigation and reciprocal links with related docs.
+- If a new operational doc was added, start from `docs/doc-template.md` and keep risk/rollback/troubleshooting sections where applicable.
 - Linked issue (or rationale for no issue) is included.
 
 ## PR Definition of Done (DoD)
@@ -220,6 +249,7 @@ A PR is merge-ready when:
 - Risk level matches changed paths (`risk: low/medium/high`).
 - User-visible behavior, migration, and rollback notes are complete.
 - Follow-up TODOs are explicit and tracked in issues.
+- For documentation changes, links and ownership mapping in `CONTRIBUTING.md` and `docs/README.md` are consistent.
 
 ## High-Volume Collaboration Rules
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Pressable, Animated, PanResponder, type LayoutChangeEvent } from "react-native";
+import { View, Pressable, Animated, PanResponder, Keyboard, type LayoutChangeEvent } from "react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,6 +33,7 @@ export function FloatingDock(props: BottomTabBarProps) {
   const dockX = useRef(new Animated.Value(0)).current;
   const dockXValue = useRef(0);
   const [dockWidth, setDockWidth] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const bottom = Math.max(12, insets.bottom + 10);
   const inset = 16;
@@ -86,19 +87,29 @@ export function FloatingDock(props: BottomTabBarProps) {
     });
   }, [dockX, hiddenX, isCollapsed]);
 
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   const onDockLayout = (e: LayoutChangeEvent) => {
     setDockWidth(e.nativeEvent.layout.width);
   };
 
   return (
     <Animated.View
+      pointerEvents={keyboardVisible ? "none" : "auto"}
       style={{
         position: "absolute",
         left: inset,
         right: inset,
         bottom,
-        transform: [{ translateX: dockX }, { scale: anim }],
-        opacity: anim
+        transform: [{ translateX: dockX }, { scale: anim }, { translateY: keyboardVisible ? 120 : 0 }],
+        opacity: keyboardVisible ? 0 : anim,
       }}
       onLayout={onDockLayout}
       {...(isCollapsed ? panResponder.panHandlers : {})}

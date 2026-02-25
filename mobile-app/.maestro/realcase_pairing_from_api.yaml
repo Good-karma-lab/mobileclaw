@@ -1,0 +1,19 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "MobileClaw telegram bot pairing: ${TELEGRAM_ID}"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 180000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"

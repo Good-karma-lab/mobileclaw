@@ -27,7 +27,9 @@ pub mod rpi;
 pub use traits::Peripheral;
 
 use crate::config::{Config, PeripheralBoardConfig, PeripheralsConfig};
-use crate::tools::{HardwareMemoryMapTool, Tool};
+#[cfg(feature = "hardware")]
+use crate::tools::HardwareMemoryMapTool;
+use crate::tools::Tool;
 use anyhow::Result;
 
 /// List configured boards from config (no connection yet).
@@ -40,7 +42,7 @@ pub fn list_configured_boards(config: &PeripheralsConfig) -> Vec<&PeripheralBoar
 
 /// Handle `zeroclaw peripheral` subcommands.
 #[allow(clippy::module_name_repetitions)]
-pub fn handle_command(cmd: crate::PeripheralCommands, config: &Config) -> Result<()> {
+pub async fn handle_command(cmd: crate::PeripheralCommands, config: &Config) -> Result<()> {
     match cmd {
         crate::PeripheralCommands::List => {
             let boards = list_configured_boards(&config.peripherals);
@@ -74,7 +76,7 @@ pub fn handle_command(cmd: crate::PeripheralCommands, config: &Config) -> Result
                 Some(path.clone())
             };
 
-            let mut cfg = crate::config::Config::load_or_init()?;
+            let mut cfg = crate::config::Config::load_or_init().await?;
             cfg.peripherals.enabled = true;
 
             if cfg
@@ -93,7 +95,7 @@ pub fn handle_command(cmd: crate::PeripheralCommands, config: &Config) -> Result
                 path: path_opt,
                 baud: 115_200,
             });
-            cfg.save()?;
+            cfg.save().await?;
             println!("Added {} at {}. Restart daemon to apply.", board, path);
         }
         #[cfg(feature = "hardware")]
@@ -228,4 +230,83 @@ pub async fn create_peripheral_tools(config: &PeripheralsConfig) -> Result<Vec<B
 #[cfg(not(feature = "hardware"))]
 pub async fn create_peripheral_tools(_config: &PeripheralsConfig) -> Result<Vec<Box<dyn Tool>>> {
     Ok(Vec::new())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{PeripheralBoardConfig, PeripheralsConfig};
+
+    #[test]
+    fn list_configured_boards_when_disabled_returns_empty() {
+        let config = PeripheralsConfig {
+            enabled: false,
+            boards: vec![PeripheralBoardConfig {
+                board: "nucleo-f401re".into(),
+                transport: "serial".into(),
+                path: Some("/dev/ttyACM0".into()),
+                baud: 115_200,
+            }],
+            datasheet_dir: None,
+        };
+        let result = list_configured_boards(&config);
+        assert!(
+            result.is_empty(),
+            "disabled peripherals should return no boards"
+        );
+    }
+
+    #[test]
+    fn list_configured_boards_when_enabled_with_boards() {
+        let config = PeripheralsConfig {
+            enabled: true,
+            boards: vec![
+                PeripheralBoardConfig {
+                    board: "nucleo-f401re".into(),
+                    transport: "serial".into(),
+                    path: Some("/dev/ttyACM0".into()),
+                    baud: 115_200,
+                },
+                PeripheralBoardConfig {
+                    board: "rpi-gpio".into(),
+                    transport: "native".into(),
+                    path: None,
+                    baud: 115_200,
+                },
+            ],
+            datasheet_dir: None,
+        };
+        let result = list_configured_boards(&config);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].board, "nucleo-f401re");
+        assert_eq!(result[1].board, "rpi-gpio");
+    }
+
+    #[test]
+    fn list_configured_boards_when_enabled_but_no_boards() {
+        let config = PeripheralsConfig {
+            enabled: true,
+            boards: vec![],
+            datasheet_dir: None,
+        };
+        let result = list_configured_boards(&config);
+        assert!(
+            result.is_empty(),
+            "enabled with no boards should return empty"
+        );
+    }
+
+    #[tokio::test]
+    async fn create_peripheral_tools_returns_empty_when_disabled() {
+        let config = PeripheralsConfig {
+            enabled: false,
+            boards: vec![],
+            datasheet_dir: None,
+        };
+        let tools = create_peripheral_tools(&config).await.unwrap();
+        assert!(
+            tools.is_empty(),
+            "disabled peripherals should produce no tools"
+        );
+    }
 }

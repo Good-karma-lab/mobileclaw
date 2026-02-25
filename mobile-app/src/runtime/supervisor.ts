@@ -61,7 +61,7 @@ function signature(integrations: IntegrationsConfig, security: SecurityConfig): 
 }
 
 function deriveComponents(integrations: IntegrationsConfig, security: SecurityConfig) {
-  const components = ["daemon:zeroclaw"];
+  const components = ["daemon:mobileclaw_agent"];
   const missing: string[] = [];
 
   if (integrations.telegramEnabled) {
@@ -139,7 +139,7 @@ export async function startRuntimeSupervisor(reason: string): Promise<RuntimeSup
   await addActivity({
     kind: "action",
     source: "runtime",
-    title: "ZeroClaw runtime starting",
+    title: "MobileClaw agent starting",
     detail: reason,
   });
 
@@ -213,7 +213,7 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     await addActivity({
       kind: "action",
       source: "runtime",
-      title: status === "healthy" ? "ZeroClaw runtime healthy" : "ZeroClaw runtime degraded",
+      title: status === "healthy" ? "MobileClaw agent healthy" : "MobileClaw agent needs attention",
       detail: detailParts.join(" | "),
     });
   }
@@ -237,7 +237,7 @@ export async function stopRuntimeSupervisor(reason: string): Promise<RuntimeSupe
   await addActivity({
     kind: "action",
     source: "runtime",
-    title: "ZeroClaw runtime stopped",
+    title: "MobileClaw agent stopped",
     detail: reason,
   });
   return next;

@@ -1,4 +1,4 @@
-use super::traits::{Channel, ChannelMessage};
+use super::traits::{Channel, ChannelMessage, SendMessage};
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -8,12 +8,25 @@ use uuid::Uuid;
 /// Messages are received via the gateway's `/whatsapp` webhook endpoint.
 /// The `listen` method here is a no-op placeholder; actual message handling
 /// happens in the gateway when Meta sends webhook events.
+fn ensure_https(url: &str) -> anyhow::Result<()> {
+    if !url.starts_with("https://") {
+        anyhow::bail!(
+            "Refusing to transmit sensitive data over non-HTTPS URL: URL scheme must be https"
+        );
+    }
+    Ok(())
+}
+
+///
+/// # Runtime Negotiation
+///
+/// This Cloud API channel is automatically selected when `phone_number_id` is set in the config.
+/// Use `WhatsAppWebChannel` (with `session_path`) for native Web mode.
 pub struct WhatsAppChannel {
     access_token: String,
     endpoint_id: String,
     verify_token: String,
     allowed_numbers: Vec<String>,
-    client: reqwest::Client,
 }
 
 impl WhatsAppChannel {
@@ -28,8 +41,11 @@ impl WhatsAppChannel {
             endpoint_id,
             verify_token,
             allowed_numbers,
-            client: reqwest::Client::new(),
         }
+    }
+
+    fn http_client(&self) -> reqwest::Client {
+        crate::config::build_runtime_proxy_client("channel.whatsapp")
     }
 
     /// Check if a phone number is allowed (E.164 format: +1234567890)
@@ -83,7 +99,8 @@ impl WhatsAppChannel {
                     if !self.is_number_allowed(&normalized_from) {
                         tracing::warn!(
                             "WhatsApp: ignoring message from unauthorized number: {normalized_from}. \
-                            Add to allowed_numbers in config.toml, then run `zeroclaw onboard --channels-only`."
+                            Add to channels.whatsapp.allowed_numbers in config.toml, \
+                            or run `zeroclaw onboard --channels-only` to configure interactively."
                         );
                         continue;
                     }
@@ -119,11 +136,12 @@ impl WhatsAppChannel {
 
                     messages.push(ChannelMessage {
                         id: Uuid::new_v4().to_string(),
-                        sender: normalized_from.clone(),
-                        reply_to: normalized_from,
+                        reply_target: normalized_from.clone(),
+                        sender: normalized_from,
                         content,
                         channel: "whatsapp".to_string(),
                         timestamp,
+                        thread_ts: None,
                     });
                 }
             }
@@ -139,7 +157,7 @@ impl Channel for WhatsAppChannel {
         "whatsapp"
     }
 
-    async fn send(&self, message: &str, recipient: &str) -> anyhow::Result<()> {
+    async fn send(&self, message: &SendMessage) -> anyhow::Result<()> {
         // WhatsApp Cloud API: POST to /v18.0/{phone_number_id}/messages
         let url = format!(
             "https://graph.facebook.com/v18.0/{}/messages",
@@ -147,7 +165,10 @@ impl Channel for WhatsAppChannel {
         );
 
         // Normalize recipient (remove leading + if present for API)
-        let to = recipient.strip_prefix('+').unwrap_or(recipient);
+        let to = message
+            .recipient
+            .strip_prefix('+')
+            .unwrap_or(&message.recipient);
 
         let body = serde_json::json!({
             "messaging_product": "whatsapp",
@@ -156,12 +177,14 @@ impl Channel for WhatsAppChannel {
             "type": "text",
             "text": {
                 "preview_url": false,
-                "body": message
+                "body": message.content
             }
         });
 
+        ensure_https(&url)?;
+
         let resp = self
-            .client
+            .http_client()
             .post(&url)
             .bearer_auth(&self.access_token)
             .header("Content-Type", "application/json")
@@ -198,7 +221,11 @@ impl Channel for WhatsAppChannel {
         // Check if we can reach the WhatsApp API
         let url = format!("https://graph.facebook.com/v18.0/{}", self.endpoint_id);
 
-        self.client
+        if ensure_https(&url).is_err() {
+            return false;
+        }
+
+        self.http_client()
             .get(&url)
             .bearer_auth(&self.access_token)
             .send()

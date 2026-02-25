@@ -17,6 +17,10 @@ appId: com.mobileclaw.app
     visible:
       id: screen-settings
     timeout: 10000
+# Scroll down a bit first to get past the top sections
+- swipe:
+    direction: DOWN
+    duration: 800
 # Scroll down to Web Search section (use scrollUntilVisible for reliability)
 - scrollUntilVisible:
     element:

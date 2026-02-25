@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, ScrollView, TextInput, Pressable, Linking, KeyboardAvoidingView, Platform } from "react-native";
+import { View, ScrollView, TextInput, Pressable, Linking, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
 import Animated, { FadeIn, SlideInLeft, SlideInRight } from "react-native-reanimated";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Markdown from "react-native-markdown-display";
 import MarkdownIt from "markdown-it";
 import { Audio } from "expo-av";
@@ -16,16 +17,19 @@ import { appendChat, loadChat, sanitizeAssistantArtifacts, type ChatMessage } fr
 import { addActivity } from "../../state/activity";
 import { loadAgentConfig } from "../../state/mobileclaw";
 import { runAgentTurnWithGateway } from "../../runtime/session";
-import { synthesizeSpeechWithDeepgram, runZeroClawAgentStream } from "../../api/mobileclaw";
+import { pairTelegramIdentity, synthesizeSpeechWithDeepgram, runZeroClawAgentStream } from "../../api/mobileclaw";
 import { useLayoutContext } from "../../state/layout";
+import { restartDaemon } from "../../native/zeroClawDaemon";
 
 const BUBBLE_USER = SlideInRight.duration(280).springify().damping(18).stiffness(180);
 const BUBBLE_ASSISTANT = SlideInLeft.duration(280).springify().damping(18).stiffness(180);
 const MARKDOWN_NO_TABLES = new MarkdownIt({ breaks: true, linkify: true, typographer: true }).disable(["table"]);
+const CHAT_SESSION_ID = "mobileclaw-chat-main";
 
 export function ChatScreen() {
   const { useSidebar } = useLayoutContext();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const toast = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -33,6 +37,7 @@ export function ChatScreen() {
   const [thinkingDots, setThinkingDots] = useState(".");
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const [deepgramApiKey, setDeepgramApiKey] = useState("");
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const voice = useVoiceRecording(deepgramApiKey);
   const scrollRef = useRef<ScrollView | null>(null);
   const runNonceRef = useRef(0);
@@ -81,6 +86,15 @@ export function ChatScreen() {
     if (!scrollRef.current) return;
     scrollRef.current.scrollToEnd({ animated: true });
   }, [messages, busy]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!busy) return;
@@ -182,12 +196,12 @@ export function ChatScreen() {
     [markdownStyles, useSidebar],
   );
 
-  const runTurnWithTimeout = useCallback(async (prompt: string) => {
+  const runTurnWithTimeout = useCallback(async (prompt: string, sessionId: string) => {
     const timeoutMs = 180_000; // 3 minutes — allow time for complex tool-using agent turns
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         return await Promise.race([
-          runAgentTurnWithGateway(prompt),
+          runAgentTurnWithGateway(prompt, sessionId),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("Agent request timed out. Retrying...")), timeoutMs)
           ),
@@ -199,6 +213,14 @@ export function ChatScreen() {
     }
     throw new Error("Agent request timed out after retry.");
   }, []);
+
+  const startVoiceRecording = useCallback(async () => {
+    const ok = await voice.start();
+    if (!ok) {
+      toast.show(voice.interimText || "Voice mode is unavailable. Check Deepgram key in Settings.");
+    }
+    return ok;
+  }, [toast, voice]);
 
   const speechTextFromMarkdown = useCallback((raw: string) => {
     return String(raw || "")
@@ -255,6 +277,47 @@ export function ChatScreen() {
       await appendChat(userMsg);
       await addActivity({ kind: "message", source: "chat", title: "User message", detail: userMsg.text.slice(0, 120) });
 
+      const runtime = await loadAgentConfig();
+      const gatewayUrl = runtime.platformUrl?.trim() || "http://127.0.0.1:8000";
+      const pairingMatch = userMsg.text.match(/^mobileclaw\s+telegram\s+bot\s+pairing\s*:\s*(.+)$/i);
+      if (pairingMatch?.[1]) {
+        const identity = pairingMatch[1].trim();
+        const assistantMsg: ChatMessage = {
+          id: `a_${Date.now()}_${Math.random()}`,
+          role: "assistant",
+          text: "",
+          ts: Date.now(),
+        };
+        setBusy(true);
+        setMessages((prev) => [...prev, assistantMsg]);
+        try {
+          const result = await pairTelegramIdentity(gatewayUrl, identity);
+          const confirmation = result.paired
+            ? `Telegram pairing completed for identity ${identity}. You can now message the bot again in Telegram.`
+            : `Telegram pairing did not complete: ${result.error || "unknown error"}`;
+          if (result.paired && Platform.OS === "android") {
+            try {
+              await restartDaemon();
+            } catch {
+              // ignore restart failures; pairing is persisted on backend config
+            }
+          }
+          setMessages((prev) => prev.map((m) => (m.id === assistantMsg.id ? { ...m, text: confirmation } : m)));
+          await appendChat({ ...assistantMsg, text: confirmation });
+          await addActivity({ kind: "action", source: "chat", title: "Telegram pairing", detail: confirmation });
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : "Telegram pairing failed";
+          const errorText = `Telegram pairing failed: ${detail}`;
+          setMessages((prev) => prev.map((m) => (m.id === assistantMsg.id ? { ...m, text: errorText } : m)));
+          await appendChat({ ...assistantMsg, text: errorText });
+          toast.show(errorText);
+          await addActivity({ kind: "log", source: "chat", title: "Telegram pairing failed", detail });
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
+
       const runNonce = runNonceRef.current + 1;
       runNonceRef.current = runNonce;
       setBusy(true);
@@ -269,12 +332,10 @@ export function ChatScreen() {
       setMessages((prev) => [...prev, assistantMsg]);
 
       try {
-        const runtime = await loadAgentConfig();
-        const gatewayUrl = runtime.platformUrl?.trim() || "http://127.0.0.1:8000";
         let fullText = "";
 
         try {
-          for await (const chunk of runZeroClawAgentStream(userMsg.text, gatewayUrl)) {
+          for await (const chunk of runZeroClawAgentStream(userMsg.text, gatewayUrl, CHAT_SESSION_ID)) {
             if (runNonceRef.current !== runNonce) return;
             fullText += chunk;
             setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, text: fullText } : m));
@@ -282,7 +343,7 @@ export function ChatScreen() {
         } catch {
           // Streaming failed — fall back to non-streaming
           if (runNonceRef.current !== runNonce) return;
-          const result = await runTurnWithTimeout(userMsg.text);
+          const result = await runTurnWithTimeout(userMsg.text, CHAT_SESSION_ID);
           if (runNonceRef.current !== runNonce) return;
           fullText = result.assistantText || "(empty response)";
           for (const event of result.toolEvents) {
@@ -302,9 +363,17 @@ export function ChatScreen() {
         }
       } catch (error) {
         if (runNonceRef.current !== runNonce) return;
-        const detail = error instanceof Error ? error.message : "Unknown error";
+        let detail = error instanceof Error ? error.message : "Unknown error";
+        if (Platform.OS === "android" && /gateway|network|failed to fetch|timeout/i.test(detail)) {
+          try {
+            await restartDaemon();
+            detail = "Agent was restarting. Please retry your message in a few seconds.";
+          } catch {
+            // keep original detail
+          }
+        }
         toast.show(detail);
-        const errText = sanitizeAssistantArtifacts(`Agent error: ${detail}. Please retry your request.`);
+        const errText = sanitizeAssistantArtifacts(`MobileClaw agent error: ${detail}`);
         setMessages((prev) => prev.map((m) => m.id === assistantMsgId ? { ...m, text: errText } : m));
         await appendChat({ ...assistantMsg, text: errText });
         await addActivity({ kind: "log", source: "chat", title: "Agent error", detail });
@@ -319,12 +388,19 @@ export function ChatScreen() {
 
   const canSend = useMemo(() => !!draft.trim() && !busy, [draft, busy]);
   const hasDraft = useMemo(() => !!draft.trim(), [draft]);
+  const dockBottom = Math.max(12, insets.bottom + 10);
+  const dockClearance = dockBottom + 56 + theme.spacing.sm;
+  const contentBottomPadding = useMemo(() => {
+    if (useSidebar) return 24;
+    if (keyboardVisible) return Math.max(theme.spacing.sm, insets.bottom + theme.spacing.xs);
+    return dockClearance;
+  }, [dockClearance, insets.bottom, keyboardVisible, useSidebar]);
 
   return (
     <Screen testID="screen-chat">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 14 : 0}
       >
         <View
@@ -333,7 +409,7 @@ export function ChatScreen() {
             flexDirection: useSidebar ? "row" : "column",
             paddingHorizontal: theme.spacing.lg,
             paddingTop: theme.spacing.xl,
-            paddingBottom: useSidebar ? 24 : 92,
+            paddingBottom: contentBottomPadding,
             gap: useSidebar ? theme.spacing.lg : 0,
           }}
         >
@@ -468,12 +544,17 @@ export function ChatScreen() {
                 mode={hasDraft ? "send" : "voice"}
                 disabled={busy || (hasDraft && !canSend)}
                 onPress={hasDraft ? () => (canSend ? send(draft) : undefined) : undefined}
-                onRecordStart={hasDraft ? undefined : voice.start}
+                onRecordStart={hasDraft ? undefined : startVoiceRecording}
                 onRecordEnd={hasDraft ? undefined : voice.stop}
                 volume={voice.volume}
                 onVoiceResult={hasDraft ? undefined : (t) => { setDraft(t); }}
               />
             </View>
+            {voice.state === "idle" && voice.interimText ? (
+              <Text variant="muted" style={{ marginTop: theme.spacing.xs }}>
+                {voice.interimText}
+              </Text>
+            ) : null}
           </View>
         </View>
       </KeyboardAvoidingView>

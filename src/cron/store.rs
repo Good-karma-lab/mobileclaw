@@ -5,8 +5,19 @@ use crate::cron::{
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use rusqlite::types::{FromSqlResult, ValueRef};
 use rusqlite::{params, Connection};
 use uuid::Uuid;
+
+const MAX_CRON_OUTPUT_BYTES: usize = 16 * 1024;
+const TRUNCATED_OUTPUT_MARKER: &str = "\n...[truncated]";
+
+impl rusqlite::types::FromSql for JobType {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        let text = value.as_str()?;
+        JobType::try_from(text).map_err(|e| rusqlite::types::FromSqlError::Other(e.into()))
+    }
+}
 
 pub fn add_job(config: &Config, expression: &str, command: &str) -> Result<CronJob> {
     let schedule = Schedule::Cron {
@@ -29,12 +40,14 @@ pub fn add_shell_job(
     let expression = schedule_cron_expression(&schedule).unwrap_or_default();
     let schedule_json = serde_json::to_string(&schedule)?;
 
+    let delete_after_run = matches!(schedule, Schedule::At { .. });
+
     with_connection(config, |conn| {
         conn.execute(
             "INSERT INTO cron_jobs (
                 id, expression, command, schedule, job_type, prompt, name, session_target, model,
                 enabled, delivery, delete_after_run, created_at, next_run
-             ) VALUES (?1, ?2, ?3, ?4, 'shell', NULL, ?5, 'isolated', NULL, 1, ?6, 0, ?7, ?8)",
+             ) VALUES (?1, ?2, ?3, ?4, 'shell', NULL, ?5, 'isolated', NULL, 1, ?6, ?7, ?8, ?9)",
             params![
                 id,
                 expression,
@@ -42,6 +55,7 @@ pub fn add_shell_job(
                 schedule_json,
                 name,
                 serde_json::to_string(&DeliveryConfig::default())?,
+                if delete_after_run { 1 } else { 0 },
                 now.to_rfc3339(),
                 next_run.to_rfc3339(),
             ],
@@ -151,14 +165,19 @@ pub fn remove_job(config: &Config, id: &str) -> Result<()> {
 }
 
 pub fn due_jobs(config: &Config, now: DateTime<Utc>) -> Result<Vec<CronJob>> {
+    let lim = i64::try_from(config.scheduler.max_tasks.max(1))
+        .context("Scheduler max_tasks overflows i64")?;
     with_connection(config, |conn| {
         let mut stmt = conn.prepare(
             "SELECT id, expression, command, schedule, job_type, prompt, name, session_target, model,
                     enabled, delivery, delete_after_run, created_at, next_run, last_run, last_status, last_output, context
-             FROM cron_jobs WHERE enabled = 1 AND next_run <= ?1 ORDER BY next_run ASC",
+             FROM cron_jobs
+             WHERE enabled = 1 AND next_run <= ?1
+             ORDER BY next_run ASC
+             LIMIT ?2",
         )?;
 
-        let rows = stmt.query_map(params![now.to_rfc3339()], map_cron_job_row)?;
+        let rows = stmt.query_map(params![now.to_rfc3339(), lim], map_cron_job_row)?;
 
         let mut jobs = Vec::new();
         for row in rows {
@@ -218,7 +237,7 @@ pub fn update_job(config: &Config, job_id: &str, patch: CronJobPatch) -> Result<
                 job.expression,
                 job.command,
                 serde_json::to_string(&job.schedule)?,
-                job.job_type.as_str(),
+                <JobType as Into<&str>>::into(job.job_type).to_string(),
                 job.prompt,
                 job.name,
                 job.session_target.as_str(),
@@ -245,12 +264,13 @@ pub fn record_last_run(
     output: &str,
 ) -> Result<()> {
     let status = if success { "ok" } else { "error" };
+    let bounded_output = truncate_cron_output(output);
     with_connection(config, |conn| {
         conn.execute(
             "UPDATE cron_jobs
              SET last_run = ?1, last_status = ?2, last_output = ?3
              WHERE id = ?4",
-            params![finished_at.to_rfc3339(), status, output, job_id],
+            params![finished_at.to_rfc3339(), status, bounded_output, job_id],
         )
         .context("Failed to update cron last run fields")?;
         Ok(())
@@ -266,6 +286,7 @@ pub fn reschedule_after_run(
     let now = Utc::now();
     let next_run = next_run_for_schedule(&job.schedule, now)?;
     let status = if success { "ok" } else { "error" };
+    let bounded_output = truncate_cron_output(output);
 
     with_connection(config, |conn| {
         conn.execute(
@@ -276,7 +297,7 @@ pub fn reschedule_after_run(
                 next_run.to_rfc3339(),
                 now.to_rfc3339(),
                 status,
-                output,
+                bounded_output,
                 job.id
             ],
         )
@@ -294,8 +315,14 @@ pub fn record_run(
     output: Option<&str>,
     duration_ms: i64,
 ) -> Result<()> {
+    let bounded_output = output.map(truncate_cron_output);
     with_connection(config, |conn| {
-        conn.execute(
+        // Wrap INSERT + pruning DELETE in an explicit transaction so that
+        // if the DELETE fails, the INSERT is rolled back and the run table
+        // cannot grow unboundedly.
+        let tx = conn.unchecked_transaction()?;
+
+        tx.execute(
             "INSERT INTO cron_runs (job_id, started_at, finished_at, status, output, duration_ms)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
@@ -303,14 +330,14 @@ pub fn record_run(
                 started_at.to_rfc3339(),
                 finished_at.to_rfc3339(),
                 status,
-                output,
+                bounded_output.as_deref(),
                 duration_ms,
             ],
         )
         .context("Failed to insert cron run")?;
 
         let keep = i64::from(config.cron.max_run_history.max(1));
-        conn.execute(
+        tx.execute(
             "DELETE FROM cron_runs
              WHERE job_id = ?1
                AND id NOT IN (
@@ -322,8 +349,30 @@ pub fn record_run(
             params![job_id, keep],
         )
         .context("Failed to prune cron run history")?;
+
+        tx.commit()
+            .context("Failed to commit cron run transaction")?;
         Ok(())
     })
+}
+
+fn truncate_cron_output(output: &str) -> String {
+    if output.len() <= MAX_CRON_OUTPUT_BYTES {
+        return output.to_string();
+    }
+
+    if MAX_CRON_OUTPUT_BYTES <= TRUNCATED_OUTPUT_MARKER.len() {
+        return TRUNCATED_OUTPUT_MARKER.to_string();
+    }
+
+    let mut cutoff = MAX_CRON_OUTPUT_BYTES - TRUNCATED_OUTPUT_MARKER.len();
+    while cutoff > 0 && !output.is_char_boundary(cutoff) {
+        cutoff -= 1;
+    }
+
+    let mut truncated = output[..cutoff].to_string();
+    truncated.push_str(TRUNCATED_OUTPUT_MARKER);
+    truncated
 }
 
 pub fn list_runs(config: &Config, job_id: &str, limit: usize) -> Result<Vec<CronRun>> {
@@ -387,7 +436,7 @@ fn map_cron_job_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CronJob> {
         expression,
         schedule,
         command: row.get(2)?,
-        job_type: JobType::parse(&row.get::<_, String>(4)?),
+        job_type: row.get(4)?,
         prompt: row.get(5)?,
         name: row.get(6)?,
         session_target: SessionTarget::parse(&row.get::<_, String>(7)?),
@@ -446,13 +495,25 @@ fn add_column_if_missing(conn: &Connection, name: &str, sql_type: &str) -> Resul
             return Ok(());
         }
     }
+    // Drop the statement/rows before executing ALTER to release any locks
+    drop(rows);
+    drop(stmt);
 
-    conn.execute(
+    // Tolerate "duplicate column name" errors to handle the race where
+    // another process adds the column between our PRAGMA check and ALTER.
+    match conn.execute(
         &format!("ALTER TABLE cron_jobs ADD COLUMN {name} {sql_type}"),
         [],
-    )
-    .with_context(|| format!("Failed to add cron_jobs.{name}"))?;
-    Ok(())
+    ) {
+        Ok(_) => Ok(()),
+        Err(rusqlite::Error::SqliteFailure(err, Some(ref msg)))
+            if msg.contains("duplicate column name") =>
+        {
+            tracing::debug!("Column cron_jobs.{name} already exists (concurrent migration): {err}");
+            Ok(())
+        }
+        Err(e) => Err(e).with_context(|| format!("Failed to add cron_jobs.{name}")),
+    }
 }
 
 fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
@@ -508,7 +569,8 @@ fn with_connection<T>(config: &Config, f: impl FnOnce(&Connection) -> Result<T>)
             FOREIGN KEY (job_id) REFERENCES cron_jobs(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS idx_cron_runs_job_id ON cron_runs(job_id);
-        CREATE INDEX IF NOT EXISTS idx_cron_runs_started_at ON cron_runs(started_at);",
+        CREATE INDEX IF NOT EXISTS idx_cron_runs_started_at ON cron_runs(started_at);
+        CREATE INDEX IF NOT EXISTS idx_cron_runs_job_started ON cron_runs(job_id, started_at);",
     )
     .context("Failed to initialize cron schema")?;
 
@@ -555,6 +617,32 @@ mod tests {
     }
 
     #[test]
+    fn add_shell_job_marks_at_schedule_for_auto_delete() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+
+        let one_shot = add_shell_job(
+            &config,
+            None,
+            Schedule::At {
+                at: Utc::now() + ChronoDuration::minutes(10),
+            },
+            "echo once",
+        )
+        .unwrap();
+        assert!(one_shot.delete_after_run);
+
+        let recurring = add_shell_job(
+            &config,
+            None,
+            Schedule::Every { every_ms: 60_000 },
+            "echo recurring",
+        )
+        .unwrap();
+        assert!(!recurring.delete_after_run);
+    }
+
+    #[test]
     fn add_list_remove_roundtrip() {
         let tmp = TempDir::new().unwrap();
         let config = test_config(&tmp);
@@ -596,6 +684,21 @@ mod tests {
     }
 
     #[test]
+    fn due_jobs_respects_scheduler_max_tasks_limit() {
+        let tmp = TempDir::new().unwrap();
+        let mut config = test_config(&tmp);
+        config.scheduler.max_tasks = 2;
+
+        let _ = add_job(&config, "* * * * *", "echo due-1").unwrap();
+        let _ = add_job(&config, "* * * * *", "echo due-2").unwrap();
+        let _ = add_job(&config, "* * * * *", "echo due-3").unwrap();
+
+        let far_future = Utc::now() + ChronoDuration::days(365);
+        let due = due_jobs(&config, far_future).unwrap();
+        assert_eq!(due.len(), 2);
+    }
+
+    #[test]
     fn reschedule_after_run_persists_last_status_and_last_run() {
         let tmp = TempDir::new().unwrap();
         let config = test_config(&tmp);
@@ -608,6 +711,61 @@ mod tests {
         assert_eq!(stored.last_status.as_deref(), Some("error"));
         assert!(stored.last_run.is_some());
         assert_eq!(stored.last_output.as_deref(), Some("failed output"));
+    }
+
+    #[test]
+    fn job_type_from_sql_reads_valid_value() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+        let now = Utc::now();
+
+        with_connection(&config, |conn| {
+            conn.execute(
+                "INSERT INTO cron_jobs (id, expression, command, schedule, job_type, created_at, next_run)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    "job-type-valid",
+                    "*/5 * * * *",
+                    "echo ok",
+                    Option::<String>::None,
+                    "agent",
+                    now.to_rfc3339(),
+                    (now + ChronoDuration::minutes(5)).to_rfc3339(),
+                ],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+
+        let job = get_job(&config, "job-type-valid").unwrap();
+        assert_eq!(job.job_type, JobType::Agent);
+    }
+
+    #[test]
+    fn job_type_from_sql_rejects_invalid_value() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+        let now = Utc::now();
+
+        with_connection(&config, |conn| {
+            conn.execute(
+                "INSERT INTO cron_jobs (id, expression, command, schedule, job_type, created_at, next_run)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    "job-type-invalid",
+                    "*/5 * * * *",
+                    "echo ok",
+                    Option::<String>::None,
+                    "unknown",
+                    now.to_rfc3339(),
+                    (now + ChronoDuration::minutes(5)).to_rfc3339(),
+                ],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+
+        assert!(get_job(&config, "job-type-invalid").is_err());
     }
 
     #[test]
@@ -677,5 +835,44 @@ mod tests {
         remove_job(&config, &job.id).unwrap();
         let runs = list_runs(&config, &job.id, 10).unwrap();
         assert!(runs.is_empty());
+    }
+
+    #[test]
+    fn record_run_truncates_large_output() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+        let job = add_job(&config, "*/5 * * * *", "echo trunc").unwrap();
+        let output = "x".repeat(MAX_CRON_OUTPUT_BYTES + 512);
+
+        record_run(
+            &config,
+            &job.id,
+            Utc::now(),
+            Utc::now(),
+            "ok",
+            Some(&output),
+            1,
+        )
+        .unwrap();
+
+        let runs = list_runs(&config, &job.id, 1).unwrap();
+        let stored = runs[0].output.as_deref().unwrap_or_default();
+        assert!(stored.ends_with(TRUNCATED_OUTPUT_MARKER));
+        assert!(stored.len() <= MAX_CRON_OUTPUT_BYTES);
+    }
+
+    #[test]
+    fn reschedule_after_run_truncates_last_output() {
+        let tmp = TempDir::new().unwrap();
+        let config = test_config(&tmp);
+        let job = add_job(&config, "*/5 * * * *", "echo trunc").unwrap();
+        let output = "y".repeat(MAX_CRON_OUTPUT_BYTES + 1024);
+
+        reschedule_after_run(&config, &job, false, &output).unwrap();
+
+        let stored = get_job(&config, &job.id).unwrap();
+        let last_output = stored.last_output.as_deref().unwrap_or_default();
+        assert!(last_output.ends_with(TRUNCATED_OUTPUT_MARKER));
+        assert!(last_output.len() <= MAX_CRON_OUTPUT_BYTES);
     }
 }

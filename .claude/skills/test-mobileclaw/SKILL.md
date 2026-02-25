@@ -13,7 +13,7 @@ agent behavior is verified end-to-end, not just through Maestro pass/fail.
 ## ARCHITECTURE PRINCIPLE
 
 **Applications must NEVER make direct calls to LLM APIs.** All LLM interactions
-MUST go through the ZeroClaw agent (Rust daemon) embedded in the APK. The
+MUST go through the MobileClaw embedded agent daemon (Rust runtime) inside the APK. The
 React Native app communicates with the daemon via HTTP at `http://127.0.0.1:8000`.
 
 This ensures:
@@ -55,23 +55,26 @@ cd android
 
 **DO NOT just run Maestro and check pass/fail.** Follow this workflow:
 
-### Step 1: Clean the chat history
+### Step 1: Clean chat + core daemon state
 
 ```bash
 # Stop the app
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
   shell am force-stop com.mobileclaw.app
 
-# Delete chat database
+# Delete chat DB + cron DB + daemon runtime state
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
-  shell "run-as com.mobileclaw.app rm -f databases/RKStorage"
+  shell "run-as com.mobileclaw.app rm -f \
+    databases/RKStorage databases/RKStorage-journal databases/RKStorage-shm databases/RKStorage-wal \
+    .zeroclaw/workspace/cron/jobs.db .zeroclaw/workspace/cron/jobs.db-shm .zeroclaw/workspace/cron/jobs.db-wal \
+    .zeroclaw/daemon_state.json"
 
 # Restart app
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
   shell am start -n com.mobileclaw.app/.MainActivity
 ```
 
-### Step 2: Restore required configuration
+### Step 2: Restore required configuration (tokens + integrations)
 
 After cleaning chat, restore Telegram configuration (if testing Telegram features):
 
@@ -83,10 +86,17 @@ After cleaning chat, restore Telegram configuration (if testing Telegram feature
 # Decode
 base64 -d -i /tmp/storage.db.b64 > /tmp/RKStorage_local.db
 
-# Update telegramChatId (replace 530732407 with actual chat ID)
+# Discover Telegram chat identity from Bot API first (do not hardcode):
+# TOKEN="<telegram_bot_token>"
+# CHAT_ID=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+#   -H "Content-Type: application/json" \
+#   -d '{"chat_id":"<known_chat_id>","text":"E2E identity probe"}' | \
+#   python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["chat"]["id"])')
+#
+# Update runtime + integrations rows in RKStorage (example with Telegram chat ID):
 sqlite3 /tmp/RKStorage_local.db <<SQL
 UPDATE catalystLocalStorage
-SET value = replace(value, '"telegramChatId":""', '"telegramChatId":"530732407"')
+SET value = replace(value, '"telegramChatId":""', '"telegramChatId":"<CHAT_ID_FROM_API>"')
 WHERE key = 'mobileclaw:integrations-config:v2';
 SQL
 
@@ -117,7 +127,7 @@ maestro test --device emulator-5554 \
 
 Car variants: add `_car` suffix (includes `hideKeyboard` step).
 
-### Step 4: Check agent's actual response (CRITICAL)
+### Step 4: Check agent's actual response in UI (CRITICAL)
 
 **Maestro PASS ≠ correct behavior.** Always screenshot and read the chat:
 
@@ -141,7 +151,7 @@ open /tmp/test_result.png
 ```bash
 # Check SharedPreferences shows hook is ON
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
-  shell "run-as com.mobileclaw.app cat shared_prefs/RuntimeBridgePrefs.xml" | \
+  shell "run-as com.mobileclaw.app cat shared_prefs/mobileclaw-runtime-bridge.xml" | \
   grep incoming_call_hooks
 
 # Navigate to Tasks & Hooks screen in app and verify:
@@ -157,7 +167,25 @@ sleep 15
 ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 \
   emu gsm cancel +341234567890
 
-# Check Telegram app to verify message was sent
+# Telegram verification with Bot API message_id gap (no hardcoded pairing identity)
+PRE=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id":"'"${CHAT_ID}"'","text":"E2E_PRE_HOOK"}' | \
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')
+
+# Trigger call + wait for hook processing, then send marker
+POST=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id":"'"${CHAT_ID}"'","text":"E2E_POST_HOOK"}' | \
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')
+
+# If POST-PRE >= 2, at least one extra bot message happened in between
+python3 - <<PY
+pre=${PRE}
+post=${POST}
+print('hook_gap=', post-pre)
+print('hook_message_detected=', (post-pre) >= 2)
+PY
 ```
 
 **For geofence SMS task:**
@@ -223,21 +251,29 @@ sleep 15
   shell "content query --uri content://sms/sent --projection address,body,date"
 ```
 
-## 4. Verifying Telegram Bot Messages
+## 4. Verifying Telegram Bot Messages (API-based)
 
-Telegram `getUpdates` API shows messages TO the bot, not FROM it.
+Telegram `getUpdates` only shows messages TO the bot, not outgoing bot messages.
 
-**Best method:** Check Telegram app directly to see if message arrived.
+Use two checks together:
+1) UI/manual Telegram app check
+2) Bot API message_id gap check (`E2E_PRE_*` then `E2E_POST_*`; expect gap >= 2)
 
-**Indirect verification:**
+**Bot API gap verification:**
 ```bash
-# Record baseline update_id before test
-BASELINE=$(curl -s "https://api.telegram.org/bot${TOKEN}/getUpdates" | \
-  jq -r '.result[-1].update_id // 0')
+PRE=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id":"'"${CHAT_ID}"'","text":"E2E_PRE"}' | \
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')
 
-# After test: check for new updates
-curl -s "https://api.telegram.org/bot${TOKEN}/getUpdates" | \
-  jq ".result[] | select(.update_id > $BASELINE)"
+# Run UI flow that should send Telegram message(s)
+
+POST=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id":"'"${CHAT_ID}"'","text":"E2E_POST"}' | \
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["message_id"])')
+
+echo "gap=$((POST-PRE))"  # >=2 means at least one extra outgoing bot message
 ```
 
 **Check daemon logs:**
@@ -367,9 +403,14 @@ If all pass, daemon is running with full capabilities.
 2. Enter Telegram bot token (from @BotFather)
 3. Enter chat ID:
    ```bash
-   curl "https://api.telegram.org/bot<token>/getUpdates" | \
-     jq '.result[-1].message.chat.id'
+    curl "https://api.telegram.org/bot<token>/getUpdates" | \
+      jq '.result[-1].message.chat.id'
+    ```
+4. If Telegram bot replies with pairing requirement, send this exact text in MobileClaw chat:
    ```
+   MobileClaw telegram bot pairing: <telegram_user_id_or_username>
+   ```
+   This performs backend allowlist binding.
 
 ### Other integrations
 | Integration | Config key | Where to get it |
@@ -396,4 +437,4 @@ For every test cycle:
 - Never trust agent's claims — always verify side effects
 - Clean chat between tests for consistent behavior
 - Agent must use hooks (not cron jobs) for call/SMS monitoring
-- All LLM interactions go through ZeroClaw daemon, never direct API calls
+- All LLM interactions go through embedded MobileClaw daemon, never direct API calls

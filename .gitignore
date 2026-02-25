@@ -3,6 +3,7 @@ firmware/*/target
 *.db
 *.db-journal
 .DS_Store
+._*
 .wt-*/
 __pycache__/
 *.pyc
@@ -36,6 +37,15 @@ mobile-app/android/app/.cxx/
 
 # Environment files (may contain secrets)
 .env
+
+# Python virtual environments
+
+.venv/
+venv/
+
+# ESP32 build cache (esp-idf-sys managed)
+
+.embuild/
 .env.local
 .env.*.local
 
@@ -52,3 +62,4 @@ credentials.json
 test_config.json
 .env.test
 test_integration.sh
+.worktrees/

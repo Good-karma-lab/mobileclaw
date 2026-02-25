@@ -19,7 +19,7 @@ use tokio::process::Command;
 use tracing::debug;
 
 /// Computer-use sidecar settings.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ComputerUseConfig {
     pub endpoint: String,
     pub api_key: Option<String>,
@@ -28,6 +28,19 @@ pub struct ComputerUseConfig {
     pub window_allowlist: Vec<String>,
     pub max_coordinate_x: Option<i64>,
     pub max_coordinate_y: Option<i64>,
+}
+
+impl std::fmt::Debug for ComputerUseConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ComputerUseConfig")
+            .field("endpoint", &self.endpoint)
+            .field("timeout_ms", &self.timeout_ms)
+            .field("allow_remote_endpoint", &self.allow_remote_endpoint)
+            .field("window_allowlist", &self.window_allowlist)
+            .field("max_coordinate_x", &self.max_coordinate_x)
+            .field("max_coordinate_y", &self.max_coordinate_y)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for ComputerUseConfig {
@@ -620,14 +633,34 @@ impl BrowserTool {
         {
             let mut state = self.native_state.lock().await;
 
-            let output = state
+            let first_attempt = state
                 .execute_action(
-                    action,
+                    action.clone(),
                     self.native_headless,
                     &self.native_webdriver_url,
                     self.native_chrome_path.as_deref(),
                 )
-                .await?;
+                .await;
+
+            let output = match first_attempt {
+                Ok(output) => output,
+                Err(err) => {
+                    if !is_recoverable_rust_native_error(&err) {
+                        return Err(err);
+                    }
+
+                    state.reset_session().await;
+                    state
+                        .execute_action(
+                            action,
+                            self.native_headless,
+                            &self.native_webdriver_url,
+                            self.native_chrome_path.as_deref(),
+                        )
+                        .await
+                        .with_context(|| "rust_native backend retry after session reset failed")?
+                }
+            };
 
             Ok(ToolResult {
                 success: true,
@@ -736,7 +769,7 @@ impl BrowserTool {
             }
         });
 
-        let client = reqwest::Client::new();
+        let client = crate::config::build_runtime_proxy_client("tool.browser");
         let mut request = client
             .post(endpoint)
             .timeout(Duration::from_millis(self.computer_use.timeout_ms))
@@ -1211,7 +1244,8 @@ mod native_backend {
                     });
 
                     if let Some(path_str) = path {
-                        std::fs::write(&path_str, &png)
+                        tokio::fs::write(&path_str, &png)
+                            .await
                             .with_context(|| format!("Failed to write screenshot to {path_str}"))?;
                         payload["path"] = Value::String(path_str);
                     } else {
@@ -1334,9 +1368,7 @@ mod native_backend {
                     }))
                 }
                 BrowserAction::Close => {
-                    if let Some(client) = self.client.take() {
-                        let _ = client.close().await;
-                    }
+                    self.reset_session().await;
 
                     Ok(json!({
                         "backend": "rust_native",
@@ -1401,6 +1433,12 @@ mod native_backend {
                         "data": payload,
                     }))
                 }
+            }
+        }
+
+        pub async fn reset_session(&mut self) {
+            if let Some(client) = self.client.take() {
+                let _ = client.close().await;
             }
         }
 
@@ -1933,6 +1971,21 @@ fn unavailable_action_for_backend_error(action: &str, backend: ResolvedBackend) 
     )
 }
 
+fn is_recoverable_rust_native_error(err: &anyhow::Error) -> bool {
+    let message = format!("{err:#}").to_ascii_lowercase();
+
+    if message.contains("invalid session id")
+        || message.contains("no such window")
+        || message.contains("session not created")
+        || message.contains("connection reset")
+        || message.contains("broken pipe")
+    {
+        return true;
+    }
+
+    message.contains("webdriver") && (message.contains("timed out") || message.contains("timeout"))
+}
+
 fn normalize_domains(domains: Vec<String>) -> Vec<String> {
     domains
         .into_iter()
@@ -2397,5 +2450,46 @@ mod tests {
             unavailable_action_for_backend_error("mouse_move", ResolvedBackend::RustNative),
             "Action 'mouse_move' is unavailable for backend 'rust_native'"
         );
+    }
+
+    #[test]
+    fn recoverable_error_detection_matches_session_patterns() {
+        for message in [
+            "invalid session id",
+            "No Such Window",
+            "session not created",
+            "connection reset by peer",
+            "broken pipe while writing webdriver command",
+            "WebDriver request timed out",
+        ] {
+            let err = anyhow::anyhow!(message);
+            assert!(is_recoverable_rust_native_error(&err), "{message}");
+        }
+
+        let allowlist_error =
+            anyhow::anyhow!("URL host 'localhost' is not in browser allowlist [example.com]");
+        assert!(!is_recoverable_rust_native_error(&allowlist_error));
+    }
+
+    #[test]
+    fn non_recoverable_error_detection_rejects_policy_errors() {
+        for message in [
+            "Blocked by security policy",
+            "URL host '127.0.0.1' is private and disallowed",
+            "Action 'mouse_move' is unavailable for backend 'rust_native'",
+        ] {
+            let err = anyhow::anyhow!(message);
+            assert!(!is_recoverable_rust_native_error(&err), "{message}");
+        }
+    }
+
+    #[cfg(feature = "browser-native")]
+    #[test]
+    fn reset_session_is_idempotent_without_client() {
+        tokio_test::block_on(async {
+            let mut state = native_backend::NativeBrowserState::default();
+            state.reset_session().await;
+            state.reset_session().await;
+        });
     }
 }

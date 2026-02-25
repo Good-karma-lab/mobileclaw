@@ -1,0 +1,27 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "If I receive an incoming call from +341234567890, send me a Telegram message immediately. Do not use polling. Use a real incoming call hook."
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 240000
+- assertNotVisible:
+    text: "Gateway error"
+- assertNotVisible:
+    text: "Network request failed"
+- tapOn:
+    id: chat-tasks-hooks
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible:
+    id: screen-tasks
+- assertVisible:
+    text: "Incoming Call Hook"

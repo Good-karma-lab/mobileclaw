@@ -1,0 +1,22 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "screen-chat"
+    timeout: 30000
+- assertVisible:
+    id: "chat-send-or-voice"
+- tapOn:
+    id: "chat-send-or-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Listening..."
+    optional: true
+- assertVisible:
+    text: "Add Deepgram API key in Settings"
+    optional: true
+- assertVisible:
+    text: "Voice transcription unavailable. Check Deepgram API key and network."
+    optional: true

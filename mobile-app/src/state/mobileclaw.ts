@@ -20,7 +20,7 @@ export type AgentRuntimeConfig = {
   temperature: number;
   deepgramApiKey: string;
   braveApiKey: string;
-  platformUrl: string; // ZeroClaw backend gateway URL (e.g., "http://10.0.2.2:8000")
+  platformUrl: string; // MobileClaw embedded backend gateway URL
 };
 
 export type IntegrationsConfig = {
