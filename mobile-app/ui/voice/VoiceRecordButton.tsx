@@ -103,7 +103,10 @@ export function VoiceRecordButton({
   useEffect(() => {
     const cleanup = setInterval(() => {
       const now = Date.now();
-      setWaves((prev) => prev.filter((w) => now - w.id < 2400));
+      setWaves((prev) => {
+        if (prev.length === 0) return prev; // bail out when idle — no re-render
+        return prev.filter((w) => now - w.id < 2400);
+      });
     }, 150);
     return () => clearInterval(cleanup);
   }, []);

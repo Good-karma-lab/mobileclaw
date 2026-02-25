@@ -132,7 +132,7 @@ export function IntegrationsScreen() {
     ],
     whatsapp: [
       "Create a Meta app with WhatsApp Business integration.",
-      "Set webhook endpoint to your ZeroClaw gateway URL.",
+      "Set webhook endpoint to your MobileClaw gateway URL.",
       "Paste access token here and keep WhatsApp toggle ON.",
       "Use Meta dashboard webhook test to confirm delivery.",
     ],

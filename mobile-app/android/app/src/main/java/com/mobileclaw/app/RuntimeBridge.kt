@@ -393,7 +393,7 @@ object RuntimeBridge {
         val ready = prefs.getString(RUNTIME_API_KEY, "")?.isNotBlank() == true &&
             prefs.getString(RUNTIME_MODEL, "")?.isNotBlank() == true
         if (!ready) {
-            prefs.edit().putString(LAST_EVENT_NOTE, "Runtime credentials missing; daemon not started").apply()
+            prefs.edit().putString(LAST_EVENT_NOTE, "Assistant is not configured yet").apply()
             return
         }
 
@@ -433,14 +433,14 @@ object RuntimeBridge {
             Thread.sleep(350)
             if (!process.isAlive) {
                 val exitCode = process.exitValue()
-                prefs.edit().putString(LAST_EVENT_NOTE, "Local daemon exited early (code $exitCode)").apply()
+                prefs.edit().putString(LAST_EVENT_NOTE, "Assistant failed to start (code $exitCode)").apply()
                 return
             }
 
-            prefs.edit().putString(LAST_EVENT_NOTE, "Local ZeroClaw daemon starting").apply()
+            prefs.edit().putString(LAST_EVENT_NOTE, "Assistant is starting").apply()
         } catch (error: Throwable) {
             val detail = (error.message ?: error::class.java.simpleName).take(120)
-            prefs.edit().putString(LAST_EVENT_NOTE, "Failed to start local daemon: $detail").apply()
+            prefs.edit().putString(LAST_EVENT_NOTE, "Assistant startup issue: $detail").apply()
         }
     }
 
@@ -547,7 +547,7 @@ object RuntimeBridge {
     private fun flushQueue(context: Context): TickResult {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!isLocalGatewayHealthy()) {
-            return TickResult(0, 0, "local gateway is down")
+            return TickResult(0, 0, "assistant is offline")
         }
 
         val queue = loadQueue(context)
@@ -575,7 +575,7 @@ object RuntimeBridge {
                 failed += 1
                 prefs.edit()
                     .putLong(WEBHOOK_FAIL_COUNT, prefs.getLong(WEBHOOK_FAIL_COUNT, 0L) + 1L)
-                    .putString(LAST_EVENT_NOTE, "Local webhook forward failed")
+                    .putString(LAST_EVENT_NOTE, "Event delivery to assistant failed")
                     .apply()
                 val attempts = item.optInt("attempts", 0) + 1
                 val backoffMs = minOf(30 * 60 * 1000L, (15_000L * (1L shl minOf(6, attempts))))
@@ -598,7 +598,7 @@ object RuntimeBridge {
             delivered += 1
             prefs.edit()
                 .putLong(WEBHOOK_SUCCESS_COUNT, prefs.getLong(WEBHOOK_SUCCESS_COUNT, 0L) + 1L)
-                .putString(LAST_EVENT_NOTE, "Event delivered to local ZeroClaw webhook")
+                .putString(LAST_EVENT_NOTE, "Event delivered to assistant")
                 .apply()
         }
 
@@ -903,11 +903,11 @@ private class AndroidActionBridgeServer(private val context: Context) {
     }
 
     private fun postNotification(payload: JSONObject): JSONObject {
-        val title = payload.optString("title", "ZeroClaw")
+        val title = payload.optString("title", "MobileClaw")
         val body = payload.optString("body", "")
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = android.app.NotificationChannel("zeroclaw_agent", "ZeroClaw Agent", NotificationManager.IMPORTANCE_DEFAULT)
+            val ch = android.app.NotificationChannel("zeroclaw_agent", "MobileClaw Agent", NotificationManager.IMPORTANCE_DEFAULT)
             nm.createNotificationChannel(ch)
         }
         val notif = NotificationCompat.Builder(context, "zeroclaw_agent")

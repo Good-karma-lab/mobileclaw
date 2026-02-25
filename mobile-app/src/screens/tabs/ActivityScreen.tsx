@@ -97,7 +97,7 @@ export function ActivityScreen() {
               gap: theme.spacing.xs,
             }}
           >
-            <Text variant="label">ZeroClaw Runtime</Text>
+            <Text variant="label">MobileClaw Agent Runtime</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
               <Text style={{ fontSize: 18 }}>{statusInfo.dot}</Text>
               <Text variant="title">{statusInfo.text}</Text>
@@ -185,7 +185,7 @@ export function ActivityScreen() {
               borderColor: theme.colors.stroke.subtle,
             }}
           >
-            <Text variant="bodyMedium">ZeroClaw Runtime</Text>
+            <Text variant="bodyMedium">MobileClaw Agent Runtime</Text>
             <Text variant="mono" style={{ marginTop: 6, color: theme.colors.base.textMuted }}>
               {runtimeState
                 ? `status=${runtimeState.status} | reason=${runtimeState.degradeReason} | restarts=${runtimeState.restartCount}`

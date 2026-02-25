@@ -164,7 +164,10 @@ export function useVoiceRecording(deepgramApiKey?: string) {
 
       ws.onerror = (event: any) => {
         log("error", "Deepgram websocket error", { error: String(event?.message || "ws error") });
-        setInterimText("Live transcription connection failed");
+        setInterimText("Voice transcription unavailable. Check Deepgram API key and network.");
+        startedRef.current = false;
+        setState("idle");
+        cleanupStream();
       };
 
       ws.onclose = () => {

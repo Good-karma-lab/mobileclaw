@@ -1,6 +1,10 @@
 # Cargo configuration for Android cross-compilation
 # Uses Android NDK for linking
 
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "link-arg=-static"]
+
+# Android targets (NDK toolchain — set by build_android_jni.sh env vars; paths below are fallbacks)
 [target.aarch64-linux-android]
 linker = "/Users/aostapenko/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android30-clang"
 

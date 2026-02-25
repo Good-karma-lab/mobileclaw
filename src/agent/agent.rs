@@ -10,8 +10,8 @@ use crate::providers::{self, ChatMessage, ChatRequest, ConversationMessage, Prov
 use crate::runtime;
 use crate::security::SecurityPolicy;
 use crate::tools::{self, Tool, ToolSpec};
-use crate::util::truncate_with_ellipsis;
 use anyhow::Result;
+use std::collections::HashMap;
 use std::io::Write as IoWrite;
 use std::sync::Arc;
 use std::time::Instant;
@@ -31,8 +31,12 @@ pub struct Agent {
     workspace_dir: std::path::PathBuf,
     identity_config: crate::config::IdentityConfig,
     skills: Vec<crate::skills::Skill>,
+    skills_prompt_mode: crate::config::SkillsPromptInjectionMode,
     auto_save: bool,
     history: Vec<ConversationMessage>,
+    classification_config: crate::config::QueryClassificationConfig,
+    available_hints: Vec<String>,
+    route_model_by_hint: HashMap<String, String>,
 }
 
 pub struct AgentBuilder {
@@ -49,7 +53,11 @@ pub struct AgentBuilder {
     workspace_dir: Option<std::path::PathBuf>,
     identity_config: Option<crate::config::IdentityConfig>,
     skills: Option<Vec<crate::skills::Skill>>,
+    skills_prompt_mode: Option<crate::config::SkillsPromptInjectionMode>,
     auto_save: Option<bool>,
+    classification_config: Option<crate::config::QueryClassificationConfig>,
+    available_hints: Option<Vec<String>>,
+    route_model_by_hint: Option<HashMap<String, String>>,
 }
 
 impl AgentBuilder {
@@ -68,7 +76,11 @@ impl AgentBuilder {
             workspace_dir: None,
             identity_config: None,
             skills: None,
+            skills_prompt_mode: None,
             auto_save: None,
+            classification_config: None,
+            available_hints: None,
+            route_model_by_hint: None,
         }
     }
 
@@ -137,8 +149,34 @@ impl AgentBuilder {
         self
     }
 
+    pub fn skills_prompt_mode(
+        mut self,
+        skills_prompt_mode: crate::config::SkillsPromptInjectionMode,
+    ) -> Self {
+        self.skills_prompt_mode = Some(skills_prompt_mode);
+        self
+    }
+
     pub fn auto_save(mut self, auto_save: bool) -> Self {
         self.auto_save = Some(auto_save);
+        self
+    }
+
+    pub fn classification_config(
+        mut self,
+        classification_config: crate::config::QueryClassificationConfig,
+    ) -> Self {
+        self.classification_config = Some(classification_config);
+        self
+    }
+
+    pub fn available_hints(mut self, available_hints: Vec<String>) -> Self {
+        self.available_hints = Some(available_hints);
+        self
+    }
+
+    pub fn route_model_by_hint(mut self, route_model_by_hint: HashMap<String, String>) -> Self {
+        self.route_model_by_hint = Some(route_model_by_hint);
         self
     }
 
@@ -179,8 +217,12 @@ impl AgentBuilder {
                 .unwrap_or_else(|| std::path::PathBuf::from(".")),
             identity_config: self.identity_config.unwrap_or_default(),
             skills: self.skills.unwrap_or_default(),
+            skills_prompt_mode: self.skills_prompt_mode.unwrap_or_default(),
             auto_save: self.auto_save.unwrap_or(false),
             history: Vec::new(),
+            classification_config: self.classification_config.unwrap_or_default(),
+            available_hints: self.available_hints.unwrap_or_default(),
+            route_model_by_hint: self.route_model_by_hint.unwrap_or_default(),
         })
     }
 }
@@ -208,8 +250,10 @@ impl Agent {
             &config.workspace_dir,
         ));
 
-        let memory: Arc<dyn Memory> = Arc::from(memory::create_memory(
+        let memory: Arc<dyn Memory> = Arc::from(memory::create_memory_with_storage_and_routes(
             &config.memory,
+            &config.embedding_routes,
+            Some(&config.storage.provider.config),
             &config.workspace_dir,
             config.api_key.as_deref(),
         )?);
@@ -234,6 +278,7 @@ impl Agent {
             composio_entity_id,
             &config.browser,
             &config.http_request,
+            &config.web_fetch,
             &config.workspace_dir,
             &config.agents,
             config.api_key.as_deref(),
@@ -265,20 +310,37 @@ impl Agent {
             _ => Box::new(XmlToolDispatcher),
         };
 
+        let route_model_by_hint: HashMap<String, String> = config
+            .model_routes
+            .iter()
+            .map(|route| (route.hint.clone(), route.model.clone()))
+            .collect();
+        let available_hints: Vec<String> = route_model_by_hint.keys().cloned().collect();
+
         Agent::builder()
             .provider(provider)
             .tools(tools)
             .memory(memory)
             .observer(observer)
             .tool_dispatcher(tool_dispatcher)
-            .memory_loader(Box::new(DefaultMemoryLoader::default()))
+            .memory_loader(Box::new(DefaultMemoryLoader::new(
+                5,
+                config.memory.min_relevance_score,
+            )))
             .prompt_builder(SystemPromptBuilder::with_defaults())
             .config(config.agent.clone())
             .model_name(model_name)
             .temperature(config.default_temperature)
             .workspace_dir(config.workspace_dir.clone())
+            .classification_config(config.query_classification.clone())
+            .available_hints(available_hints)
+            .route_model_by_hint(route_model_by_hint)
             .identity_config(config.identity.clone())
-            .skills(crate::skills::load_skills(&config.workspace_dir))
+            .skills(crate::skills::load_skills_with_config(
+                &config.workspace_dir,
+                config,
+            ))
+            .skills_prompt_mode(config.skills.prompt_injection_mode)
             .auto_save(config.memory.auto_save)
             .build()
     }
@@ -317,6 +379,7 @@ impl Agent {
             model_name: &self.model_name,
             tools: &self.tools,
             skills: &self.skills,
+            skills_prompt_mode: self.skills_prompt_mode,
             identity_config: Some(&self.identity_config),
             dispatcher_instructions: &instructions,
         };
@@ -370,11 +433,35 @@ impl Agent {
             return results;
         }
 
-        let mut results = Vec::with_capacity(calls.len());
-        for call in calls {
-            results.push(self.execute_tool_call(call).await);
+        let futs: Vec<_> = calls
+            .iter()
+            .map(|call| self.execute_tool_call(call))
+            .collect();
+        futures_util::future::join_all(futs).await
+    }
+
+    fn classify_model(&self, user_message: &str) -> String {
+        if let Some(decision) =
+            super::classifier::classify_with_decision(&self.classification_config, user_message)
+        {
+            if self.available_hints.contains(&decision.hint) {
+                let resolved_model = self
+                    .route_model_by_hint
+                    .get(&decision.hint)
+                    .map(String::as_str)
+                    .unwrap_or("unknown");
+                tracing::info!(
+                    target: "query_classification",
+                    hint = decision.hint.as_str(),
+                    model = resolved_model,
+                    rule_priority = decision.priority,
+                    message_length = user_message.len(),
+                    "Classified message route"
+                );
+                return format!("hint:{}", decision.hint);
+            }
         }
-        results
+        self.model_name.clone()
     }
 
     pub async fn turn(&mut self, user_message: &str) -> Result<String> {
@@ -399,14 +486,17 @@ impl Agent {
             .await
             .unwrap_or_default();
 
+        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S %Z");
         let enriched = if context.is_empty() {
-            user_message.to_string()
+            format!("[{now}] {user_message}")
         } else {
-            format!("{context}{user_message}")
+            format!("{context}[{now}] {user_message}")
         };
 
         self.history
             .push(ConversationMessage::Chat(ChatMessage::user(enriched)));
+
+        let effective_model = self.classify_model(user_message);
 
         for _ in 0..self.config.max_tool_iterations {
             let messages = self.tool_dispatcher.to_provider_messages(&self.history);
@@ -421,7 +511,7 @@ impl Agent {
                             None
                         },
                     },
-                    &self.model_name,
+                    &effective_model,
                     self.temperature,
                 )
                 .await
@@ -444,14 +534,6 @@ impl Agent {
                     )));
                 self.trim_history();
 
-                if self.auto_save {
-                    let summary = truncate_with_ellipsis(&final_text, 100);
-                    let _ = self
-                        .memory
-                        .store("assistant_resp", &summary, MemoryCategory::Daily, None)
-                        .await;
-                }
-
                 return Ok(final_text);
             }
 
@@ -467,6 +549,7 @@ impl Agent {
             self.history.push(ConversationMessage::AssistantToolCalls {
                 text: response.text.clone(),
                 tool_calls: response.tool_calls.clone(),
+                reasoning_content: response.reasoning_content.clone(),
             });
 
             let results = self.execute_tools(&calls).await;
@@ -544,8 +627,8 @@ pub async fn run(
         .to_string();
 
     agent.observer.record_event(&ObserverEvent::AgentStart {
-        provider: provider_name,
-        model: model_name,
+        provider: provider_name.clone(),
+        model: model_name.clone(),
     });
 
     if let Some(msg) = message {
@@ -556,6 +639,8 @@ pub async fn run(
     }
 
     agent.observer.record_event(&ObserverEvent::AgentEnd {
+        provider: provider_name,
+        model: model_name,
         duration: start.elapsed(),
         tokens_used: None,
         cost_usd: None,
@@ -568,7 +653,8 @@ pub async fn run(
 mod tests {
     use super::*;
     use async_trait::async_trait;
-    use std::sync::Mutex;
+    use parking_lot::Mutex;
+    use std::collections::HashMap;
 
     struct MockProvider {
         responses: Mutex<Vec<crate::providers::ChatResponse>>,
@@ -592,11 +678,50 @@ mod tests {
             _model: &str,
             _temperature: f64,
         ) -> Result<crate::providers::ChatResponse> {
-            let mut guard = self.responses.lock().unwrap();
+            let mut guard = self.responses.lock();
             if guard.is_empty() {
                 return Ok(crate::providers::ChatResponse {
                     text: Some("done".into()),
                     tool_calls: vec![],
+                    usage: None,
+                    reasoning_content: None,
+                });
+            }
+            Ok(guard.remove(0))
+        }
+    }
+
+    struct ModelCaptureProvider {
+        responses: Mutex<Vec<crate::providers::ChatResponse>>,
+        seen_models: Arc<Mutex<Vec<String>>>,
+    }
+
+    #[async_trait]
+    impl Provider for ModelCaptureProvider {
+        async fn chat_with_system(
+            &self,
+            _system_prompt: Option<&str>,
+            _message: &str,
+            _model: &str,
+            _temperature: f64,
+        ) -> Result<String> {
+            Ok("ok".into())
+        }
+
+        async fn chat(
+            &self,
+            _request: ChatRequest<'_>,
+            model: &str,
+            _temperature: f64,
+        ) -> Result<crate::providers::ChatResponse> {
+            self.seen_models.lock().push(model.to_string());
+            let mut guard = self.responses.lock();
+            if guard.is_empty() {
+                return Ok(crate::providers::ChatResponse {
+                    text: Some("done".into()),
+                    tool_calls: vec![],
+                    usage: None,
+                    reasoning_content: None,
                 });
             }
             Ok(guard.remove(0))
@@ -634,6 +759,8 @@ mod tests {
             responses: Mutex::new(vec![crate::providers::ChatResponse {
                 text: Some("hello".into()),
                 tool_calls: vec![],
+                usage: None,
+                reasoning_content: None,
             }]),
         });
 
@@ -642,7 +769,8 @@ mod tests {
             ..crate::config::MemoryConfig::default()
         };
         let mem: Arc<dyn Memory> = Arc::from(
-            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None).unwrap(),
+            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None)
+                .expect("memory creation should succeed with valid config"),
         );
 
         let observer: Arc<dyn Observer> = Arc::from(crate::observability::NoopObserver {});
@@ -654,7 +782,7 @@ mod tests {
             .tool_dispatcher(Box::new(XmlToolDispatcher))
             .workspace_dir(std::path::PathBuf::from("/tmp"))
             .build()
-            .unwrap();
+            .expect("agent builder should succeed with valid config");
 
         let response = agent.turn("hi").await.unwrap();
         assert_eq!(response, "hello");
@@ -671,10 +799,14 @@ mod tests {
                         name: "echo".into(),
                         arguments: "{}".into(),
                     }],
+                    usage: None,
+                    reasoning_content: None,
                 },
                 crate::providers::ChatResponse {
                     text: Some("done".into()),
                     tool_calls: vec![],
+                    usage: None,
+                    reasoning_content: None,
                 },
             ]),
         });
@@ -684,7 +816,8 @@ mod tests {
             ..crate::config::MemoryConfig::default()
         };
         let mem: Arc<dyn Memory> = Arc::from(
-            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None).unwrap(),
+            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None)
+                .expect("memory creation should succeed with valid config"),
         );
 
         let observer: Arc<dyn Observer> = Arc::from(crate::observability::NoopObserver {});
@@ -696,7 +829,7 @@ mod tests {
             .tool_dispatcher(Box::new(NativeToolDispatcher))
             .workspace_dir(std::path::PathBuf::from("/tmp"))
             .build()
-            .unwrap();
+            .expect("agent builder should succeed with valid config");
 
         let response = agent.turn("hi").await.unwrap();
         assert_eq!(response, "done");
@@ -717,10 +850,14 @@ mod tests {
                         name: "android_device".into(),
                         arguments: r#"{"action":"list_apps"}"#.into(),
                     }],
+                    usage: None,
+                    reasoning_content: None,
                 },
                 crate::providers::ChatResponse {
                     text: Some("android done".into()),
                     tool_calls: vec![],
+                    usage: None,
+                    reasoning_content: None,
                 },
             ]),
         });
@@ -762,5 +899,59 @@ mod tests {
             matches!(msg, ConversationMessage::ToolResults(results)
                 if !results.is_empty() && results[0].content.contains("list_apps"))
         }));
+    }
+
+    #[tokio::test]
+    async fn turn_routes_with_hint_when_query_classification_matches() {
+        let seen_models = Arc::new(Mutex::new(Vec::new()));
+        let provider = Box::new(ModelCaptureProvider {
+            responses: Mutex::new(vec![crate::providers::ChatResponse {
+                text: Some("classified".into()),
+                tool_calls: vec![],
+                usage: None,
+                reasoning_content: None,
+            }]),
+            seen_models: seen_models.clone(),
+        });
+
+        let memory_cfg = crate::config::MemoryConfig {
+            backend: "none".into(),
+            ..crate::config::MemoryConfig::default()
+        };
+        let mem: Arc<dyn Memory> = Arc::from(
+            crate::memory::create_memory(&memory_cfg, std::path::Path::new("/tmp"), None)
+                .expect("memory creation should succeed with valid config"),
+        );
+
+        let observer: Arc<dyn Observer> = Arc::from(crate::observability::NoopObserver {});
+        let mut route_model_by_hint = HashMap::new();
+        route_model_by_hint.insert("fast".to_string(), "anthropic/claude-haiku-4-5".to_string());
+        let mut agent = Agent::builder()
+            .provider(provider)
+            .tools(vec![Box::new(MockTool)])
+            .memory(mem)
+            .observer(observer)
+            .tool_dispatcher(Box::new(NativeToolDispatcher))
+            .workspace_dir(std::path::PathBuf::from("/tmp"))
+            .classification_config(crate::config::QueryClassificationConfig {
+                enabled: true,
+                rules: vec![crate::config::ClassificationRule {
+                    hint: "fast".to_string(),
+                    keywords: vec!["quick".to_string()],
+                    patterns: vec![],
+                    min_length: None,
+                    max_length: None,
+                    priority: 10,
+                }],
+            })
+            .available_hints(vec!["fast".to_string()])
+            .route_model_by_hint(route_model_by_hint)
+            .build()
+            .expect("agent builder should succeed with valid config");
+
+        let response = agent.turn("quick summary please").await.unwrap();
+        assert_eq!(response, "classified");
+        let seen = seen_models.lock();
+        assert_eq!(seen.as_slice(), &["hint:fast".to_string()]);
     }
 }

@@ -71,49 +71,48 @@ export default function App() {
           log("info", "dev credentials prepopulated");
         }
 
-        // Start embedded ZeroClaw daemon (Android only)
+        // Never block UI on daemon startup.
+        setIsReady(true);
+
+        // Start embedded daemon in background (Android only)
         if (Platform.OS === 'android') {
-          try {
-            console.log("[app] starting embedded ZeroClaw daemon...");
-            const running = await isDaemonRunning();
+          void (async () => {
+            try {
+              console.log("[app] starting embedded MobileClaw daemon...");
+              const running = await isDaemonRunning();
 
-            if (!running) {
-              const agentCfg = await loadAgentConfig();
-              const integCfg = await loadIntegrationsConfig();
-              await startDaemon({
-                apiKey: agentCfg.apiKey,
-                model: agentCfg.model,
-                telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
-                telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
-                discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
-                slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
-                composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
-                braveApiKey: agentCfg.braveApiKey || '',
-              });
-              console.log("[app] daemon start requested, waiting for ready...");
+              if (!running) {
+                const agentCfg = await loadAgentConfig();
+                const integCfg = await loadIntegrationsConfig();
+                await startDaemon({
+                  apiKey: agentCfg.apiKey,
+                  model: agentCfg.model,
+                  telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
+                  telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
+                  discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
+                  slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
+                  composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
+                  braveApiKey: agentCfg.braveApiKey || '',
+                });
+                console.log("[app] daemon start requested, waiting for readiness...");
+              } else {
+                console.log("[app] daemon already running");
+              }
 
-              // Wait up to 60 seconds for HTTP gateway to bind
-              await waitForDaemonReady(60000, 1000);
-              console.log("[app] ✅ embedded daemon ready");
-            } else {
-              console.log("[app] ✅ daemon already running");
+              await waitForDaemonReady(25000, 750);
+              setDaemonReady(true);
+              log("info", "embedded daemon ready", { url: "http://127.0.0.1:8000" });
+            } catch (err) {
+              console.warn("[app] embedded daemon not ready yet:", err);
+              setDaemonReady(false);
+              log("warn", "embedded daemon failed", { error: err instanceof Error ? err.message : String(err) });
             }
-
-            setDaemonReady(true);
-            log("info", "embedded daemon ready", { url: "http://127.0.0.1:8000" });
-          } catch (err) {
-            console.warn("[app] ⚠️ daemon failed to start, continuing anyway:", err);
-            // Don't block app launch if daemon fails
-            setDaemonReady(false);
-            log("warn", "embedded daemon failed", { error: err instanceof Error ? err.message : String(err) });
-          }
+          })();
         } else {
-          // Non-Android platforms
           setDaemonReady(true);
         }
 
         console.log("[app] initialization complete");
-        setIsReady(true);
       } catch (err) {
         console.error("[app] initialization error", err);
         const errorMsg = err instanceof Error ? err.message : String(err);

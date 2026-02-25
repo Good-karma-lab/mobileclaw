@@ -542,7 +542,7 @@ function integrationBlockedEvent(tool: string, enabled: boolean, configured: boo
   return {
     tool,
     status: "failed",
-    detail: `${detail} execution from mobile chat is not implemented yet. Keep ZeroClaw backend runtime healthy and use ${detail} channel inbound for now.`,
+    detail: `${detail} execution from mobile chat is not implemented yet. Keep MobileClaw backend agent healthy and use ${detail} channel inbound for now.`,
   };
 }
 

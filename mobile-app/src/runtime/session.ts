@@ -294,20 +294,29 @@ function integrationToolIds(integrations: string[]): string[] {
  * This provides full agent runtime with tools, memory, and multi-step reasoning.
  * Falls back to local direct LLM calls if gateway is unavailable.
  */
-export async function runAgentTurnWithGateway(userPrompt: string): Promise<AgentTurnResult> {
+export async function runAgentTurnWithGateway(userPrompt: string, sessionId?: string): Promise<AgentTurnResult> {
   const runtime = await loadAgentConfig();
 
   // Check if gateway mode is enabled via platformUrl
   const useGateway = runtime.platformUrl && runtime.platformUrl.trim().length > 0;
 
   if (!useGateway) {
-    // Fall back to local implementation
-    return runAgentTurn(userPrompt);
+    return {
+      assistantText:
+        "MobileClaw agent backend is not configured yet. Open Settings > Agent Config and keep Platform URL on localhost.",
+      toolEvents: [
+        {
+          tool: "gateway",
+          status: "failed",
+          detail: "Missing platformUrl for embedded backend gateway",
+        },
+      ],
+    };
   }
 
   try {
     // Call the full agent runtime via gateway
-    const response = await runZeroClawAgent(userPrompt, runtime);
+    const response = await runZeroClawAgent(userPrompt, runtime, sessionId);
 
     await addActivity({
       kind: "action",
@@ -322,10 +331,10 @@ export async function runAgentTurnWithGateway(userPrompt: string): Promise<Agent
     };
   } catch (error) {
     return {
-      assistantText:
-        error instanceof Error
-          ? `Gateway error: ${error.message}. Check Settings > Agent Config > Platform URL.`
-          : "Gateway error. Check Settings > Agent Config > Platform URL.",
+        assistantText:
+          error instanceof Error
+          ? `MobileClaw agent is unavailable right now: ${error.message}. Please wait a moment and try again.`
+          : "MobileClaw agent is unavailable right now. Please try again.",
       toolEvents: [
         {
           tool: "gateway",
@@ -342,6 +351,18 @@ export async function runAgentTurnWithGateway(userPrompt: string): Promise<Agent
  * This is the fallback when gateway mode is disabled.
  */
 export async function runAgentTurn(userPrompt: string): Promise<AgentTurnResult> {
+  return {
+    assistantText:
+      "Direct provider mode is disabled. MobileClaw uses the embedded backend agent for all chat turns.",
+    toolEvents: [
+      {
+        tool: "gateway",
+        status: "failed",
+        detail: "Direct model path disabled by policy",
+      },
+    ],
+  };
+
   const [runtime, tools, integrations, security, supervisor] = await Promise.all([
     loadAgentConfig(),
     loadDeviceToolsConfig(),
@@ -353,7 +374,7 @@ export async function runAgentTurn(userPrompt: string): Promise<AgentTurnResult>
   if (supervisor.status === "degraded" && isInboundIntegrationIntent(userPrompt)) {
     return {
       assistantText:
-        "ZeroClaw runtime is degraded, so inbound channel events may not reach the agent right now. Check Activity status, ensure backend is reachable, then retry.",
+        "MobileClaw agent is degraded, so inbound channel events may not reach the assistant right now. Check Activity status and retry.",
       toolEvents: [],
     };
   }

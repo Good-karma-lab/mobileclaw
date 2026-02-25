@@ -13,7 +13,7 @@ agent behavior is verified end-to-end, not just through Maestro pass/fail.
 ## ARCHITECTURE PRINCIPLE
 
 **Applications must NEVER make direct calls to LLM APIs.** All LLM interactions
-MUST go through the ZeroClaw agent (Rust daemon) embedded in the APK. The
+MUST go through the MobileClaw embedded agent daemon (Rust runtime) inside the APK. The
 React Native app communicates with the daemon via HTTP at `http://127.0.0.1:8000`.
 
 This ensures:
@@ -367,9 +367,14 @@ If all pass, daemon is running with full capabilities.
 2. Enter Telegram bot token (from @BotFather)
 3. Enter chat ID:
    ```bash
-   curl "https://api.telegram.org/bot<token>/getUpdates" | \
-     jq '.result[-1].message.chat.id'
+    curl "https://api.telegram.org/bot<token>/getUpdates" | \
+      jq '.result[-1].message.chat.id'
+    ```
+4. If Telegram bot replies with pairing requirement, send this exact text in MobileClaw chat:
    ```
+   MobileClaw telegram bot pairing: <telegram_user_id_or_username>
+   ```
+   This performs backend allowlist binding.
 
 ### Other integrations
 | Integration | Config key | Where to get it |
@@ -396,4 +401,4 @@ For every test cycle:
 - Never trust agent's claims — always verify side effects
 - Clean chat between tests for consistent behavior
 - Agent must use hooks (not cron jobs) for call/SMS monitoring
-- All LLM interactions go through ZeroClaw daemon, never direct API calls
+- All LLM interactions go through embedded MobileClaw daemon, never direct API calls

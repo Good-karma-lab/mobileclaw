@@ -1,7 +1,26 @@
+//! Tool subsystem for agent-callable capabilities.
+//!
+//! This module implements the tool execution surface exposed to the LLM during
+//! agentic loops. Each tool implements the [`Tool`] trait defined in [`traits`],
+//! which requires a name, description, JSON parameter schema, and an async
+//! `execute` method returning a structured [`ToolResult`].
+//!
+//! Tools are assembled into registries by [`default_tools`] (shell, file read/write)
+//! and [`all_tools`] (full set including memory, browser, cron, HTTP, delegation,
+//! and optional integrations). Security policy enforcement is injected via
+//! [`SecurityPolicy`](crate::security::SecurityPolicy) at construction time.
+//!
+//! # Extension
+//!
+//! To add a new tool, implement [`Tool`] in a new submodule and register it in
+//! [`all_tools_with_runtime`]. See `AGENTS.md` §7.3 for the full change playbook.
+
 pub mod android_device;
 pub mod browser;
 pub mod browser_open;
+pub mod cli_discovery;
 pub mod composio;
+pub mod content_search;
 pub mod cron_add;
 pub mod cron_list;
 pub mod cron_remove;
@@ -9,17 +28,25 @@ pub mod cron_run;
 pub mod cron_runs;
 pub mod cron_update;
 pub mod delegate;
+pub mod file_edit;
 pub mod file_read;
 pub mod file_write;
 pub mod git_operations;
+pub mod glob_search;
+#[cfg(feature = "hardware")]
 pub mod hardware_board_info;
+#[cfg(feature = "hardware")]
 pub mod hardware_memory_map;
+#[cfg(feature = "hardware")]
 pub mod hardware_memory_read;
 pub mod http_request;
 pub mod image_info;
 pub mod memory_forget;
 pub mod memory_recall;
 pub mod memory_store;
+pub mod model_routing_config;
+pub mod pdf_read;
+pub mod proxy_config;
 pub mod pushover;
 pub mod rules;
 pub mod schedule;
@@ -28,12 +55,15 @@ pub mod screenshot;
 pub mod shell;
 pub mod telegram_notify;
 pub mod traits;
+pub mod web_fetch;
 pub mod web_search;
+pub mod web_search_tool;
 
 pub use android_device::AndroidDeviceTool;
 pub use browser::{BrowserTool, ComputerUseConfig};
 pub use browser_open::BrowserOpenTool;
 pub use composio::ComposioTool;
+pub use content_search::ContentSearchTool;
 pub use cron_add::CronAddTool;
 pub use cron_list::CronListTool;
 pub use cron_remove::CronRemoveTool;
@@ -41,20 +71,29 @@ pub use cron_run::CronRunTool;
 pub use cron_runs::CronRunsTool;
 pub use cron_update::CronUpdateTool;
 pub use delegate::DelegateTool;
+pub use file_edit::FileEditTool;
 pub use file_read::FileReadTool;
 pub use file_write::FileWriteTool;
 pub use git_operations::GitOperationsTool;
+pub use glob_search::GlobSearchTool;
+#[cfg(feature = "hardware")]
 pub use hardware_board_info::HardwareBoardInfoTool;
+#[cfg(feature = "hardware")]
 pub use hardware_memory_map::HardwareMemoryMapTool;
+#[cfg(feature = "hardware")]
 pub use hardware_memory_read::HardwareMemoryReadTool;
 pub use http_request::HttpRequestTool;
 pub use image_info::ImageInfoTool;
 pub use memory_forget::MemoryForgetTool;
 pub use memory_recall::MemoryRecallTool;
 pub use memory_store::MemoryStoreTool;
+pub use model_routing_config::ModelRoutingConfigTool;
+pub use pdf_read::PdfReadTool;
+pub use proxy_config::ProxyConfigTool;
 pub use pushover::PushoverTool;
 pub use rules::RulesTool;
 pub use schedule::ScheduleTool;
+#[allow(unused_imports)]
 pub use schema::{CleaningStrategy, SchemaCleanr};
 pub use screenshot::ScreenshotTool;
 pub use shell::ShellTool;
@@ -62,14 +101,51 @@ pub use telegram_notify::TelegramNotifyTool;
 pub use traits::Tool;
 #[allow(unused_imports)]
 pub use traits::{ToolResult, ToolSpec};
-pub use web_search::WebSearchTool;
+pub use web_fetch::WebFetchTool;
+pub use web_search::WebSearchTool as WebSearchToolLegacy;
+pub use web_search_tool::WebSearchTool;
 
 use crate::config::{Config, DelegateAgentConfig};
 use crate::memory::Memory;
 use crate::runtime::{NativeRuntime, RuntimeAdapter};
 use crate::security::SecurityPolicy;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+#[derive(Clone)]
+struct ArcDelegatingTool {
+    inner: Arc<dyn Tool>,
+}
+
+impl ArcDelegatingTool {
+    fn boxed(inner: Arc<dyn Tool>) -> Box<dyn Tool> {
+        Box::new(Self { inner })
+    }
+}
+
+#[async_trait]
+impl Tool for ArcDelegatingTool {
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn description(&self) -> &str {
+        self.inner.description()
+    }
+
+    fn parameters_schema(&self) -> serde_json::Value {
+        self.inner.parameters_schema()
+    }
+
+    async fn execute(&self, args: serde_json::Value) -> anyhow::Result<ToolResult> {
+        self.inner.execute(args).await
+    }
+}
+
+fn boxed_registry_from_arcs(tools: Vec<Arc<dyn Tool>>) -> Vec<Box<dyn Tool>> {
+    tools.into_iter().map(ArcDelegatingTool::boxed).collect()
+}
 
 /// Create the default tool registry
 pub fn default_tools(security: Arc<SecurityPolicy>) -> Vec<Box<dyn Tool>> {
@@ -84,7 +160,10 @@ pub fn default_tools_with_runtime(
     vec![
         Box::new(ShellTool::new(security.clone(), runtime)),
         Box::new(FileReadTool::new(security.clone())),
-        Box::new(FileWriteTool::new(security)),
+        Box::new(FileWriteTool::new(security.clone())),
+        Box::new(FileEditTool::new(security.clone())),
+        Box::new(GlobSearchTool::new(security.clone())),
+        Box::new(ContentSearchTool::new(security)),
     ]
 }
 
@@ -98,6 +177,7 @@ pub fn all_tools(
     composio_entity_id: Option<&str>,
     browser_config: &crate::config::BrowserConfig,
     http_config: &crate::config::HttpRequestConfig,
+    web_fetch_config: &crate::config::WebFetchConfig,
     workspace_dir: &std::path::Path,
     agents: &HashMap<String, DelegateAgentConfig>,
     fallback_api_key: Option<&str>,
@@ -112,6 +192,7 @@ pub fn all_tools(
         composio_entity_id,
         browser_config,
         http_config,
+        web_fetch_config,
         workspace_dir,
         agents,
         fallback_api_key,
@@ -130,37 +211,46 @@ pub fn all_tools_with_runtime(
     composio_entity_id: Option<&str>,
     browser_config: &crate::config::BrowserConfig,
     http_config: &crate::config::HttpRequestConfig,
+    web_fetch_config: &crate::config::WebFetchConfig,
     workspace_dir: &std::path::Path,
     agents: &HashMap<String, DelegateAgentConfig>,
     fallback_api_key: Option<&str>,
     root_config: &crate::config::Config,
 ) -> Vec<Box<dyn Tool>> {
-    let mut tools: Vec<Box<dyn Tool>> = vec![
-        Box::new(ShellTool::new(security.clone(), runtime)),
-        Box::new(FileReadTool::new(security.clone())),
-        Box::new(FileWriteTool::new(security.clone())),
-        Box::new(CronAddTool::new(config.clone(), security.clone())),
-        Box::new(CronListTool::new(config.clone())),
-        Box::new(CronRemoveTool::new(config.clone())),
-        Box::new(CronUpdateTool::new(config.clone(), security.clone())),
-        Box::new(CronRunTool::new(config.clone())),
-        Box::new(CronRunsTool::new(config.clone())),
-        Box::new(MemoryStoreTool::new(memory.clone())),
-        Box::new(MemoryRecallTool::new(memory.clone())),
-        Box::new(MemoryForgetTool::new(memory)),
-        Box::new(ScheduleTool::new(security.clone(), root_config.clone())),
-        Box::new(GitOperationsTool::new(
+    let mut tool_arcs: Vec<Arc<dyn Tool>> = vec![
+        Arc::new(ShellTool::new(security.clone(), runtime)),
+        Arc::new(FileReadTool::new(security.clone())),
+        Arc::new(FileWriteTool::new(security.clone())),
+        Arc::new(FileEditTool::new(security.clone())),
+        Arc::new(GlobSearchTool::new(security.clone())),
+        Arc::new(ContentSearchTool::new(security.clone())),
+        Arc::new(CronAddTool::new(config.clone(), security.clone())),
+        Arc::new(CronListTool::new(config.clone())),
+        Arc::new(CronRemoveTool::new(config.clone(), security.clone())),
+        Arc::new(CronUpdateTool::new(config.clone(), security.clone())),
+        Arc::new(CronRunTool::new(config.clone(), security.clone())),
+        Arc::new(CronRunsTool::new(config.clone())),
+        Arc::new(MemoryStoreTool::new(memory.clone(), security.clone())),
+        Arc::new(MemoryRecallTool::new(memory.clone())),
+        Arc::new(MemoryForgetTool::new(memory, security.clone())),
+        Arc::new(ScheduleTool::new(security.clone(), root_config.clone())),
+        Arc::new(ModelRoutingConfigTool::new(
+            config.clone(),
+            security.clone(),
+        )),
+        Arc::new(ProxyConfigTool::new(config.clone(), security.clone())),
+        Arc::new(GitOperationsTool::new(
             security.clone(),
             workspace_dir.to_path_buf(),
         )),
-        Box::new(PushoverTool::new(
+        Arc::new(PushoverTool::new(
             security.clone(),
             workspace_dir.to_path_buf(),
         )),
     ];
 
     if root_config.android.enabled {
-        tools.push(Box::new(AndroidDeviceTool::new(
+        tool_arcs.push(Arc::new(AndroidDeviceTool::new(
             security.clone(),
             root_config.android.clone(),
         )));
@@ -168,12 +258,12 @@ pub fn all_tools_with_runtime(
 
     if browser_config.enabled {
         // Add legacy browser_open tool for simple URL opening
-        tools.push(Box::new(BrowserOpenTool::new(
+        tool_arcs.push(Arc::new(BrowserOpenTool::new(
             security.clone(),
             browser_config.allowed_domains.clone(),
         )));
         // Add full browser automation tool (pluggable backend)
-        tools.push(Box::new(BrowserTool::new_with_backend(
+        tool_arcs.push(Arc::new(BrowserTool::new_with_backend(
             security.clone(),
             browser_config.allowed_domains.clone(),
             browser_config.session_name.clone(),
@@ -194,7 +284,7 @@ pub fn all_tools_with_runtime(
     }
 
     if http_config.enabled {
-        tools.push(Box::new(HttpRequestTool::new(
+        tool_arcs.push(Arc::new(HttpRequestTool::new(
             security.clone(),
             http_config.allowed_domains.clone(),
             http_config.max_response_size,
@@ -202,21 +292,44 @@ pub fn all_tools_with_runtime(
         )));
     }
 
+    if web_fetch_config.enabled {
+        tool_arcs.push(Arc::new(WebFetchTool::new(
+            security.clone(),
+            web_fetch_config.allowed_domains.clone(),
+            web_fetch_config.blocked_domains.clone(),
+            web_fetch_config.max_response_size,
+            web_fetch_config.timeout_secs,
+        )));
+    }
+
+    // Web search tool (enabled by default for GLM and other models)
+    if root_config.web_search.enabled {
+        tool_arcs.push(Arc::new(WebSearchTool::new(
+            root_config.web_search.provider.clone(),
+            root_config.web_search.brave_api_key.clone(),
+            root_config.web_search.max_results,
+            root_config.web_search.timeout_secs,
+        )));
+    }
+
+    // PDF extraction (feature-gated at compile time via rag-pdf)
+    tool_arcs.push(Arc::new(PdfReadTool::new(security.clone())));
+
     // Vision tools are always available
-    tools.push(Box::new(ScreenshotTool::new(security.clone())));
-    tools.push(Box::new(ImageInfoTool::new(security.clone())));
+    tool_arcs.push(Arc::new(ScreenshotTool::new(security.clone())));
+    tool_arcs.push(Arc::new(ImageInfoTool::new(security.clone())));
 
     // Rules tool for automation rules
     let rules_db_path = workspace_dir.join("rules").join("rules.db");
-    tools.push(Box::new(RulesTool::with_db_path(rules_db_path)));
-
-    // Web search tool (uses Brave Search API if configured, falls back to DuckDuckGo)
-    let web_search_api_key = root_config.web_search.brave_api_key.clone();
-    tools.push(Box::new(WebSearchTool::new(web_search_api_key)));
+    tool_arcs.push(Arc::new(RulesTool::with_db_path(rules_db_path)));
 
     if let Some(key) = composio_key {
         if !key.is_empty() {
-            tools.push(Box::new(ComposioTool::new(key, composio_entity_id)));
+            tool_arcs.push(Arc::new(ComposioTool::new(
+                key,
+                composio_entity_id,
+                security.clone(),
+            )));
         }
     }
 
@@ -224,7 +337,7 @@ pub fn all_tools_with_runtime(
     if let Some(tg_cfg) = &root_config.channels_config.telegram {
         if let Some(chat_id) = &tg_cfg.notify_chat_id {
             if !tg_cfg.bot_token.is_empty() && !chat_id.is_empty() {
-                tools.push(Box::new(TelegramNotifyTool::new(
+                tool_arcs.push(Arc::new(TelegramNotifyTool::new(
                     security.clone(),
                     tg_cfg.bot_token.clone(),
                     chat_id.clone(),
@@ -243,13 +356,28 @@ pub fn all_tools_with_runtime(
             let trimmed_value = value.trim();
             (!trimmed_value.is_empty()).then(|| trimmed_value.to_owned())
         });
-        tools.push(Box::new(DelegateTool::new(
+        let parent_tools = Arc::new(tool_arcs.clone());
+        let delegate_tool = DelegateTool::new_with_options(
             delegate_agents,
             delegate_fallback_credential,
-        )));
+            security.clone(),
+            crate::providers::ProviderRuntimeOptions {
+                auth_profile_override: None,
+                provider_api_url: root_config.api_url.clone(),
+                zeroclaw_dir: root_config
+                    .config_path
+                    .parent()
+                    .map(std::path::PathBuf::from),
+                secrets_encrypt: root_config.secrets.encrypt,
+                reasoning_enabled: root_config.runtime.reasoning_enabled,
+            },
+        )
+        .with_parent_tools(parent_tools)
+        .with_multimodal_config(root_config.multimodal.clone());
+        tool_arcs.push(Arc::new(delegate_tool));
     }
 
-    tools
+    boxed_registry_from_arcs(tool_arcs)
 }
 
 #[cfg(test)]
@@ -267,10 +395,10 @@ mod tests {
     }
 
     #[test]
-    fn default_tools_has_three() {
+    fn default_tools_has_expected_count() {
         let security = Arc::new(SecurityPolicy::default());
         let tools = default_tools(security);
-        assert_eq!(tools.len(), 3);
+        assert_eq!(tools.len(), 6);
     }
 
     #[test]
@@ -301,6 +429,7 @@ mod tests {
             None,
             &browser,
             &http,
+            &crate::config::WebFetchConfig::default(),
             tmp.path(),
             &HashMap::new(),
             None,
@@ -309,7 +438,9 @@ mod tests {
         let names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
         assert!(!names.contains(&"browser_open"));
         assert!(names.contains(&"schedule"));
+        assert!(names.contains(&"model_routing_config"));
         assert!(names.contains(&"pushover"));
+        assert!(names.contains(&"proxy_config"));
     }
 
     #[test]
@@ -340,6 +471,7 @@ mod tests {
             None,
             &browser,
             &http,
+            &crate::config::WebFetchConfig::default(),
             tmp.path(),
             &HashMap::new(),
             None,
@@ -347,7 +479,10 @@ mod tests {
         );
         let names: Vec<&str> = tools.iter().map(|t| t.name()).collect();
         assert!(names.contains(&"browser_open"));
+        assert!(names.contains(&"content_search"));
+        assert!(names.contains(&"model_routing_config"));
         assert!(names.contains(&"pushover"));
+        assert!(names.contains(&"proxy_config"));
     }
 
     #[test]
@@ -374,6 +509,7 @@ mod tests {
             None,
             &browser,
             &http,
+            &crate::config::WebFetchConfig::default(),
             tmp.path(),
             &HashMap::new(),
             None,
@@ -391,6 +527,9 @@ mod tests {
         assert!(names.contains(&"shell"));
         assert!(names.contains(&"file_read"));
         assert!(names.contains(&"file_write"));
+        assert!(names.contains(&"file_edit"));
+        assert!(names.contains(&"glob_search"));
+        assert!(names.contains(&"content_search"));
     }
 
     #[test]
@@ -502,6 +641,9 @@ mod tests {
                 api_key: None,
                 temperature: None,
                 max_depth: 3,
+                agentic: false,
+                allowed_tools: Vec::new(),
+                max_iterations: 10,
             },
         );
 
@@ -513,6 +655,7 @@ mod tests {
             None,
             &browser,
             &http,
+            &crate::config::WebFetchConfig::default(),
             tmp.path(),
             &agents,
             Some("delegate-test-credential"),
@@ -545,6 +688,7 @@ mod tests {
             None,
             &browser,
             &http,
+            &crate::config::WebFetchConfig::default(),
             tmp.path(),
             &HashMap::new(),
             None,

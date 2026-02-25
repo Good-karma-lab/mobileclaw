@@ -1,4 +1,5 @@
 use super::traits::{Observer, ObserverEvent, ObserverMetric};
+use std::any::Any;
 
 /// Human-readable progress observer for interactive CLI sessions.
 ///
@@ -56,6 +57,10 @@ impl Observer for VerboseObserver {
     fn name(&self) -> &str {
         "verbose"
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]
@@ -82,6 +87,8 @@ mod tests {
             duration: Duration::from_millis(12),
             success: true,
             error_message: None,
+            input_tokens: Some(50),
+            output_tokens: Some(25),
         });
         obs.record_event(&ObserverEvent::ToolCallStart {
             tool: "shell".into(),

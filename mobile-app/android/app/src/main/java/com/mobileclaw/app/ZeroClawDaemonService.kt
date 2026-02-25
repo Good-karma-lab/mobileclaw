@@ -88,7 +88,7 @@ class ZeroClawDaemonService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 Log.d(TAG, "Received START action")
-                tryStartForeground("Starting ZeroClaw...", "Initializing agent runtime")
+                tryStartForeground("Starting MobileClaw agent", "Preparing assistant")
                 startAgent()
             }
             ACTION_STOP -> {
@@ -105,7 +105,7 @@ class ZeroClawDaemonService : Service() {
             else -> {
                 // Default action is to start
                 Log.d(TAG, "Default START action")
-                tryStartForeground("Starting ZeroClaw...", "Initializing agent runtime")
+                tryStartForeground("Starting MobileClaw agent", "Preparing assistant")
                 startAgent()
             }
         }
@@ -126,7 +126,7 @@ class ZeroClawDaemonService : Service() {
     private fun startAgent() {
         if (isRunning) {
             Log.w(TAG, "Agent already running")
-            updateNotification("ZeroClaw Running", "Agent runtime active")
+            updateNotification("MobileClaw agent active", "Assistant is running")
             return
         }
 
@@ -148,7 +148,7 @@ class ZeroClawDaemonService : Service() {
 
                 if (agentHandle == 0L) {
                     Log.e(TAG, "Failed to start agent - handle is 0")
-                    updateNotification("ZeroClaw Error", "Failed to start agent")
+                    updateNotification("MobileClaw agent issue", "Could not start assistant")
                     return@launch
                 }
 
@@ -168,14 +168,14 @@ class ZeroClawDaemonService : Service() {
                 Log.i(TAG, "Gateway URL: $gatewayUrl")
 
                 // Update notification to show running state
-                updateNotification("ZeroClaw Running", "Agent runtime active on $gatewayUrl")
+                updateNotification("MobileClaw agent active", "Assistant is running")
 
                 // Monitor health periodically
                 monitorAgentHealth()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start agent", e)
-                updateNotification("ZeroClaw Error", "Failed to start: ${e.message}")
+                updateNotification("MobileClaw agent issue", "Restarting assistant")
                 isRunning = false
                 agentHandle = 0
                 agentHandleId = 0
@@ -218,7 +218,7 @@ class ZeroClawDaemonService : Service() {
                 val healthy = ZeroClawBackend.isHealthy(agentHandle)
                 if (!healthy) {
                     Log.w(TAG, "Agent health check failed")
-                    updateNotification("ZeroClaw Warning", "Agent health check failed")
+                    updateNotification("MobileClaw agent issue", "Checking assistant health")
                 } else {
                     Log.d(TAG, "Agent health check: OK")
                 }
@@ -231,8 +231,8 @@ class ZeroClawDaemonService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "ZeroClaw Agent"
-            val descriptionText = "ZeroClaw autonomous agent runtime"
+            val name = "MobileClaw Agent"
+            val descriptionText = "MobileClaw on-device assistant runtime"
             val importance = NotificationManager.IMPORTANCE_LOW
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText

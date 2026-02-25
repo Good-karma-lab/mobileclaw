@@ -99,12 +99,19 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         .map(Into::into)
         .unwrap_or_default();
 
+    // Set HOME so that UserDirs::new() finds a home dir on Android (no system HOME exists).
+    // ZEROCLAW_WORKSPACE takes over for actual config/workspace resolution.
+    std::env::set_var("HOME", &config_path_str);
+
     // Set ZEROCLAW_WORKSPACE environment variable for Android
     // This points to the app's files directory where we can write
     std::env::set_var("ZEROCLAW_WORKSPACE", &config_path_str);
 
-    // Load configuration from workspace
-    let mut config = match Config::load_or_init() {
+    // Load configuration from workspace (load_or_init is async — use a blocking runtime)
+    let mut config = match tokio::runtime::Runtime::new()
+        .expect("temp runtime")
+        .block_on(Config::load_or_init())
+    {
         Ok(c) => c,
         Err(e) => {
             let _ = env.throw_new(
@@ -161,6 +168,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
             bot_token: telegram_token_str,
             allowed_users: vec![],
             notify_chat_id: None,
+            stream_mode: Default::default(),
+            draft_update_interval_ms: 1500,
+            interrupt_on_new_message: false,
+            mention_only: false,
         });
     }
     // Set telegram notify_chat_id if provided
@@ -176,6 +187,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
             guild_id: None,
             allowed_users: vec![],
             listen_to_bots: false,
+            mention_only: false,
         });
     }
     // Slack
@@ -205,7 +217,11 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     config.http_request.allowed_domains = vec!["*".into()];
 
     // Persist overridden config to disk so the agent reads correct capability values
-    if let Err(e) = config.save() {
+    // (config.save() is async — block on it with a temporary runtime)
+    if let Err(e) = tokio::runtime::Runtime::new()
+        .expect("temp runtime")
+        .block_on(config.save())
+    {
         // Non-fatal: daemon still works, agent just may read stale config.toml
         tracing::warn!("Failed to save android-overridden config: {e}");
     }

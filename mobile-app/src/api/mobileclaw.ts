@@ -346,11 +346,12 @@ export async function synthesizeSpeechWithDeepgram(text: string, apiKey: string)
 export async function* runZeroClawAgentStream(
   message: string,
   gatewayUrl: string,
+  sessionId?: string,
 ): AsyncGenerator<string> {
   const res = await fetch(`${gatewayUrl}/agent/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(sessionId ? { session_id: sessionId } : {}) }),
   });
   if (!res.ok || !res.body) throw new Error(`Gateway ${res.status}`);
   const reader = res.body.getReader();
@@ -379,6 +380,7 @@ export async function* runZeroClawAgentStream(
 export async function runZeroClawAgent(
   message: string,
   config: AgentRuntimeConfig,
+  sessionId?: string,
 ): Promise<string> {
   const gatewayUrl = config.platformUrl?.trim() || "http://10.0.2.2:8000";
 
@@ -395,7 +397,7 @@ export async function runZeroClawAgent(
   const res = await fetch(`${gatewayUrl}/agent/message`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(sessionId ? { session_id: sessionId } : {}) }),
   });
 
   if (!res.ok) {
@@ -406,6 +408,39 @@ export async function runZeroClawAgent(
 
   const data = await readJsonResponse(res);
   return String(data?.response || "").trim();
+}
+
+export async function pairTelegramIdentity(
+  gatewayUrl: string,
+  identity: string,
+): Promise<{ paired: boolean; message?: string; error?: string }> {
+  const normalizedIdentity = String(identity || "").trim();
+  if (!normalizedIdentity) {
+    throw new Error("Telegram identity is empty.");
+  }
+
+  const res = await fetch(`${gatewayUrl}/agent/telegram/pair`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ identity: normalizedIdentity }),
+  });
+  const data = (await readJsonResponse(res)) as {
+    paired?: boolean;
+    message?: string;
+    error?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || `Telegram pairing failed: HTTP ${res.status}`);
+  }
+
+  return {
+    paired: Boolean(data?.paired),
+    message: data?.message,
+    error: data?.error,
+  };
 }
 
 export async function fetchOpenRouterModels(apiKey?: string): Promise<string[]> {
