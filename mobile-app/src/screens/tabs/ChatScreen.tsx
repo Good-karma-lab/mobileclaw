@@ -421,13 +421,23 @@ export function ChatScreen() {
             ) : (
               // Phone layout - show header
               <>
-                <Text testID="screen-chat" variant="display">Chat</Text>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: theme.spacing.xs }}>
-                  <Text variant="muted">MobileClaw agent chat with voice mode.</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <Text testID="screen-chat" variant="display" style={{ flexShrink: 1 }}>
+                    Chat
+                  </Text>
                   <Pressable
                     testID="chat-tasks-hooks"
                     onPress={() => navigation.navigate("Tasks")}
                     style={{
+                      marginLeft: "auto",
+                      maxWidth: "60%",
                       paddingHorizontal: 10,
                       paddingVertical: 6,
                       borderRadius: theme.radii.md,
@@ -436,7 +446,9 @@ export function ChatScreen() {
                       borderColor: theme.colors.stroke.subtle,
                     }}
                   >
-                    <Text variant="label">Tasks &amp; Hooks</Text>
+                    <Text variant="label" numberOfLines={1}>
+                      Tasks &amp; Hooks
+                    </Text>
                   </Pressable>
                 </View>
                 <View style={{ marginBottom: theme.spacing.md }} />
