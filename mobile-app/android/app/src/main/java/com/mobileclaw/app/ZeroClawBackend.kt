@@ -30,7 +30,10 @@ class ZeroClawBackend {
          *
          * @param configPath Path to .zeroclaw directory (workspace root)
          * @param apiKey Provider API key (empty string to use config file value)
+         * @param provider Provider id (openrouter/openai/etc)
          * @param model Default model name (empty string to use config file value)
+         * @param apiUrl Provider base URL (empty string to use config file value)
+         * @param temperature Default temperature as decimal string
          * @param telegramToken Telegram bot token (empty string to disable)
          * @param telegramChatId Telegram chat ID for proactive notifications (empty string to disable)
          * @param discordBotToken Discord bot token (empty string to disable)
@@ -42,7 +45,10 @@ class ZeroClawBackend {
         external fun startAgent(
             configPath: String,
             apiKey: String,
+            provider: String,
             model: String,
+            apiUrl: String,
+            temperature: String,
             telegramToken: String,
             telegramChatId: String,
             discordBotToken: String,

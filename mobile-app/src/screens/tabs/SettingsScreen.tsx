@@ -15,6 +15,7 @@ import {
   saveAgentConfig,
   DEFAULT_AGENT_CONFIG,
 } from "../../state/mobileclaw";
+import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
 
 type ProviderPreset = {
@@ -184,8 +185,21 @@ export function SettingsScreen() {
     if (!hydratedRef.current) return;
     const timer = setTimeout(() => {
       const normalized = { ...form, temperature: Math.max(0, Math.min(2, Number(form.temperature) || 0.1)) };
-      void saveAgentConfig(normalized);
-      setSaveStatus("Saved locally");
+      void (async () => {
+        try {
+          await saveAgentConfig(normalized);
+          await applyRuntimeSupervisorConfig("settings_saved");
+          setSaveStatus("Saved and applied");
+        } catch (error) {
+          setSaveStatus("Saved locally (apply failed)");
+          void addActivity({
+            kind: "log",
+            source: "settings",
+            title: "Runtime apply failed",
+            detail: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      })();
     }, 300);
     return () => clearTimeout(timer);
   }, [form]);

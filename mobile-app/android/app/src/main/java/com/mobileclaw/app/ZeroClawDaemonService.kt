@@ -38,7 +38,10 @@ class ZeroClawDaemonService : Service() {
         const val ACTION_RESTART = "com.mobileclaw.RESTART_DAEMON"
 
         const val EXTRA_API_KEY = "api_key"
+        const val EXTRA_PROVIDER = "provider"
         const val EXTRA_MODEL = "model"
+        const val EXTRA_API_URL = "api_url"
+        const val EXTRA_TEMPERATURE = "temperature"
         const val EXTRA_TELEGRAM_TOKEN = "telegram_token"
         const val EXTRA_TELEGRAM_CHAT_ID = "telegram_chat_id"
         const val EXTRA_DISCORD_BOT_TOKEN = "discord_bot_token"
@@ -58,7 +61,10 @@ class ZeroClawDaemonService : Service() {
     }
 
     private var apiKey: String = ""
+    private var provider: String = "openrouter"
     private var model: String = ""
+    private var apiUrl: String = ""
+    private var temperature: String = "0.1"
     private var telegramToken: String = ""
     private var telegramChatId: String = ""
     private var discordBotToken: String = ""
@@ -75,14 +81,18 @@ class ZeroClawDaemonService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Extract config from intent extras when starting
         if (intent?.action != ACTION_STOP) {
-            apiKey = intent?.getStringExtra(EXTRA_API_KEY) ?: ""
-            model = intent?.getStringExtra(EXTRA_MODEL) ?: ""
-            telegramToken = intent?.getStringExtra(EXTRA_TELEGRAM_TOKEN) ?: ""
-            telegramChatId = intent?.getStringExtra(EXTRA_TELEGRAM_CHAT_ID) ?: ""
-            discordBotToken = intent?.getStringExtra(EXTRA_DISCORD_BOT_TOKEN) ?: ""
-            slackBotToken = intent?.getStringExtra(EXTRA_SLACK_BOT_TOKEN) ?: ""
-            composioApiKey = intent?.getStringExtra(EXTRA_COMPOSIO_API_KEY) ?: ""
-            braveApiKey = intent?.getStringExtra(EXTRA_BRAVE_API_KEY) ?: ""
+            val prefs = getSharedPreferences("mobileclaw-daemon-service", Context.MODE_PRIVATE)
+            apiKey = readConfigString(intent, prefs, EXTRA_API_KEY, "api_key", "")
+            provider = readConfigString(intent, prefs, EXTRA_PROVIDER, "provider", "openrouter")
+            model = readConfigString(intent, prefs, EXTRA_MODEL, "model", "")
+            apiUrl = readConfigString(intent, prefs, EXTRA_API_URL, "api_url", "")
+            temperature = readConfigString(intent, prefs, EXTRA_TEMPERATURE, "temperature", "0.1")
+            telegramToken = readConfigString(intent, prefs, EXTRA_TELEGRAM_TOKEN, "telegram_token", "")
+            telegramChatId = readConfigString(intent, prefs, EXTRA_TELEGRAM_CHAT_ID, "telegram_chat_id", "")
+            discordBotToken = readConfigString(intent, prefs, EXTRA_DISCORD_BOT_TOKEN, "discord_bot_token", "")
+            slackBotToken = readConfigString(intent, prefs, EXTRA_SLACK_BOT_TOKEN, "slack_bot_token", "")
+            composioApiKey = readConfigString(intent, prefs, EXTRA_COMPOSIO_API_KEY, "composio_api_key", "")
+            braveApiKey = readConfigString(intent, prefs, EXTRA_BRAVE_API_KEY, "brave_api_key", "")
         }
 
         when (intent?.action) {
@@ -142,7 +152,7 @@ class ZeroClawDaemonService : Service() {
 
                 // Start agent runtime via JNI with config params
                 agentHandle = ZeroClawBackend.startAgent(
-                    configPath, apiKey, model, telegramToken,
+                    configPath, apiKey, provider, model, apiUrl, temperature, telegramToken,
                     telegramChatId, discordBotToken, slackBotToken, composioApiKey, braveApiKey
                 )
 
@@ -280,5 +290,25 @@ class ZeroClawDaemonService : Service() {
             // as a background service rather than crashing the app.
             Log.w(TAG, "Could not start foreground service: ${e.message}. Running as background service.")
         }
+    }
+
+    private fun readConfigString(
+        intent: Intent?,
+        prefs: android.content.SharedPreferences,
+        extraKey: String,
+        prefKey: String,
+        fallback: String,
+    ): String {
+        if (intent?.hasExtra(extraKey) == true) {
+            val value = when (val raw = intent.extras?.get(extraKey)) {
+                is String -> raw
+                is Number -> raw.toString()
+                null -> ""
+                else -> raw.toString()
+            }
+            prefs.edit().putString(prefKey, value).apply()
+            return value
+        }
+        return prefs.getString(prefKey, fallback) ?: fallback
     }
 }

@@ -14,7 +14,7 @@ use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jboolean, jlong, jstring};
 use jni::JNIEnv;
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, Once};
 use tokio::runtime::Runtime;
 
 /// Global registry of agent handles
@@ -41,6 +41,15 @@ fn next_handle_id() -> i64 {
     NEXT_ID.fetch_add(1, Ordering::SeqCst)
 }
 
+fn install_crypto_provider_once() {
+    static CRYPTO_INIT: Once = Once::new();
+    CRYPTO_INIT.call_once(|| {
+        if let Err(e) = rustls::crypto::ring::default_provider().install_default() {
+            eprintln!("[ZeroClaw] Failed to install rustls crypto provider: {e:?}");
+        }
+    });
+}
+
 /// Start the ZeroClaw agent runtime
 ///
 /// Returns a handle (jlong) that must be passed to subsequent calls
@@ -50,7 +59,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     _class: JClass,
     config_path: JString,
     api_key: JString,
+    provider: JString,
     model: JString,
+    api_url: JString,
+    temperature: JString,
     telegram_token: JString,
     telegram_chat_id: JString,
     discord_bot_token: JString,
@@ -59,6 +71,7 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     brave_api_key: JString,
 ) -> jlong {
     init_handles();
+    install_crypto_provider_once();
 
     // Convert config path from Java
     let config_path_str: String = match env.get_string(&config_path) {
@@ -73,7 +86,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     };
 
     let api_key_str: String = env.get_string(&api_key).map(Into::into).unwrap_or_default();
+    let provider_str: String = env.get_string(&provider).map(Into::into).unwrap_or_default();
     let model_str: String = env.get_string(&model).map(Into::into).unwrap_or_default();
+    let api_url_str: String = env.get_string(&api_url).map(Into::into).unwrap_or_default();
+    let temperature_str: String = env.get_string(&temperature).map(Into::into).unwrap_or_default();
     let telegram_token_str: String = env
         .get_string(&telegram_token)
         .map(Into::into)
@@ -133,6 +149,15 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     } else {
         Some(model_str)
     };
+    if !provider_str.is_empty() {
+        config.default_provider = Some(provider_str);
+    }
+    if !api_url_str.is_empty() {
+        config.api_url = Some(api_url_str);
+    }
+    if let Ok(parsed_temperature) = temperature_str.parse::<f64>() {
+        config.default_temperature = parsed_temperature.clamp(0.0, 2.0);
+    }
     if config.default_provider.is_none() {
         config.default_provider = Some("openrouter".into());
     }

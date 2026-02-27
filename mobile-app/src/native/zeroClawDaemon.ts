@@ -22,7 +22,10 @@ export interface ZeroClawDaemonStatus {
 
 export interface DaemonStartConfig {
   apiKey?: string;
+  provider?: string;
   model?: string;
+  apiUrl?: string;
+  temperature?: number;
   telegramToken?: string;
   telegramChatId?: string;
   discordBotToken?: string;
@@ -54,7 +57,10 @@ export async function startDaemon(config: DaemonStartConfig = {}): Promise<void>
   try {
     await ZeroClawDaemon.startDaemon({
       apiKey: config.apiKey ?? '',
+      provider: config.provider ?? '',
       model: config.model ?? '',
+      apiUrl: config.apiUrl ?? '',
+      temperature: config.temperature ?? 0.1,
       telegramToken: config.telegramToken ?? '',
       telegramChatId: config.telegramChatId ?? '',
       discordBotToken: config.discordBotToken ?? '',
@@ -102,7 +108,7 @@ export async function stopDaemon(): Promise<void> {
  *
  * @throws Error if daemon fails to restart
  */
-export async function restartDaemon(): Promise<void> {
+export async function restartDaemon(config: DaemonStartConfig = {}): Promise<void> {
   if (Platform.OS !== 'android') {
     throw new Error('Embedded daemon only available on Android');
   }
@@ -112,7 +118,23 @@ export async function restartDaemon(): Promise<void> {
   }
 
   try {
-    await ZeroClawDaemon.restartDaemon();
+    if (ZeroClawDaemon.restartDaemonWithConfig) {
+      await ZeroClawDaemon.restartDaemonWithConfig({
+        apiKey: config.apiKey ?? '',
+        provider: config.provider ?? '',
+        model: config.model ?? '',
+        apiUrl: config.apiUrl ?? '',
+        temperature: config.temperature ?? 0.1,
+        telegramToken: config.telegramToken ?? '',
+        telegramChatId: config.telegramChatId ?? '',
+        discordBotToken: config.discordBotToken ?? '',
+        slackBotToken: config.slackBotToken ?? '',
+        composioApiKey: config.composioApiKey ?? '',
+        braveApiKey: config.braveApiKey ?? '',
+      });
+    } else {
+      await ZeroClawDaemon.restartDaemon();
+    }
     console.log('[ZeroClawDaemon] Restart requested');
   } catch (error) {
     console.error('[ZeroClawDaemon] Failed to restart:', error);

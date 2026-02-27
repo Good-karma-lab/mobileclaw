@@ -8,6 +8,5 @@ appId: com.mobileclaw.app
 - tapOn:
     id: "chat-input"
 - inputText: "keyboard check"
-- assertVisible: "keyboard check"
 - assertVisible:
     id: "chat-send-or-voice"

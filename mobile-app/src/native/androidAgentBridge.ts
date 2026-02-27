@@ -36,6 +36,7 @@ export async function consumePendingAndroidAgentEvents(): Promise<string[]> {
 export async function configureAndroidRuntimeBridge(config: {
   telegramEnabled: boolean;
   telegramBotToken: string;
+  telegramChatId: string;
   alwaysOnMode: boolean;
   incomingCallHooks: boolean;
   incomingSmsHooks: boolean;
@@ -45,6 +46,7 @@ export async function configureAndroidRuntimeBridge(config: {
   runtimeApiUrl: string;
   runtimeApiKey: string;
   runtimeTemperature: number;
+  runtimeBraveApiKey: string;
 }): Promise<void> {
   if (Platform.OS !== "android") return;
   if (!moduleRef?.configureRuntimeBridge) return;
