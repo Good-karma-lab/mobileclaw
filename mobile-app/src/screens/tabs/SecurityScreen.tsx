@@ -7,6 +7,7 @@ import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
 import { addActivity } from "../../state/activity";
 import { DEFAULT_SECURITY, loadSecurityConfig, saveSecurityConfig } from "../../state/mobileclaw";
+import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 
 export function SecurityScreen() {
   const navigation = useNavigation<any>();
@@ -45,23 +46,36 @@ export function SecurityScreen() {
   useEffect(() => {
     if (!hydratedRef.current) return;
     const timer = setTimeout(() => {
-      void saveSecurityConfig({
-        requireApproval,
-        highRiskActions,
-        incomingCallHooks,
-        incomingSmsHooks,
-        includeCallerNumber,
-        directExecution,
-        preferStandardWebTool,
-        alwaysOnRuntime,
-      });
-      void addActivity({
-        kind: "action",
-        source: "security",
-        title: "Security policy updated",
-        detail: `approval=${requireApproval}, high_risk=${highRiskActions}, call_hooks=${incomingCallHooks}, sms_hooks=${incomingSmsHooks}, caller_number=${includeCallerNumber}, direct_exec=${directExecution}, web_tool=${preferStandardWebTool}, always_on=${alwaysOnRuntime}`,
-      });
-      setSaveStatus("Saved locally");
+      void (async () => {
+        try {
+          await saveSecurityConfig({
+            requireApproval,
+            highRiskActions,
+            incomingCallHooks,
+            incomingSmsHooks,
+            includeCallerNumber,
+            directExecution,
+            preferStandardWebTool,
+            alwaysOnRuntime,
+          });
+          await applyRuntimeSupervisorConfig("security_saved");
+          await addActivity({
+            kind: "action",
+            source: "security",
+            title: "Security policy updated",
+            detail: `approval=${requireApproval}, high_risk=${highRiskActions}, call_hooks=${incomingCallHooks}, sms_hooks=${incomingSmsHooks}, caller_number=${includeCallerNumber}, direct_exec=${directExecution}, web_tool=${preferStandardWebTool}, always_on=${alwaysOnRuntime}`,
+          });
+          setSaveStatus("Saved and applied");
+        } catch (error) {
+          setSaveStatus("Saved locally (apply failed)");
+          await addActivity({
+            kind: "log",
+            source: "security",
+            title: "Security apply failed",
+            detail: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      })();
     }, 300);
     return () => clearTimeout(timer);
   }, [requireApproval, highRiskActions, incomingCallHooks, incomingSmsHooks, includeCallerNumber, directExecution, preferStandardWebTool, alwaysOnRuntime]);

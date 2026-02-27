@@ -2,13 +2,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 import { configureAndroidRuntimeBridge, getAndroidRuntimeBridgeStatus } from "../native/androidAgentBridge";
+import { isDaemonRunning, restartDaemon, startDaemon, waitForDaemonReady } from "../native/zeroClawDaemon";
 import { addActivity } from "../state/activity";
 import {
   loadAgentConfig,
   loadDeviceToolsConfig,
   loadIntegrationsConfig,
   loadSecurityConfig,
+  type AgentRuntimeConfig,
   type IntegrationsConfig,
+  type MobileToolCapability,
   type SecurityConfig,
 } from "../state/mobileclaw";
 
@@ -38,25 +41,59 @@ const DEFAULT_STATE: RuntimeSupervisorState = {
   configHash: "",
 };
 
-function signature(integrations: IntegrationsConfig, security: SecurityConfig): string {
+function hashText(input: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash +=
+      (hash << 1) +
+      (hash << 4) +
+      (hash << 7) +
+      (hash << 8) +
+      (hash << 24);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function effectiveRuntimeApiKey(runtime: AgentRuntimeConfig): string {
+  return runtime.authMode === "oauth_token" ? runtime.oauthAccessToken : runtime.apiKey;
+}
+
+function signature(
+  runtime: AgentRuntimeConfig,
+  integrations: IntegrationsConfig,
+  security: SecurityConfig,
+  enabledToolIds: string[],
+): string {
   return JSON.stringify({
+    runtime: {
+      provider: runtime.provider,
+      model: runtime.model,
+      apiUrl: runtime.apiUrl,
+      temperature: runtime.temperature,
+      apiKeyHash: hashText(effectiveRuntimeApiKey(runtime).trim()),
+      braveKeyHash: hashText(runtime.braveApiKey.trim()),
+    },
     integrations: {
       telegramEnabled: integrations.telegramEnabled,
-      telegramBotToken: Boolean(integrations.telegramBotToken.trim()),
-      telegramChatId: Boolean(integrations.telegramChatId.trim()),
+      telegramTokenHash: hashText(integrations.telegramBotToken.trim()),
+      telegramChatId: integrations.telegramChatId.trim(),
       discordEnabled: integrations.discordEnabled,
-      discordBotToken: Boolean(integrations.discordBotToken.trim()),
+      discordTokenHash: hashText(integrations.discordBotToken.trim()),
       slackEnabled: integrations.slackEnabled,
-      slackBotToken: Boolean(integrations.slackBotToken.trim()),
+      slackTokenHash: hashText(integrations.slackBotToken.trim()),
       whatsappEnabled: integrations.whatsappEnabled,
-      whatsappAccessToken: Boolean(integrations.whatsappAccessToken.trim()),
+      whatsappTokenHash: hashText(integrations.whatsappAccessToken.trim()),
       composioEnabled: integrations.composioEnabled,
-      composioApiKey: Boolean(integrations.composioApiKey.trim()),
+      composioKeyHash: hashText(integrations.composioApiKey.trim()),
     },
-    hooks: {
+    security: {
       incomingCallHooks: security.incomingCallHooks,
+      incomingSmsHooks: security.incomingSmsHooks,
       includeCallerNumber: security.includeCallerNumber,
+      alwaysOnRuntime: security.alwaysOnRuntime,
     },
+    enabledToolIds: [...enabledToolIds].sort(),
   });
 }
 
@@ -93,6 +130,22 @@ function deriveComponents(integrations: IntegrationsConfig, security: SecurityCo
   }
 
   return { components, missing };
+}
+
+function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: IntegrationsConfig) {
+  return {
+    apiKey: effectiveRuntimeApiKey(runtime),
+    provider: runtime.provider,
+    model: runtime.model,
+    apiUrl: runtime.apiUrl,
+    temperature: runtime.temperature,
+    telegramToken: integrations.telegramEnabled ? integrations.telegramBotToken : "",
+    telegramChatId: integrations.telegramEnabled ? integrations.telegramChatId : "",
+    discordBotToken: integrations.discordEnabled ? integrations.discordBotToken : "",
+    slackBotToken: integrations.slackEnabled ? integrations.slackBotToken : "",
+    composioApiKey: integrations.composioEnabled ? integrations.composioApiKey : "",
+    braveApiKey: runtime.braveApiKey || "",
+  };
 }
 
 async function readState(): Promise<RuntimeSupervisorState> {
@@ -155,24 +208,51 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     readState(),
   ]);
 
+  const enabledToolIds = deviceTools.filter((tool: MobileToolCapability) => tool.enabled).map((tool) => tool.id);
   const { components, missing } = deriveComponents(integrations, security);
-  const hash = signature(integrations, security);
+  const hash = signature(runtime, integrations, security, enabledToolIds);
+  const changed = previous.configHash !== hash;
 
   await configureAndroidRuntimeBridge({
     telegramEnabled: integrations.telegramEnabled,
     telegramBotToken: integrations.telegramBotToken,
+    telegramChatId: integrations.telegramChatId,
     alwaysOnMode: security.alwaysOnRuntime,
     incomingCallHooks: security.incomingCallHooks,
     incomingSmsHooks: security.incomingSmsHooks,
-    enabledToolIds: deviceTools.filter((tool) => tool.enabled).map((tool) => tool.id),
+    enabledToolIds,
     runtimeProvider: runtime.provider,
     runtimeModel: runtime.model,
     runtimeApiUrl: runtime.apiUrl,
-    runtimeApiKey: runtime.authMode === "oauth_token" ? runtime.oauthAccessToken : runtime.apiKey,
+    runtimeApiKey: effectiveRuntimeApiKey(runtime),
     runtimeTemperature: runtime.temperature,
+    runtimeBraveApiKey: runtime.braveApiKey,
   });
 
+  let daemonApplyError: string | null = null;
+  let daemonRestarted = false;
+
+  if (Platform.OS === "android" && changed) {
+    try {
+      const daemonConfig = buildDaemonConfig(runtime, integrations);
+      const running = await isDaemonRunning();
+      if (running) {
+        await restartDaemon(daemonConfig);
+      } else {
+        await startDaemon(daemonConfig);
+      }
+      await waitForDaemonReady(25000, 750);
+      daemonRestarted = true;
+    } catch (error) {
+      daemonApplyError = error instanceof Error ? error.message : "daemon_restart_failed";
+    }
+  }
+
   const health = await fetchHealthSnapshot();
+  if (daemonApplyError) {
+    health.ok = false;
+    health.detail = daemonApplyError;
+  }
 
   const status: RuntimeSupervisorState["status"] =
     missing.length > 0 || !health.ok ? "degraded" : "healthy";
@@ -193,10 +273,10 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     missingConfig: missing,
     lastError: health.ok ? null : health.detail || "health check failed",
     lastTransitionMs: Date.now(),
+    restartCount: previous.restartCount + (daemonRestarted ? 1 : 0),
     configHash: hash,
   };
 
-  const changed = previous.configHash !== hash;
   const statusChanged = previous.status !== status;
   const componentsChanged = JSON.stringify(previous.components) !== JSON.stringify(components);
 
@@ -209,6 +289,7 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     ];
     if (missing.length) detailParts.push(`missing=${missing.join(", ")}`);
     if (!health.ok && health.detail) detailParts.push(`health=${health.detail}`);
+    if (daemonRestarted) detailParts.push("daemon=restarted");
 
     await addActivity({
       kind: "action",

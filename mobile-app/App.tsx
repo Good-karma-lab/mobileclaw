@@ -84,9 +84,14 @@ export default function App() {
               if (!running) {
                 const agentCfg = await loadAgentConfig();
                 const integCfg = await loadIntegrationsConfig();
+                const runtimeApiKey =
+                  agentCfg.authMode === "oauth_token" ? agentCfg.oauthAccessToken : agentCfg.apiKey;
                 await startDaemon({
-                  apiKey: agentCfg.apiKey,
+                  apiKey: runtimeApiKey,
+                  provider: agentCfg.provider,
                   model: agentCfg.model,
+                  apiUrl: agentCfg.apiUrl,
+                  temperature: agentCfg.temperature,
                   telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
                   telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
                   discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',

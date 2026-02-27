@@ -1,0 +1,63 @@
+appId: com.mobileclaw.app
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: screen-chat
+    timeout: 120000
+
+- tapOn:
+    id: dock-tab-settings
+    optional: true
+- tapOn:
+    text: "Settings"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: provider-dropdown
+    timeout: 25000
+
+- assertVisible: "OpenRouter"
+- assertVisible: "minimax/minimax-m2.5"
+
+- tapOn:
+    id: dock-tab-chat
+    optional: true
+- tapOn:
+    text: "Chat"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: chat-input
+    timeout: 15000
+
+- tapOn:
+    id: chat-input
+- inputText: "Say hello in one short sentence"
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    id: chat-send-or-voice
+- assertNotVisible:
+    text: "MobileClaw agent is unavailable right now"
+- assertNotVisible:
+    text: "Agent execution failed"
+- assertNotVisible:
+    text: "Network request failed"
+- assertNotVisible:
+    text: "Gateway error"
+
+- tapOn:
+    id: dock-tab-activity
+    optional: true
+- tapOn:
+    text: "Activity"
+    optional: true
+- extendedWaitUntil:
+    visible: "Agent response"
+    timeout: 180000
+- assertNotVisible:
+    text: "Agent error"

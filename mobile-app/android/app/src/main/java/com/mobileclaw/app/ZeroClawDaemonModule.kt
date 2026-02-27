@@ -35,7 +35,13 @@ class ZeroClawDaemonModule(private val reactContext: ReactApplicationContext) :
             val intent = Intent(reactContext, ZeroClawDaemonService::class.java)
             intent.action = ZeroClawDaemonService.ACTION_START
             intent.putExtra(ZeroClawDaemonService.EXTRA_API_KEY, config.getString("apiKey") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_PROVIDER, config.getString("provider") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_MODEL, config.getString("model") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_API_URL, config.getString("apiUrl") ?: "")
+            intent.putExtra(
+                ZeroClawDaemonService.EXTRA_TEMPERATURE,
+                if (config.hasKey("temperature")) config.getDouble("temperature") else 0.1,
+            )
             intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_TOKEN, config.getString("telegramToken") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_CHAT_ID, config.getString("telegramChatId") ?: "")
             intent.putExtra(ZeroClawDaemonService.EXTRA_DISCORD_BOT_TOKEN, config.getString("discordBotToken") ?: "")
@@ -105,6 +111,49 @@ class ZeroClawDaemonModule(private val reactContext: ReactApplicationContext) :
             val errorMsg = "Failed to restart daemon: ${e.message}"
             Log.e(TAG, errorMsg, e)
             promise.reject("RESTART_FAILED", errorMsg, e)
+        }
+    }
+
+    /**
+     * Restart daemon with explicit config payload.
+     *
+     * This is used after UI settings changes so the runtime always
+     * restarts with fresh provider/channel credentials.
+     */
+    @ReactMethod
+    fun restartDaemonWithConfig(config: ReadableMap, promise: Promise) {
+        try {
+            Log.d(TAG, "restartDaemonWithConfig() called from React Native")
+
+            val intent = Intent(reactContext, ZeroClawDaemonService::class.java)
+            intent.action = ZeroClawDaemonService.ACTION_RESTART
+            intent.putExtra(ZeroClawDaemonService.EXTRA_API_KEY, config.getString("apiKey") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_PROVIDER, config.getString("provider") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_MODEL, config.getString("model") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_API_URL, config.getString("apiUrl") ?: "")
+            intent.putExtra(
+                ZeroClawDaemonService.EXTRA_TEMPERATURE,
+                if (config.hasKey("temperature")) config.getDouble("temperature") else 0.1,
+            )
+            intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_TOKEN, config.getString("telegramToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_TELEGRAM_CHAT_ID, config.getString("telegramChatId") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_DISCORD_BOT_TOKEN, config.getString("discordBotToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_SLACK_BOT_TOKEN, config.getString("slackBotToken") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_COMPOSIO_API_KEY, config.getString("composioApiKey") ?: "")
+            intent.putExtra(ZeroClawDaemonService.EXTRA_BRAVE_API_KEY, config.getString("braveApiKey") ?: "")
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                reactContext.startForegroundService(intent)
+            } else {
+                reactContext.startService(intent)
+            }
+
+            promise.resolve(true)
+            Log.d(TAG, "Daemon restart with config requested successfully")
+        } catch (e: Exception) {
+            val errorMsg = "Failed to restart daemon with config: ${e.message}"
+            Log.e(TAG, errorMsg, e)
+            promise.reject("RESTART_WITH_CONFIG_FAILED", errorMsg, e)
         }
     }
 

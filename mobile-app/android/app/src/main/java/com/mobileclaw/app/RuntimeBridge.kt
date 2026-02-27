@@ -50,11 +50,13 @@ object RuntimeBridge {
     private const val QUEUE_KEY = "pending_events"
     private const val TELEGRAM_ENABLED = "telegram_enabled"
     private const val TELEGRAM_BOT_TOKEN = "telegram_bot_token"
+    private const val TELEGRAM_CHAT_ID = "telegram_chat_id"
     private const val RUNTIME_PROVIDER = "runtime_provider"
     private const val RUNTIME_MODEL = "runtime_model"
     private const val RUNTIME_API_URL = "runtime_api_url"
     private const val RUNTIME_API_KEY = "runtime_api_key"
     private const val RUNTIME_TEMPERATURE = "runtime_temperature"
+    private const val RUNTIME_BRAVE_API_KEY = "runtime_brave_api_key"
     private const val RUNTIME_CONFIG_HASH = "runtime_config_hash"
     private const val CAP_SMS = "cap_sms"
     private const val CAP_CALLS = "cap_calls"
@@ -101,6 +103,7 @@ object RuntimeBridge {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val telegramEnabled = config.optBoolean("telegramEnabled", false)
         val telegramBotToken = config.optString("telegramBotToken", "").trim()
+        val telegramChatId = config.optString("telegramChatId", "").trim()
         val alwaysOnMode = config.optBoolean("alwaysOnMode", false)
         val incomingCallHooks = config.optBoolean("incomingCallHooks", true)
         val incomingSmsHooks = config.optBoolean("incomingSmsHooks", true)
@@ -109,6 +112,7 @@ object RuntimeBridge {
         val runtimeApiUrl = config.optString("runtimeApiUrl", "").trim()
         val runtimeApiKey = config.optString("runtimeApiKey", "").trim()
         val runtimeTemperature = config.optDouble("runtimeTemperature", 0.1)
+        val runtimeBraveApiKey = config.optString("runtimeBraveApiKey", "").trim()
         val enabledToolIds = mutableSetOf<String>()
         val enabledToolsJson = config.optJSONArray("enabledToolIds")
         if (enabledToolsJson != null) {
@@ -122,6 +126,7 @@ object RuntimeBridge {
             .remove("platform_url")
             .putBoolean(TELEGRAM_ENABLED, telegramEnabled)
             .putString(TELEGRAM_BOT_TOKEN, telegramBotToken)
+            .putString(TELEGRAM_CHAT_ID, telegramChatId)
             .putBoolean(ALWAYS_ON_MODE, alwaysOnMode)
             .putBoolean(INCOMING_CALL_HOOKS, incomingCallHooks)
             .putBoolean(INCOMING_SMS_HOOKS, incomingSmsHooks)
@@ -130,6 +135,7 @@ object RuntimeBridge {
             .putString(RUNTIME_API_URL, runtimeApiUrl)
             .putString(RUNTIME_API_KEY, runtimeApiKey)
             .putFloat(RUNTIME_TEMPERATURE, runtimeTemperature.toFloat())
+            .putString(RUNTIME_BRAVE_API_KEY, runtimeBraveApiKey)
             .putBoolean(CAP_SMS, enabledToolIds.any { it.startsWith("android_device.sms.") || it == "android_device.userdata.sms_inbox" })
             .putBoolean(CAP_CALLS, enabledToolIds.any { it.startsWith("android_device.calls.") || it == "android_device.userdata.call_log" })
             .putBoolean(CAP_APP_LAUNCH, enabledToolIds.any { it == "android_device.open_app" || it == "android_device.list_apps" || it == "android_device.open_url" || it == "android_device.open_settings" })
@@ -150,6 +156,8 @@ object RuntimeBridge {
             append('|')
             append(telegramBotToken)
             append('|')
+            append(telegramChatId)
+            append('|')
             append(runtimeProvider)
             append('|')
             append(runtimeModel)
@@ -159,6 +167,8 @@ object RuntimeBridge {
             append(runtimeApiKey)
             append('|')
             append(runtimeTemperature)
+            append('|')
+            append(runtimeBraveApiKey)
             append('|')
             append(enabledToolIds.sorted().joinToString(","))
         }
@@ -303,8 +313,10 @@ object RuntimeBridge {
         val apiUrl = prefs.getString(RUNTIME_API_URL, "")?.trim().orEmpty()
         val apiKey = prefs.getString(RUNTIME_API_KEY, "")?.trim().orEmpty()
         val temperature = prefs.getFloat(RUNTIME_TEMPERATURE, 0.1f)
+        val runtimeBraveApiKey = prefs.getString(RUNTIME_BRAVE_API_KEY, "")?.trim().orEmpty()
         val telegramEnabled = prefs.getBoolean(TELEGRAM_ENABLED, false)
         val telegramBotToken = prefs.getString(TELEGRAM_BOT_TOKEN, "")?.trim().orEmpty()
+        val telegramChatId = prefs.getString(TELEGRAM_CHAT_ID, "")?.trim().orEmpty()
 
         val cfgFile = runtimeConfigFile(context)
         cfgFile.parentFile?.mkdirs()
@@ -331,6 +343,15 @@ object RuntimeBridge {
                 appendLine("[channels_config.telegram]")
                 appendLine("bot_token = \"${escapeToml(telegramBotToken)}\"")
                 appendLine("allowed_users = [\"*\"]")
+                if (telegramChatId.isNotBlank()) {
+                    appendLine("notify_chat_id = \"${escapeToml(telegramChatId)}\"")
+                }
+            }
+
+            if (runtimeBraveApiKey.isNotBlank()) {
+                appendLine()
+                appendLine("[web_search]")
+                appendLine("brave_api_key = \"${escapeToml(runtimeBraveApiKey)}\"")
             }
 
             appendLine()
