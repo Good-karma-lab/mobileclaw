@@ -383,14 +383,15 @@ export async function runZeroClawAgent(
   sessionId?: string,
 ): Promise<string> {
   const gatewayUrl = config.platformUrl?.trim() || "http://10.0.2.2:8000";
+  const gatewayHost = gatewayUrl.replace(/^https?:\/\//i, "").split("/")[0]?.toLowerCase() || "";
+  const isLocalGateway = gatewayHost.startsWith("127.0.0.1") || gatewayHost.startsWith("localhost");
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
-  // Add auth if pairing enabled
   const bearerToken = bearerFor(config);
-  if (bearerToken) {
+  if (!isLocalGateway && bearerToken) {
     headers.Authorization = `Bearer ${bearerToken}`;
   }
 

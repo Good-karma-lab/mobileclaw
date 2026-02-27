@@ -239,6 +239,15 @@ object RuntimeBridge {
         val runtimeReady = prefs.getString(RUNTIME_API_KEY, "")?.isNotBlank() == true &&
             prefs.getString(RUNTIME_MODEL, "")?.isNotBlank() == true
         val daemonUp = isLocalGatewayHealthy()
+        val rawNote = prefs.getString(LAST_EVENT_NOTE, "") ?: ""
+        val lastEventNote = if (
+            daemonUp &&
+            (rawNote.startsWith("Assistant failed to start") || rawNote.startsWith("Assistant startup issue"))
+        ) {
+            "Assistant is running"
+        } else {
+            rawNote
+        }
         return JSONObject()
             .put("queue_size", queueSize(context))
             .put("always_on", isAlwaysOnEnabled(context))
@@ -247,7 +256,7 @@ object RuntimeBridge {
             .put("telegram_seen_count", prefs.getLong(TELEGRAM_SEEN_COUNT, 0L))
             .put("webhook_success_count", prefs.getLong(WEBHOOK_SUCCESS_COUNT, 0L))
             .put("webhook_fail_count", prefs.getLong(WEBHOOK_FAIL_COUNT, 0L))
-            .put("last_event_note", prefs.getString(LAST_EVENT_NOTE, "") ?: "")
+            .put("last_event_note", lastEventNote)
     }
 
     private fun enqueue(context: Context, item: JSONObject) {

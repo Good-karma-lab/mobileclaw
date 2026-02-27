@@ -23,7 +23,7 @@ import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./s
 import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
-import { startDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
+import { startDaemon, restartDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
 
 // Dev-only: prepopulate credentials for faster local testing
 let prepopulateDevCredentials: (() => Promise<void>) | undefined;
@@ -78,27 +78,29 @@ export default function App() {
         if (Platform.OS === 'android') {
           void (async () => {
             try {
+              const agentCfg = await loadAgentConfig();
+              const integCfg = await loadIntegrationsConfig();
+              const runtimeApiKey =
+                agentCfg.authMode === "oauth_token" ? agentCfg.oauthAccessToken : agentCfg.apiKey;
+              const daemonConfig = {
+                apiKey: runtimeApiKey,
+                provider: agentCfg.provider,
+                model: agentCfg.model,
+                apiUrl: agentCfg.apiUrl,
+                temperature: agentCfg.temperature,
+                telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
+                telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
+                discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
+                slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
+                composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
+                braveApiKey: agentCfg.braveApiKey || '',
+              };
+
               console.log("[app] starting embedded MobileClaw daemon...");
               const running = await isDaemonRunning();
 
               if (!running) {
-                const agentCfg = await loadAgentConfig();
-                const integCfg = await loadIntegrationsConfig();
-                const runtimeApiKey =
-                  agentCfg.authMode === "oauth_token" ? agentCfg.oauthAccessToken : agentCfg.apiKey;
-                await startDaemon({
-                  apiKey: runtimeApiKey,
-                  provider: agentCfg.provider,
-                  model: agentCfg.model,
-                  apiUrl: agentCfg.apiUrl,
-                  temperature: agentCfg.temperature,
-                  telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : '',
-                  telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : '',
-                  discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : '',
-                  slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
-                  composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
-                  braveApiKey: agentCfg.braveApiKey || '',
-                });
+                await startDaemon(daemonConfig);
                 console.log("[app] daemon start requested, waiting for readiness...");
               } else {
                 console.log("[app] daemon already running");
@@ -108,9 +110,17 @@ export default function App() {
               setDaemonReady(true);
               log("info", "embedded daemon ready", { url: "http://127.0.0.1:8000" });
             } catch (err) {
-              console.warn("[app] embedded daemon not ready yet:", err);
-              setDaemonReady(false);
-              log("warn", "embedded daemon failed", { error: err instanceof Error ? err.message : String(err) });
+              console.warn("[app] embedded daemon not ready, attempting one restart:", err);
+              try {
+                await restartDaemon(daemonConfig);
+                await waitForDaemonReady(30000, 1000);
+                setDaemonReady(true);
+                log("info", "embedded daemon recovered after restart", { url: "http://127.0.0.1:8000" });
+              } catch (restartErr) {
+                console.warn("[app] embedded daemon still not ready:", restartErr);
+                setDaemonReady(false);
+                log("warn", "embedded daemon failed", { error: restartErr instanceof Error ? restartErr.message : String(restartErr) });
+              }
             }
           })();
         } else {

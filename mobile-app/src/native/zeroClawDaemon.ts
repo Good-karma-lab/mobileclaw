@@ -277,6 +277,33 @@ export async function waitForDaemonReady(
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
   }
 
+  try {
+    const running = await isDaemonRunning();
+    if (running) {
+      for (let i = 0; i < 5; i++) {
+        try {
+          const fetchWithTimeout = new Promise<Response>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('fetch timeout')), 2000);
+            fetch('http://127.0.0.1:8000/health').then(
+              (r) => { clearTimeout(timer); resolve(r); },
+              (e) => { clearTimeout(timer); reject(e); },
+            );
+          });
+          const res = await fetchWithTimeout;
+          if (res.ok) {
+            console.log('[ZeroClawDaemon] HTTP gateway ready after grace check');
+            return;
+          }
+        } catch {
+          // Continue grace retries
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  } catch {
+    // Fall through to timeout error
+  }
+
   throw new Error(`Daemon failed to start within ${timeoutMs}ms`);
 }
 
