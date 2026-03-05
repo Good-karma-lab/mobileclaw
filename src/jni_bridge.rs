@@ -69,6 +69,8 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     slack_bot_token: JString,
     composio_api_key: JString,
     brave_api_key: JString,
+    local_model_path: JString,
+    thinking_mode: jboolean,
 ) -> jlong {
     init_handles();
     install_crypto_provider_once();
@@ -112,6 +114,10 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
         .unwrap_or_default();
     let brave_api_key_str: String = env
         .get_string(&brave_api_key)
+        .map(Into::into)
+        .unwrap_or_default();
+    let _local_model_path_str: String = env
+        .get_string(&local_model_path)
         .map(Into::into)
         .unwrap_or_default();
 
@@ -233,6 +239,8 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     if !brave_api_key_str.is_empty() {
         config.web_search.brave_api_key = Some(brave_api_key_str);
     }
+    // localModelPath and thinkingMode params are kept in JNI signature for Kotlin compat
+    // but ignored — local inference now runs via llama.rn in React Native.
 
     // Enable http_request tool — agent needs to call external APIs and fetch web content.
     // On Android (user's personal device) public internet access is expected.

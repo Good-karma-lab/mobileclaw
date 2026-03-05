@@ -996,7 +996,6 @@ fn create_provider_with_url_and_options(
             )))
         }
         "telnyx" => Ok(Box::new(telnyx::TelnyxProvider::new(key))),
-
         // ── OpenAI-compatible providers ──────────────────────
         "venice" => Ok(Box::new(OpenAiCompatibleProvider::new(
             "Venice", "https://api.venice.ai", key, AuthStyle::Bearer,

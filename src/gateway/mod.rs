@@ -1320,11 +1320,9 @@ async fn handle_agent_message(
             (StatusCode::OK, Json(body))
         }
         Err(e) => {
-            tracing::error!(
-                "Agent runtime error: {}",
-                providers::sanitize_api_error(&e.to_string())
-            );
-            let err = serde_json::json!({"error": "Agent execution failed"});
+            let sanitized = providers::sanitize_api_error(&e.to_string());
+            tracing::error!("Agent runtime error: {sanitized}");
+            let err = serde_json::json!({"error": format!("Agent execution failed: {sanitized}")});
             (StatusCode::INTERNAL_SERVER_ERROR, Json(err))
         }
     }
