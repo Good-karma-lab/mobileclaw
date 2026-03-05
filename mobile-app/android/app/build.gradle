@@ -224,4 +224,5 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:$cameraxVersion"
     implementation "androidx.camera:camera-view:$cameraxVersion"
     implementation "androidx.work:work-runtime-ktx:2.10.0"
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
 }

@@ -48,6 +48,8 @@ class ZeroClawDaemonService : Service() {
         const val EXTRA_SLACK_BOT_TOKEN = "slack_bot_token"
         const val EXTRA_COMPOSIO_API_KEY = "composio_api_key"
         const val EXTRA_BRAVE_API_KEY = "brave_api_key"
+        const val EXTRA_LOCAL_MODEL_PATH = "local_model_path"
+        const val EXTRA_THINKING_MODE = "thinking_mode"
 
         @Volatile
         private var isRunning = false
@@ -71,6 +73,8 @@ class ZeroClawDaemonService : Service() {
     private var slackBotToken: String = ""
     private var composioApiKey: String = ""
     private var braveApiKey: String = ""
+    private var localModelPath: String = ""
+    private var thinkingMode: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -93,6 +97,9 @@ class ZeroClawDaemonService : Service() {
             slackBotToken = readConfigString(intent, prefs, EXTRA_SLACK_BOT_TOKEN, "slack_bot_token", "")
             composioApiKey = readConfigString(intent, prefs, EXTRA_COMPOSIO_API_KEY, "composio_api_key", "")
             braveApiKey = readConfigString(intent, prefs, EXTRA_BRAVE_API_KEY, "brave_api_key", "")
+            localModelPath = readConfigString(intent, prefs, EXTRA_LOCAL_MODEL_PATH, "local_model_path", "")
+            thinkingMode = readConfigString(intent, prefs, EXTRA_THINKING_MODE, "thinking_mode", "false") == "true"
+            Log.d(TAG, "Config: provider=$provider model=$model localModelPath=$localModelPath thinkingMode=$thinkingMode")
         }
 
         when (intent?.action) {
@@ -133,12 +140,22 @@ class ZeroClawDaemonService : Service() {
         super.onDestroy()
     }
 
+    @Volatile private var isStarting = false
+    private var lastStartedModelPath: String = ""
+
     private fun startAgent() {
-        if (isRunning) {
-            Log.w(TAG, "Agent already running")
+        // If agent is starting/running but with a different model path, restart it
+        if ((isRunning || isStarting) && localModelPath.isNotEmpty() && localModelPath != lastStartedModelPath) {
+            Log.d(TAG, "Model path changed from '$lastStartedModelPath' to '$localModelPath', restarting agent")
+            stopAgent()
+            Thread.sleep(500)
+        } else if (isRunning || isStarting) {
+            Log.w(TAG, "Agent already running or starting")
             updateNotification("MobileClaw agent active", "Assistant is running")
             return
         }
+        isStarting = true
+        lastStartedModelPath = localModelPath
 
         serviceScope.launch {
             try {
@@ -153,17 +170,21 @@ class ZeroClawDaemonService : Service() {
                 // Start agent runtime via JNI with config params
                 agentHandle = ZeroClawBackend.startAgent(
                     configPath, apiKey, provider, model, apiUrl, temperature, telegramToken,
-                    telegramChatId, discordBotToken, slackBotToken, composioApiKey, braveApiKey
+                    telegramChatId, discordBotToken, slackBotToken, composioApiKey, braveApiKey,
+                    localModelPath,
+                    thinkingMode
                 )
 
                 if (agentHandle == 0L) {
                     Log.e(TAG, "Failed to start agent - handle is 0")
+                    isStarting = false
                     updateNotification("MobileClaw agent issue", "Could not start assistant")
                     return@launch
                 }
 
                 agentHandleId = agentHandle
                 isRunning = true
+                isStarting = false
 
                 Log.i(TAG, "✅ Agent started successfully with handle: $agentHandle")
 
@@ -187,6 +208,7 @@ class ZeroClawDaemonService : Service() {
                 Log.e(TAG, "Failed to start agent", e)
                 updateNotification("MobileClaw agent issue", "Restarting assistant")
                 isRunning = false
+                isStarting = false
                 agentHandle = 0
                 agentHandleId = 0
 
