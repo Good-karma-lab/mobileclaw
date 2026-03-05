@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, TextInput, View, Pressable, Modal } from "react-native";
+import { ScrollView, TextInput, View, Pressable, Modal, Switch } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -17,6 +17,7 @@ import {
 } from "../../state/mobileclaw";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
+import { getModelDownloadUrl, getModelFileName, checkModelExists, downloadModel } from "../../native/modelDownloader";
 
 type ProviderPreset = {
   id: ProviderId;
@@ -28,6 +29,7 @@ type ProviderPreset = {
 };
 
 const MODELS_BY_PROVIDER: Record<ProviderId, string[]> = {
+  local: ["Qwen/Qwen3.5-0.8B", "Qwen/Qwen3.5-2B"],
   ollama: ["gpt-oss:20b", "qwen2.5-coder:14b", "llama3.1:8b"],
   openrouter: ["minimax/minimax-m2.5"],
   openai: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"],
@@ -51,6 +53,7 @@ const MODELS_BY_PROVIDER: Record<ProviderId, string[]> = {
 };
 
 const PROVIDERS: ProviderPreset[] = [
+  { id: "local", title: "Local Inference (on-device)", endpoint: "", model: "Qwen/Qwen3.5-2B", supportsOauthToken: false, docsHint: "Runs AI model directly on your device. No API key or internet needed." },
   { id: "ollama", title: "Ollama (local)", endpoint: "http://10.0.2.2:11434", model: "gpt-oss:20b", supportsOauthToken: false, docsHint: "Local Ollama on host machine." },
   { id: "openrouter", title: "OpenRouter", endpoint: "https://openrouter.ai/api/v1", model: "minimax/minimax-m2.5", supportsOauthToken: false, docsHint: "Use OpenRouter API key." },
   { id: "openai", title: "OpenAI", endpoint: "https://api.openai.com/v1", model: "gpt-4.1-mini", supportsOauthToken: true, docsHint: "API key or OAuth access token." },
@@ -124,6 +127,8 @@ export function SettingsScreen() {
   const [modelSearch, setModelSearch] = useState("");
   const [openRouterModels, setOpenRouterModels] = useState<string[]>(MODELS_BY_PROVIDER.openrouter);
   const [openRouterLoading, setOpenRouterLoading] = useState(false);
+  const [localModelStatus, setLocalModelStatus] = useState<"checking" | "not_downloaded" | "downloading" | "ready">("checking");
+  const [localDownloadProgress, setLocalDownloadProgress] = useState(0);
   const hydratedRef = useRef(false);
 
   useEffect(() => {
@@ -140,6 +145,46 @@ export function SettingsScreen() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (form.provider !== "local") return;
+    let cancelled = false;
+    (async () => {
+      setLocalModelStatus("checking");
+      try {
+        const { exists, path } = await checkModelExists(form.model);
+        if (cancelled) return;
+        if (exists) {
+          setLocalModelStatus("ready");
+          if (path && form.localModelPath !== path) {
+            setForm((prev) => ({ ...prev, localModelPath: path }));
+          }
+        } else {
+          setLocalModelStatus("not_downloaded");
+        }
+      } catch {
+        if (!cancelled) setLocalModelStatus("not_downloaded");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [form.provider, form.model]);
+
+  const handleDownloadModel = async () => {
+    console.log("[SettingsScreen] Starting model download for:", form.model);
+    setLocalModelStatus("downloading");
+    setLocalDownloadProgress(0);
+    try {
+      const path = await downloadModel(form.model, (progress) => {
+        setLocalDownloadProgress(progress);
+      });
+      setLocalModelStatus("ready");
+      setForm((prev) => ({ ...prev, localModelPath: path }));
+    } catch (error) {
+      console.error("[SettingsScreen] Model download failed:", error);
+      setLocalModelStatus("not_downloaded");
+      void addActivity({ kind: "log", source: "settings", title: "Model download failed", detail: error instanceof Error ? error.message : String(error) });
+    }
+  };
 
   const selected = useMemo(() => PROVIDERS.find((p) => p.id === form.provider) || PROVIDERS[0], [form.provider]);
   const providerModels = useMemo(() => {
@@ -232,15 +277,56 @@ export function SettingsScreen() {
             <Ionicons name="chevron-down" size={18} color={theme.colors.base.textMuted} />
           </View>
         </Pressable>
-        <LabeledInput testID="settings-endpoint" label="Endpoint" value={form.apiUrl} onChangeText={(value) => setForm((prev) => ({ ...prev, apiUrl: value }))} />
-        <LabeledInput
-          testID="settings-api-key"
-          label={form.provider === "openrouter" ? "OpenRouter API key" : "API key"}
-          placeholder="Enter API key"
-          value={form.apiKey}
-          onChangeText={(value) => setForm((prev) => ({ ...prev, apiKey: value, authMode: "api_key" }))}
-          secureTextEntry
-        />
+        {form.provider !== "local" ? (
+          <>
+            <LabeledInput testID="settings-endpoint" label="Endpoint" value={form.apiUrl} onChangeText={(value) => setForm((prev) => ({ ...prev, apiUrl: value }))} />
+            <LabeledInput
+              testID="settings-api-key"
+              label={form.provider === "openrouter" ? "OpenRouter API key" : "API key"}
+              placeholder="Enter API key"
+              value={form.apiKey}
+              onChangeText={(value) => setForm((prev) => ({ ...prev, apiKey: value, authMode: "api_key" }))}
+              secureTextEntry
+            />
+          </>
+        ) : null}
+        {form.provider === "local" ? (
+          <View style={{ gap: theme.spacing.sm, padding: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.surface.panel, borderWidth: 1, borderColor: theme.colors.stroke.subtle }}>
+            <Text variant="label">On-Device Model</Text>
+            <Text variant="bodyMedium">Model: {getModelFileName(form.model)}</Text>
+            <Text variant="muted">
+              {localModelStatus === "checking" ? "Checking model status..." :
+               localModelStatus === "not_downloaded" ? "Not downloaded" :
+               localModelStatus === "downloading" ? `Downloading ${Math.round(localDownloadProgress)}%` :
+               "Ready"}
+            </Text>
+            {localModelStatus === "not_downloaded" ? (
+              <Pressable
+                onPress={handleDownloadModel}
+                style={{ paddingVertical: 12, borderRadius: theme.radii.lg, alignItems: "center", backgroundColor: theme.colors.base.primary }}
+              >
+                <Text variant="bodyMedium" style={{ color: "#fff" }}>Download Model</Text>
+              </Pressable>
+            ) : null}
+            {localModelStatus === "downloading" ? (
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.colors.stroke.subtle }}>
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.colors.base.primary, width: `${localDownloadProgress}%` as any }} />
+              </View>
+            ) : null}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: theme.spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <Text variant="label">Thinking Mode</Text>
+                <Text variant="muted">Model reasons step-by-step before answering. Better quality, slower.</Text>
+              </View>
+              <Switch
+                testID="thinking-mode-toggle"
+                value={form.thinkingMode}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, thinkingMode: value }))}
+                trackColor={{ false: theme.colors.stroke.subtle, true: theme.colors.base.primary }}
+              />
+            </View>
+          </View>
+        ) : null}
         {selected.supportsOauthToken ? (
           <>
             <LabeledInput testID="settings-oauth-access-token" label="OAuth access token (optional)" value={form.oauthAccessToken} onChangeText={(value) => setForm((prev) => ({ ...prev, oauthAccessToken: value, authMode: value.trim() ? "oauth_token" : "api_key" }))} secureTextEntry />

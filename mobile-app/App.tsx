@@ -24,6 +24,7 @@ import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
 import { startDaemon, restartDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
+import { startLocalLlmServer, stopLocalLlmServer, LOCAL_LLM_URL } from "./src/native/localLlmServer";
 
 // Dev-only: prepopulate credentials for faster local testing
 let prepopulateDevCredentials: (() => Promise<void>) | undefined;
@@ -94,7 +95,26 @@ export default function App() {
                 slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : '',
                 composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : '',
                 braveApiKey: agentCfg.braveApiKey || '',
+                localModelPath: agentCfg.localModelPath || '',
+                thinkingMode: agentCfg.thinkingMode ?? false,
               };
+
+              // If provider is "local", start the on-device LLM server first
+              // and remap to Ollama provider pointing at it
+              if (daemonConfig.provider === "local" && daemonConfig.localModelPath) {
+                console.log("[app] starting local LLM server...");
+                await startLocalLlmServer({
+                  modelPath: daemonConfig.localModelPath,
+                  gpuLayers: agentCfg.gpuLayers ?? 0,
+                  cpuThreads: agentCfg.cpuThreads ?? 4,
+                  contextLength: agentCfg.contextLength ?? 2048,
+                  thinkingMode: agentCfg.thinkingMode ?? true,
+                });
+                daemonConfig.provider = "ollama";
+                daemonConfig.apiUrl = LOCAL_LLM_URL;
+                daemonConfig.model = "local";
+                console.log("[app] local LLM server started, daemon will use Ollama at", LOCAL_LLM_URL);
+              }
 
               console.log("[app] starting embedded MobileClaw daemon...");
               const running = await isDaemonRunning();

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type ProviderId =
-  | "ollama" | "openrouter" | "openai" | "anthropic" | "gemini" | "copilot"
+  | "local" | "ollama" | "openrouter" | "openai" | "anthropic" | "gemini" | "copilot"
   | "mistral" | "deepseek" | "xai" | "groq" | "together" | "fireworks"
   | "perplexity" | "cohere" | "minimax" | "venice" | "moonshot" | "glm" | "qwen" | "lm-studio";
 export type AuthMode = "api_key" | "oauth_token";
@@ -21,6 +21,14 @@ export type AgentRuntimeConfig = {
   deepgramApiKey: string;
   braveApiKey: string;
   platformUrl: string; // MobileClaw embedded backend gateway URL
+  localModelPath: string; // Path to downloaded GGUF model file
+  thinkingMode: boolean; // Enable thinking mode for Qwen3.5 (uses <think> tags)
+  gpuLayers: number;
+  cpuThreads: number;
+  contextLength: number;
+  voiceProvider: "deepgram" | "whisper";
+  whisperModel: string;
+  whisperModelPath: string;
 };
 
 export type IntegrationsConfig = {
@@ -70,9 +78,9 @@ const DEVICE_TOOLS_KEY = "mobileclaw:device-tools:v2";
 const DAEMON_KEY = "mobileclaw:daemon-config:v1";
 
 export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
-  provider: "openrouter",
-  model: "minimax/minimax-m2.5",
-  apiUrl: "https://openrouter.ai/api/v1",
+  provider: "local",
+  model: "Qwen/Qwen3.5-0.8B",
+  apiUrl: "",
   apiKey: "",
   authMode: "api_key",
   oauthAccessToken: "",
@@ -84,6 +92,14 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   deepgramApiKey: "",
   braveApiKey: "",
   platformUrl: "http://127.0.0.1:8000", // Embedded daemon on localhost
+  localModelPath: "",
+  thinkingMode: true, // Qwen3.5 thinking mode enabled by default
+  gpuLayers: 0,
+  cpuThreads: 4,
+  contextLength: 2048,
+  voiceProvider: "deepgram",
+  whisperModel: "whisper-base",
+  whisperModelPath: "",
 };
 
 export const DEFAULT_INTEGRATIONS: IntegrationsConfig = {

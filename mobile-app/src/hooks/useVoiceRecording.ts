@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Audio } from "expo-av";
 import { Buffer } from "buffer";
 import LiveAudioStream from "react-native-live-audio-stream";
+import { initWhisper, WhisperContext } from "whisper.rn";
 
 import { log } from "../logger";
 
@@ -22,7 +23,11 @@ function meteringTo01(metering?: number | null): number {
   return Math.max(0, Math.min(1, Math.pow(t, 1.6)));
 }
 
-export function useVoiceRecording(deepgramApiKey?: string) {
+export function useVoiceRecording(config: {
+  voiceProvider: "deepgram" | "whisper";
+  deepgramApiKey?: string;
+  whisperModelPath?: string;
+}) {
   const [state, setState] = useState<VoiceState>("idle");
   const [volume, setVolume] = useState(0);
   const [transcript, setTranscript] = useState("");
@@ -34,6 +39,8 @@ export function useVoiceRecording(deepgramApiKey?: string) {
   const interimChunkRef = useRef("");
   const resolveStopRef = useRef<(() => void) | null>(null);
   const startedRef = useRef(false);
+  const whisperCtxRef = useRef<WhisperContext | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   const composeText = () => {
     const finalText = finalChunksRef.current.join(" ").trim();
@@ -55,6 +62,18 @@ export function useVoiceRecording(deepgramApiKey?: string) {
     streamSubRef.current = null;
   };
 
+  const transcribeWithWhisper = useCallback(async (audioUri: string) => {
+    if (!whisperCtxRef.current && config.whisperModelPath) {
+      whisperCtxRef.current = await initWhisper({
+        filePath: config.whisperModelPath,
+      });
+    }
+    if (!whisperCtxRef.current) throw new Error("Whisper model not loaded");
+    const { promise } = whisperCtxRef.current.transcribe(audioUri, { language: "en" });
+    const result = await promise;
+    return result.result || "";
+  }, [config.whisperModelPath]);
+
   const start = useCallback(async (): Promise<boolean> => {
     setTranscript("");
     setInterimText("");
@@ -62,14 +81,6 @@ export function useVoiceRecording(deepgramApiKey?: string) {
     startedRef.current = true;
     finalChunksRef.current = [];
     interimChunkRef.current = "";
-
-    const key = String(deepgramApiKey || "").trim();
-    if (!key) {
-      setInterimText("Add Deepgram API key in Settings");
-      setState("idle");
-      startedRef.current = false;
-      return false;
-    }
 
     try {
       const perm = await Audio.requestPermissionsAsync();
@@ -83,6 +94,41 @@ export function useVoiceRecording(deepgramApiKey?: string) {
     } catch (err) {
       log("error", "Microphone permission error", { error: String(err) });
       setInterimText("Microphone permission is required");
+      setState("idle");
+      startedRef.current = false;
+      return false;
+    }
+
+    if (config.voiceProvider === "whisper") {
+      if (!config.whisperModelPath) {
+        setInterimText("Whisper model path not configured");
+        setState("idle");
+        startedRef.current = false;
+        return false;
+      }
+
+      try {
+        const recording = new Audio.Recording();
+        await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+        await recording.startAsync();
+        recordingRef.current = recording;
+        setState("recording");
+        setInterimText("Listening…");
+        log("debug", "Whisper voice recording started");
+        return true;
+      } catch (err) {
+        log("error", "Failed to start whisper recording", { error: String(err) });
+        setInterimText("Mic failed");
+        setState("idle");
+        startedRef.current = false;
+        return false;
+      }
+    }
+
+    // Deepgram flow
+    const key = String(config.deepgramApiKey || "").trim();
+    if (!key) {
+      setInterimText("Add Deepgram API key in Settings");
       setState("idle");
       startedRef.current = false;
       return false;
@@ -187,11 +233,50 @@ export function useVoiceRecording(deepgramApiKey?: string) {
       cleanupStream();
       return false;
     }
-  }, [deepgramApiKey]);
+  }, [config.voiceProvider, config.deepgramApiKey, config.whisperModelPath, transcribeWithWhisper]);
 
   const stop = useCallback(async (): Promise<string> => {
     setState("transcribing");
     startedRef.current = false;
+
+    if (config.voiceProvider === "whisper") {
+      const recording = recordingRef.current;
+      recordingRef.current = null;
+
+      try {
+        setInterimText("Transcribing…");
+        if (recording) {
+          await recording.stopAndUnloadAsync();
+          const uri = recording.getURI();
+          if (!uri) {
+            setTranscript("");
+            setInterimText("Didn't catch that. Try again.");
+            return "";
+          }
+          const finalText = await transcribeWithWhisper(uri);
+          if (!finalText) {
+            setTranscript("");
+            setInterimText("Didn't catch that. Try again.");
+            return "";
+          }
+          setTranscript(finalText);
+          setInterimText(finalText);
+          return finalText;
+        }
+        setTranscript("");
+        setInterimText("Didn't catch that. Try again.");
+        return "";
+      } catch (err) {
+        log("error", "Whisper transcription failed", { error: String(err) });
+        setInterimText("Transcription failed");
+        return "";
+      } finally {
+        setVolume(0);
+        setState("idle");
+      }
+    }
+
+    // Deepgram flow
     const ws = wsRef.current;
     wsRef.current = null;
 
@@ -226,7 +311,7 @@ export function useVoiceRecording(deepgramApiKey?: string) {
       setVolume(0);
       setState("idle");
     }
-  }, []);
+  }, [config.voiceProvider, transcribeWithWhisper]);
 
   const cancel = useCallback(async () => {
     startedRef.current = false;
@@ -237,6 +322,12 @@ export function useVoiceRecording(deepgramApiKey?: string) {
       // ignore
     }
     wsRef.current = null;
+    try {
+      await recordingRef.current?.stopAndUnloadAsync();
+    } catch {
+      // ignore
+    }
+    recordingRef.current = null;
     setState("idle");
     setVolume(0);
     setInterimText("");
