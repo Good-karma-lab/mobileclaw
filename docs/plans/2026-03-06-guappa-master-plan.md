@@ -99,18 +99,29 @@
 
 ## 2. Phase Overview
 
-| Phase | Name | Description | Depends On |
-|-------|------|-------------|------------|
-| **1** | Foundation | Agent core, orchestrator, message bus, foreground service | — |
-| **2** | Provider Router | All cloud + local LLM providers, hardware acceleration | Phase 1 |
-| **3** | Tool Engine | All device tools + app control + accessibility automation | Phase 1 |
-| **4** | Proactive Agent & Push | Agent-initiated messages, push notifications, event system | Phase 1, 3 |
-| **5** | Channel Hub | Messenger integrations (Telegram, WhatsApp, etc.) | Phase 1, 4 |
-| **6** | Voice Pipeline | STT + TTS + wake word + continuous voice interaction | Phase 2 |
-| **7** | Memory & Context | Persistent memory, RAG, conversation compaction | Phase 1 |
-| **8** | Documentation | Complete Guappa docs from scratch | Phase 1-7 |
-| **9** | Testing & QA | Maestro E2E, resilience testing, CI pipeline | Phase 1-7 |
-| **10** | Live Config | Real-time config application from UI without restart | Phase 1, 2, 3 |
+| Phase | Name | Description | Depends On | Detailed Doc |
+|-------|------|-------------|------------|--------------|
+| **1** | Foundation | Agent core, orchestrator, message bus, foreground service | — | [phase-01-foundation.md](phase-01-foundation.md) |
+| **2** | Provider Router | Dynamic model fetching, capability-based selection, hardware accel | Phase 1 | [phase-02-provider-router.md](phase-02-provider-router.md) |
+| **3** | Tool Engine | 69 tools: device, app, web (fetch/search), AI, automation | Phase 1 | [phase-03-tool-engine.md](phase-03-tool-engine.md) |
+| **4** | Proactive Agent & Push | Agent-initiated messages, push notifications, event triggers | Phase 1, 3 | [phase-04-proactive-push.md](phase-04-proactive-push.md) |
+| **5** | Channel Hub | Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Email, SMS | Phase 1, 4 | [phase-05-channel-hub.md](phase-05-channel-hub.md) |
+| **6** | Voice Pipeline | STT + streaming TTS + wake word + VAD + voice mode | Phase 2 | [phase-06-voice-pipeline.md](phase-06-voice-pipeline.md) |
+| **7** | Memory & Context | 5-tier memory, auto-summarization, recursive LLM, RAG, consolidation | Phase 1 | [phase-07-memory-context.md](phase-07-memory-context.md) |
+| **8** | Documentation | Complete Guappa docs from scratch (40+ files) | Phase 1-7 | [phase-08-documentation.md](phase-08-documentation.md) |
+| **9** | Testing & QA | Maestro E2E (40+ flows), JUnit, Espresso, resilience, CI | Phase 1-7 | [phase-09-testing-qa.md](phase-09-testing-qa.md) |
+| **10** | Live Config | TurboModules bridge, reactive StateFlow, hot-swap everything | Phase 1, 2, 3 | [phase-10-live-config.md](phase-10-live-config.md) |
+
+### Key Design Decisions (updated)
+
+1. **NO HARDCODED MODELS** — all model lists fetched dynamically via provider APIs (see Phase 2)
+2. **Capability-based settings** — separate provider+model selection per type: text, vision, image gen, video gen, STT, TTS, embedding, code, reasoning, web search (see Phase 2)
+3. **Mandatory web tools** — `web_fetch`, `web_search`, `web_scrape`, `browser_session` (see Phase 3)
+4. **69 tools total** — device (17) + app (14) + social (5) + automation (7) + file (6) + web (6) + AI (9) + system (5) (see Phase 3)
+5. **5-tier memory** — working → short-term → long-term → episodic → semantic/vector (see Phase 7)
+6. **Auto-summarization** — incremental, recursive (multi-level), map-reduce for long histories (see Phase 7)
+7. **Recursive LLM** — task decomposition, long-doc processing, self-reflection (see Phase 7)
+8. **TurboModules** — React Native New Architecture for zero-overhead JS↔Kotlin bridge (see Phase 10)
 
 ---
 
