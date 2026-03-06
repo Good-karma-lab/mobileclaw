@@ -15,10 +15,24 @@
 - Production-grade: complete provider/model/tool coverage as of March 2026
 - Native Android backend (pure Kotlin, no Rust/JNI)
 - Push notifications for all agent-initiated events
-- Real-time config application from UI (no daemon restart)
-- Full app control via Accessibility + Intent system
+- Real-time config application from UI (no daemon restart) via TurboModules + StateFlow
+- App control via **Android AppFunctions + UI Automation Framework** (NOT Accessibility Service — banned by Google Play for AI agents)
+- Intent system for standard app actions (alarms, share, email, maps, etc.)
 - Complete documentation rewrite under Guappa branding
 - Maestro E2E test coverage for every feature
+
+> **CRITICAL POLICY NOTE (February 2026):** Google Play explicitly prohibits using
+> AccessibilityService API for autonomous AI agent decision-making. Only apps declared
+> as accessibility tools (`isAccessibilityTool="true"`) for assisting people with
+> disabilities are exempt. Android 16+ Advanced Protection Mode can disable non-a11y
+> apps from using Accessibility API entirely. Our agent MUST use the new
+> **AppFunctions** (structured API for app-to-agent communication) and
+> **UI Automation Framework** (Google's sanctioned agent automation layer, currently
+> in early preview on Galaxy S26 and Pixel 10) instead.
+>
+> Sources:
+> - https://android-developers.googleblog.com/2026/02/the-intelligent-os-making-ai-agents.html
+> - https://support.google.com/googleplay/android-developer/answer/10964491
 
 ---
 
@@ -189,8 +203,8 @@ agent/
 **Study before implementing:**
 - All available LLM provider APIs as of March 2026
 - OpenAI API specification (streaming, tool_use, structured output)
-- On-device inference: llama.cpp Android build, MediaPipe LLM, ONNX Runtime Mobile
-- Hardware acceleration: NNAPI, Qualcomm QNN SDK, Samsung ONE SDK, Google AI Edge
+- On-device inference: llama.cpp Android build, **LiteRT-LM** (replaces MediaPipe LLM), ONNX Runtime Mobile, Qualcomm GENIE
+- Hardware acceleration: **LiteRT** (replaces NNAPI), Qualcomm QNN SDK, Samsung ONE SDK, Google AI Edge, MediaTek NeuroPilot
 - Model quantization: GGUF, GPTQ, AWQ, EXL2 formats
 - Token counting and cost tracking per provider
 
@@ -230,17 +244,19 @@ providers/
 │   └── CustomProvider.kt      — any OpenAI-compatible endpoint
 ├── local/
 │   ├── LocalInferenceEngine.kt — unified local inference interface
-│   ├── LlamaCppEngine.kt      — llama.cpp via JNI (GGUF models)
-│   ├── MediaPipeEngine.kt     — Google MediaPipe LLM Inference API
+│   ├── LlamaCppEngine.kt      — llama.cpp via JNI (GGUF models, widest model support)
+│   ├── LiteRTLMEngine.kt     — Google LiteRT-LM (replaces MediaPipe LLM, powers Gemini Nano)
+│   ├── QualcommGenieEngine.kt — Qualcomm GENIE (best perf on Snapdragon NPU)
 │   ├── ONNXEngine.kt          — ONNX Runtime Mobile
+│   ├── CactusEngine.kt        — Cactus SDK (sub-50ms TTFT, cross-platform)
 │   └── ModelManager.kt        — download, cache, quantization selection
 └── acceleration/
-    ├── HardwareProbe.kt       — detect available accelerators
-    ├── NNAPIDelegate.kt       — Android NNAPI backend
-    ├── QualcommQNNDelegate.kt — Qualcomm QNN SDK (Hexagon NPU)
-    ├── SamsungONEDelegate.kt  — Samsung ONE (Exynos NPU)
-    ├── GoogleEdgeTPUDelegate.kt — Tensor G4 TPU
-    ├── MediaTekAPUDelegate.kt — MediaTek APU (Dimensity)
+    ├── HardwareProbe.kt       — detect available accelerators (SoC, NPU, GPU)
+    ├── LiteRTDelegate.kt      — Google LiteRT unified runtime (replaces NNAPI)
+    ├── QualcommQNNDelegate.kt — Qualcomm QNN SDK (Hexagon NPU, 75 TOPS on SD 8 Elite)
+    ├── SamsungONEDelegate.kt  — Samsung ONE (Exynos NPU, ~40 TOPS)
+    ├── GoogleEdgeTPUDelegate.kt — Tensor G5 TPU (Pixel-optimized)
+    ├── MediaTekNeuroPilot.kt  — MediaTek NeuroPilot (Dimensity 9400 APU, 50+ TOPS)
     ├── VulkanComputeDelegate.kt — Vulkan compute shaders (Adreno/Mali GPU)
     └── OpenCLDelegate.kt      — OpenCL fallback (older Adreno GPUs)
 ```
@@ -251,55 +267,68 @@ providers/
 
 | Provider | Models | Streaming | Tool Use | Vision | Auth |
 |----------|--------|-----------|----------|--------|------|
-| **OpenAI** | GPT-4.5, GPT-4o, GPT-4o-mini, o3, o4-mini, o3-pro | ✅ | ✅ | ✅ | API key |
-| **Anthropic** | Claude Opus 4.6, Claude Sonnet 4.6, Claude Haiku 4.5 | ✅ | ✅ | ✅ | API key |
-| **Google** | Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.0 Flash, Gemma 3 27B | ✅ | ✅ | ✅ | API key / OAuth |
-| **DeepSeek** | DeepSeek-V3, DeepSeek-R1 | ✅ | ✅ | ✅ | API key |
-| **Mistral** | Mistral Large (25.03), Mistral Medium, Mistral Small, Codestral, Pixtral Large | ✅ | ✅ | ✅ | API key |
-| **Meta** | Llama 4 Scout (109B/17B active), Llama 4 Maverick (400B/17B active), Llama 4 Behemoth | ✅ | ✅ | ✅ | via API partners |
+| **OpenAI** | **GPT-5.2** (unified, 400K ctx), GPT-4o, o3, o4-mini | ✅ | ✅ | ✅ | API key |
+| **Anthropic** | **Claude Opus 4**, **Claude Sonnet 4.5**, Claude Haiku 4.5 | ✅ | ✅ | ✅ | API key |
+| **Google** | **Gemini 2.5 Pro**, **Gemini 2.5 Flash**, Gemini 3 Pro, Gemma 3 27B | ✅ | ✅ | ✅ | API key / OAuth |
+| **DeepSeek** | **DeepSeek-V3.1**, DeepSeek-R1 | ✅ | ✅ | ✅ | API key |
+| **Mistral** | **Magistral 2**, Mixtral 12x24B MoE, Mistral Large (25.03), Codestral, Pixtral Large | ✅ | ✅ | ✅ | API key |
+| **Meta** | **Llama 4 Maverick** (400B/17B active), **Llama 4 Scout** (109B/17B active, 10M ctx), Llama 4 Behemoth | ✅ | ✅ | ✅ | via API partners |
 | **xAI** | Grok 3, Grok 3 Mini | ✅ | ✅ | ✅ | API key |
-| **Cohere** | Command R+ (08-2024), Command A (03-2025), Embed v4 | ✅ | ✅ | ❌ | API key |
-| **Groq** | Llama 4 Scout, DeepSeek-R1, Qwen QwQ (fast) | ✅ | ✅ | ❌ | API key |
+| **Cohere** | **Command A** (03-2025), Command R+, Embed v4 | ✅ | ✅ | ❌ | API key |
+| **Groq** | Llama 4 Scout, DeepSeek-R1, Qwen QwQ (ultra-fast inference) | ✅ | ✅ | ❌ | API key |
 | **Together** | 100+ open models hosted | ✅ | ✅ | Varies | API key |
-| **Fireworks** | Llama 4, DeepSeek, Qwen (fast) | ✅ | ✅ | Varies | API key |
+| **Fireworks** | Llama 4, DeepSeek, Qwen (fast inference) | ✅ | ✅ | Varies | API key |
 | **Perplexity** | Sonar Pro, Sonar (search-augmented) | ✅ | ❌ | ❌ | API key |
 | **OpenRouter** | 200+ models (unified gateway) | ✅ | ✅ | Varies | API key |
-| **Qwen** | Qwen 3 (72B, 32B, 14B, 8B), QwQ-32B | ✅ | ✅ | ✅ | API key |
+| **Qwen** | **Qwen 2.5** series (72B, 32B, 14B, 7B), QwQ-32B | ✅ | ✅ | ✅ | API key |
 | **GLM** | GLM-4-Plus, GLM-4V-Plus | ✅ | ✅ | ✅ | API key |
 | **Moonshot** | Kimi k2 | ✅ | ✅ | ❌ | API key |
 | **Minimax** | MiniMax-01 | ✅ | ✅ | ❌ | API key |
 | **Venice** | Open models (privacy-focused) | ✅ | ✅ | Varies | API key |
-| **GitHub Copilot** | GPT-4o, Claude (via Copilot) | ✅ | ✅ | ❌ | OAuth |
+| **GitHub Copilot** | GPT-5.2, Claude Sonnet (via Copilot) | ✅ | ✅ | ❌ | OAuth |
 | **LM Studio** | Any GGUF model (local) | ✅ | ✅ | ❌ | None |
 | **Ollama** | Any GGUF model (local) | ✅ | ✅ | Varies | None |
 
 #### Local/On-Device Models
 
-| Model | Size | Quantization | Use Case |
-|-------|------|-------------|----------|
-| Qwen 3 0.6B | ~400MB | Q4_K_M GGUF | Ultra-fast, simple tasks |
-| Qwen 3 1.7B | ~1.2GB | Q4_K_M GGUF | Fast, good quality |
-| Qwen 3 4B | ~2.8GB | Q4_K_M GGUF | Balanced speed/quality |
-| Qwen 3 8B | ~5GB | Q4_K_M GGUF | High quality, flagship phones |
-| Llama 4 Scout 17B (MoE) | ~10GB | Q4_K_M GGUF | Best quality, 16GB+ RAM |
-| Gemma 3 4B | ~2.8GB | Q4_K_M GGUF | Google-optimized |
-| Phi-4-mini 3.8B | ~2.5GB | Q4_K_M GGUF | Microsoft, code-optimized |
-| SmolLM2 1.7B | ~1.1GB | Q4_K_M GGUF | Ultra-efficient |
-| DeepSeek-R1-Distill 1.5B | ~1GB | Q4_K_M GGUF | Reasoning |
-| Mistral Small 3.1 24B | ~15GB | Q4_K_M GGUF | High-end devices only |
+| Model | Size | Quantization | Use Case | Min RAM |
+|-------|------|-------------|----------|---------|
+| Gemini Nano | ~built-in | LiteRT-LM native | Google Pixel/Samsung (pre-installed) | 4GB |
+| Qwen 2.5 0.5B | ~350MB | Q4_K_M GGUF | Ultra-fast, simple tasks | 2GB |
+| Qwen 2.5 1.5B | ~1GB | Q4_K_M GGUF | Fast, good quality | 4GB |
+| Phi-4-mini 3.8B | ~2.5GB | Q4_K_M GGUF | Microsoft, code-optimized | 6GB |
+| Qwen 2.5 7B | ~4.5GB | Q4_K_M GGUF | High quality, flagship phones | 8GB |
+| Gemma 3 4B | ~2.8GB | Q4_K_M GGUF | Google-optimized, edge-first | 6GB |
+| Llama 3.1 8B Instruct | ~5GB | Q4_K_M GGUF | Best open-source general | 8GB |
+| DeepSeek-R1-Distill 1.5B | ~1GB | Q4_K_M GGUF | Reasoning on device | 4GB |
+| SmolLM2 1.7B | ~1.1GB | Q4_K_M GGUF | Ultra-efficient | 4GB |
+| Llama 4 Scout 17B (MoE) | ~10GB | Q4_K_M GGUF | Best quality, 16GB+ RAM | 16GB |
+| Qwen 2.5-VL-7B-Instruct | ~5GB | Q4_K_M GGUF | Vision + language on device | 8GB |
+| Mistral Small 3.1 24B | ~15GB | Q4_K_M GGUF | High-end devices only | 16GB |
+
+**Performance expectations (March 2026):**
+- Flagship (SD 8 Elite, 16GB): 15-30 tok/s for 7B, targeting 200 tok/s with NPU
+- Mid-range (SD 7+ Gen 3, 8GB): 5-15 tok/s for 4B
+- Budget (4-6GB RAM): 3-8 tok/s for 1.5B
+- Rule of thumb: model file size × 1.5 = RAM needed
 
 #### Hardware Acceleration Matrix
 
-| Accelerator | Vendor | Devices | API | Performance |
-|-------------|--------|---------|-----|-------------|
-| **Hexagon NPU** | Qualcomm | Snapdragon 8 Gen 3/4, 7+ Gen 3 | QNN SDK 2.x | Best for Qualcomm devices |
-| **Adreno GPU** | Qualcomm | All Snapdragon | Vulkan Compute / OpenCL | Good fallback |
-| **Exynos NPU** | Samsung | Exynos 2400/2500 | Samsung ONE SDK | Samsung flagships |
-| **Mali GPU** | ARM | MediaTek, Exynos (older) | Vulkan Compute / OpenCL | Wide compatibility |
-| **APU** | MediaTek | Dimensity 9300/9400 | MediaTek NeuroPilot | MediaTek flagships |
-| **Tensor TPU** | Google | Pixel 8/9/10 | Google AI Edge SDK | Pixel-optimized |
-| **NNAPI** | Android | API 27+ (all devices) | Android NNAPI | Universal fallback |
-| **CPU (NEON)** | ARM | All ARM64 devices | llama.cpp built-in | Always available |
+| Accelerator | Vendor | Devices | API | TOPS | Notes |
+|-------------|--------|---------|-----|------|-------|
+| **Hexagon NPU** | Qualcomm | SD 8 Elite (Gen 4), SD 8 Gen 3, SD 7+ Gen 3 | QNN SDK 2.x | **75 TOPS** (Elite) | 4.5x faster LLM inference vs Gen 3, attention mechanism HW |
+| **Adreno GPU** | Qualcomm | All Snapdragon | Vulkan Compute / OpenCL | ~10 TOPS | Good fallback, shared with rendering |
+| **Exynos NPU** | Samsung | Exynos 2400/2500 | Samsung ONE SDK | ~40 TOPS | Samsung flagships, Galaxy AI |
+| **Mali GPU** | ARM | MediaTek, Exynos (older) | Vulkan Compute / OpenCL | ~5 TOPS | Wide compatibility, lower perf |
+| **APU** | MediaTek | Dimensity 9300/9400 | MediaTek NeuroPilot | **50+ TOPS** | LiteRT integration built-in |
+| **Tensor TPU** | Google | Pixel 9/10 (Tensor G4/G5) | Google AI Edge SDK | N/A | Powers Gemini Nano natively |
+| **LiteRT** | Google | API 27+ (all devices) | LiteRT Runtime | Varies | **Replaces NNAPI** — unified CPU/GPU/NPU |
+| **CPU (NEON)** | ARM | All ARM64 devices | llama.cpp built-in | ~2 TOPS | Always available, well-optimized |
+
+> **Note:** NNAPI is deprecated. Google replaced it with **LiteRT** (repositioned TensorFlow Lite)
+> as the unified on-device runtime. LiteRT provides CPU, GPU, and NPU delegates for Qualcomm and
+> MediaTek hardware with consistent behavior across vendors. NPU is up to 100x faster than CPU
+> and 10x faster than GPU for AI workloads.
 
 ### 2.3 Features
 
@@ -339,16 +368,22 @@ providers/
 ### 3.0 Research
 
 **Study before implementing:**
-- Android Accessibility Service API — node tree traversal, gesture dispatch
+- **Android AppFunctions API** (Feb 2026) — structured API for app-to-agent communication
+- **Android UI Automation Framework** (Feb 2026) — sanctioned agent automation (preview on Galaxy S26, Pixel 10)
+- **DroidRun** (3.8k GitHub stars) — open-source mobile AI agent framework, accessibility tree → structured data
 - Android Intent system — implicit/explicit intents for app control
-- `AlarmManager` API for setting alarms/timers
+- `AlarmManager` API for setting alarms/timers (SCHEDULE_EXACT_ALARM denied by default on Android 14+)
 - Social media app deep links (Twitter/X, Instagram, etc.)
 - Android `ContentProvider` for contacts, calendar, call log, SMS
 - `MediaProjection` API for screenshots
 - `NotificationListenerService` for reading notifications
 - Android `AutofillService` for form filling
-- Android 14/15 accessibility restrictions and best practices
-- Screen reader / TalkBack interaction patterns
+- **Google Play Accessibility policy** — AccessibilityService BANNED for autonomous AI agent use
+
+> **CRITICAL**: Do NOT use AccessibilityService for autonomous AI agent control.
+> Google Play will reject the app. Use AppFunctions + UI Automation Framework instead.
+> Accessibility Service may be used ONLY for development/testing (sideloaded builds)
+> or as declared accessibility tool for users with disabilities.
 
 ### 3.1 Architecture
 
@@ -395,14 +430,16 @@ tools/
 │   ├── TelegramSendTool.kt     — send message via Telegram Intent
 │   ├── WhatsAppSendTool.kt     — send message via WhatsApp Intent
 │   └── SocialShareTool.kt      — universal social media share
-├── accessibility/
-│   ├── GuappaAccessibilityService.kt — main accessibility service
-│   ├── UIAutomationTool.kt     — tap, swipe, scroll, type text
-│   ├── ScreenReaderTool.kt     — read current screen content (node tree → text)
+├── automation/
+│   ├── AppFunctionsClient.kt    — Android AppFunctions API client (structured app control)
+│   ├── UIAutomationClient.kt    — Android UI Automation Framework client (Google-sanctioned)
+│   ├── DroidRunAdapter.kt       — DroidRun-style accessibility tree → structured data (dev/test only)
+│   ├── UIAutomationTool.kt     — tap, swipe, scroll, type text (via UI Automation Framework)
+│   ├── ScreenReaderTool.kt     — read current screen content (via UI Automation Framework)
 │   ├── AppNavigationTool.kt    — navigate within apps (back, home, recents, switch)
 │   ├── FormFillerTool.kt       — fill form fields by label
-│   ├── ScreenshotTool.kt       — capture and analyze screenshots
-│   └── NotificationReaderTool.kt — read/dismiss/act on notifications
+│   ├── ScreenshotTool.kt       — capture and analyze screenshots (MediaProjection)
+│   └── NotificationReaderTool.kt — read/dismiss/act on notifications (NotificationListenerService)
 ├── files/
 │   ├── FileReadTool.kt         — read file content
 │   ├── FileWriteTool.kt        — write/create files
@@ -469,16 +506,20 @@ tools/
 | `send_whatsapp` | Send WhatsApp message | `whatsapp://send?text=` deep link |
 | `social_share` | Universal social share | ACTION_SEND + chooser |
 
-#### Accessibility/Automation Tools (7)
-| Tool | Description | Requirement |
-|------|-------------|-------------|
-| `ui_tap` | Tap at coordinates or by text | Accessibility Service |
-| `ui_swipe` | Swipe gesture | Accessibility Service |
-| `ui_type_text` | Type text in focused field | Accessibility Service |
-| `read_screen` | Read current screen content | Accessibility Service |
-| `navigate_app` | Back, home, recents, app switch | Accessibility Service |
-| `fill_form` | Fill form fields by label | Accessibility Service |
-| `screenshot` | Capture + analyze screenshot | MediaProjection or Accessibility |
+#### App Automation Tools (7)
+| Tool | Description | Mechanism |
+|------|-------------|-----------|
+| `ui_tap` | Tap at coordinates or by text | **UI Automation Framework** (Google-sanctioned) |
+| `ui_swipe` | Swipe gesture | **UI Automation Framework** |
+| `ui_type_text` | Type text in focused field | **UI Automation Framework** |
+| `read_screen` | Read current screen content | **UI Automation Framework** → structured data |
+| `navigate_app` | Back, home, recents, app switch | **AppFunctions API** / system navigation |
+| `fill_form` | Fill form fields by label | **AppFunctions API** / UI Automation |
+| `screenshot` | Capture + analyze screenshot | **MediaProjection API** |
+
+> **Note:** All UI automation uses Google's official **AppFunctions** and **UI Automation Framework**
+> APIs (announced Feb 2026), NOT AccessibilityService. This ensures Google Play compliance.
+> For development/testing only, a DroidRun-style accessibility adapter is available in sideloaded builds.
 
 #### File & Web Tools (9)
 | Tool | Description |
@@ -562,6 +603,20 @@ tts.speak("Новое письмо от ${sender}: ${subject}. ${body}", QUEUE_F
 - Notification grouping and stacking best practices
 - Conversation-style notifications (Android 11+ `MessagingStyle`)
 - Proactive agent patterns in existing AI assistants
+
+**Android 15/16 notification constraints (from research):**
+- App standby buckets (active/working set/frequent/restricted) throttle background notifications
+- OEM battery management (Samsung, Xiaomi, OnePlus) aggressively kills background services
+- Android 16 AI-powered Notification Organizer auto-categorizes/silences low-priority notifications
+- Android 15 Notification Cooldown reduces volume/vibration for rapid successive notifications
+
+**Best practices:**
+- Use FCM **high-priority messages** for time-sensitive agent notifications (bypass Doze)
+- Request battery optimization exemption on first launch
+- Use Foreground Service with persistent notification (required for background work)
+- Keep notification content short (10 words or fewer = 2x click rate)
+- Implement granular notification channels for user control
+- Use WorkManager for deferrable background tasks
 
 ### 4.1 Architecture
 
@@ -731,8 +786,10 @@ channels/
 ### 6.0 Research
 
 **Study before implementing:**
-- On-device STT: Whisper.cpp (latest GGML models), Google Speech API, Vosk
-- On-device TTS: Android native TTS, Google Cloud TTS, Piper TTS
+- On-device STT: **WhisperKit Android** (Argmax, new port), whisper.cpp, **Google ML Kit GenAI Speech Recognition**, Vosk
+- On-device TTS: **Picovoice Orca** (streaming, sub-50ms latency), **Kokoro** (Apache 2.0, 82M params), Android native TTS, Piper TTS
+- Cloud TTS: **Speechmatics** (~150ms first audio byte, 27x cheaper than ElevenLabs), Deepgram Aura, ElevenLabs, OpenAI TTS
+- Cloud STT: **Google Cloud STT** (best real-time streaming), Deepgram Nova-2, OpenAI Whisper API
 - Wake word detection: Porcupine (Picovoice), OpenWakeWord, Mycroft Precise
 - Continuous voice interaction patterns (Siri, Google Assistant model)
 - Audio focus and ducking on Android
@@ -745,17 +802,22 @@ voice/
 ├── VoicePipeline.kt           — orchestrates STT → Agent → TTS flow
 ├── stt/
 │   ├── STTInterface.kt        — unified speech-to-text interface
-│   ├── WhisperSTT.kt          — whisper.cpp via JNI
-│   ├── GoogleSTT.kt           — Google Speech Recognition API
+│   ├── WhisperKitSTT.kt       — WhisperKit Android (Argmax, optimized port)
+│   ├── WhisperCppSTT.kt       — whisper.cpp via JNI (fallback)
+│   ├── GoogleMLKitSTT.kt      — Google ML Kit GenAI Speech Recognition (on-device)
+│   ├── GoogleCloudSTT.kt      — Google Cloud Speech-to-Text (best real-time streaming)
 │   ├── VoskSTT.kt             — Vosk offline recognition
-│   └── DeepgramSTT.kt         — Deepgram cloud API
+│   └── DeepgramSTT.kt         — Deepgram Nova-2 cloud API
 ├── tts/
 │   ├── TTSInterface.kt        — unified text-to-speech interface
-│   ├── AndroidTTS.kt          — Android native TextToSpeech
-│   ├── PiperTTS.kt            — Piper neural TTS (on-device)
-│   ├── GoogleCloudTTS.kt      — Google Cloud TTS API
+│   ├── PicovoiceOrcaTTS.kt    — Picovoice Orca (streaming, sub-50ms latency, on-device)
+│   ├── KokoroTTS.kt           — Kokoro neural TTS (Apache 2.0, 82M params, on-device)
+│   ├── AndroidTTS.kt          — Android native TextToSpeech (fallback, no streaming)
+│   ├── PiperTTS.kt            — Piper neural TTS (on-device, 100+ voices)
+│   ├── SpeechmaticsTTS.kt     — Speechmatics cloud (~150ms, 27x cheaper than ElevenLabs)
 │   ├── DeepgramTTS.kt         — Deepgram Aura API
-│   └── ElevenLabsTTS.kt       — ElevenLabs API (high quality)
+│   ├── ElevenLabsTTS.kt       — ElevenLabs API (ultra-realistic, voice cloning)
+│   └── OpenAITTS.kt           — OpenAI TTS API (6 voices)
 ├── wakeword/
 │   ├── WakeWordDetector.kt    — wake word detection loop
 │   ├── PorcupineDetector.kt   — Picovoice Porcupine ("Hey Guappa")
@@ -768,26 +830,41 @@ voice/
 
 ### 6.2 STT Options (March 2026)
 
-| Engine | Type | Languages | Quality | Latency | Size |
-|--------|------|-----------|---------|---------|------|
-| **Whisper Large V3 Turbo** | On-device | 99+ | Excellent | ~2s | ~800MB |
-| **Whisper Medium** | On-device | 99+ | Very Good | ~1.5s | ~500MB |
-| **Whisper Small** | On-device | 99+ | Good | ~0.8s | ~250MB |
-| **Whisper Tiny** | On-device | 99+ | Fair | ~0.3s | ~75MB |
-| **Google Speech** | Cloud | 125+ | Excellent | ~0.5s | — |
-| **Deepgram Nova-2** | Cloud | 36+ | Excellent | ~0.3s | — |
-| **Vosk** | On-device | 20+ | Good | ~0.5s | ~50MB |
+| Engine | Type | Languages | Quality | Latency | Size | Notes |
+|--------|------|-----------|---------|---------|------|-------|
+| **WhisperKit Android** | On-device | 99+ | Excellent | ~1.5s | ~800MB | Argmax port, optimized for mobile |
+| **Whisper Large V3 Turbo** | On-device | 99+ | Excellent | ~2s | ~800MB | via whisper.cpp JNI |
+| **Whisper Medium** | On-device | 99+ | Very Good | ~1.5s | ~500MB | Best quality/size tradeoff |
+| **Whisper Small** | On-device | 99+ | Good | ~0.8s | ~250MB | Recommended for most devices |
+| **Whisper Tiny** | On-device | 99+ | Fair | ~0.3s | ~75MB | Ultra-fast, lower accuracy |
+| **Google ML Kit GenAI** | On-device | 60+ | Very Good | ~0.4s | ~30MB | Google's on-device ASR, no download |
+| **Google Cloud STT** | Cloud | 125+ | Excellent | ~0.3s | — | **Best real-time streaming**, diarization |
+| **Deepgram Nova-2** | Cloud | 36+ | Excellent | ~0.3s | — | Fast, competitive pricing |
+| **OpenAI Whisper API** | Cloud | 99+ | Excellent | ~1s | — | Best for noisy audio, diverse accents |
+| **Vosk** | On-device | 20+ | Good | ~0.5s | ~50MB | Lightweight offline fallback |
+
+**Recommendation:** Hybrid approach — Google ML Kit GenAI for real-time streaming input
+(live user speech), WhisperKit Android for batch processing (voice messages, audio files).
+Cloud Google STT as premium option for users with API key.
 
 ### 6.3 TTS Options (March 2026)
 
-| Engine | Type | Voices | Quality | Latency |
-|--------|------|--------|---------|---------|
-| **Android Native** | On-device | System voices | Fair | Instant |
-| **Piper TTS** | On-device | 100+ voices | Good | ~0.3s |
-| **Google Cloud TTS** | Cloud | 380+ voices | Excellent | ~0.5s |
-| **Deepgram Aura** | Cloud | 12 voices | Very Good | ~0.3s |
-| **ElevenLabs** | Cloud | 1000+ voices | Excellent | ~0.5s |
-| **OpenAI TTS** | Cloud | 6 voices | Excellent | ~0.5s |
+| Engine | Type | Voices | Quality | Latency | Streaming | Notes |
+|--------|------|--------|---------|---------|-----------|-------|
+| **Picovoice Orca** | On-device | Limited | Very Good | **<50ms** | ✅ **Yes** | **Best for LLM output streaming**, 6.5x faster than ElevenLabs |
+| **Kokoro** | On-device | 15+ | Very Good | ~0.2s | ❌ | Apache 2.0, 82M params, best size/quality |
+| **Piper TTS** | On-device | 100+ | Good | ~0.3s | ❌ | Wide voice selection |
+| **Android Native** | On-device | System | Fair | Instant | ❌ | **Cannot stream** — needs full text first |
+| **Speechmatics** | Cloud | 20+ | Very Good | **~150ms** | ✅ **Yes** | 27x cheaper than ElevenLabs |
+| **Deepgram Aura** | Cloud | 12 | Very Good | ~0.3s | ✅ Yes | Good pricing |
+| **ElevenLabs** | Cloud | 1000+ | Excellent | ~0.5s | ✅ Yes | Ultra-realistic, voice cloning |
+| **OpenAI TTS** | Cloud | 6 | Excellent | ~0.5s | ✅ Yes | Simple API |
+| **Google Cloud TTS** | Cloud | 380+ | Excellent | ~0.5s | ✅ Yes | WaveNet/Neural2 models |
+
+**Recommendation:** Use **Picovoice Orca** for on-device streaming TTS (reading LLM output in
+real-time). Fallback to **Kokoro** for offline non-streaming use. **Speechmatics** for cloud
+streaming (cheapest high-quality option). **ElevenLabs** as premium option for voice cloning.
+Android native TTS is insufficient for streaming LLM outputs — it requires complete text before synthesis.
 
 ### 6.4 Documentation Plan
 - `docs/reference/voice.md` — STT/TTS options and setup
@@ -1047,11 +1124,26 @@ maestro/
 ### 10.0 Research
 
 **Study before implementing:**
+- **TurboModules** (React Native New Architecture) — type-safe JSI bridge, no JSON serialization
+- **Codegen** — auto-generate native stubs from TypeScript specs
+- **Native Event Emitters** via TurboModule — push config updates from Kotlin to JS in real-time
 - Kotlin StateFlow for reactive config propagation
-- React Native → Kotlin bridge event patterns (NativeEventEmitter)
-- Hot-reloadable configuration patterns in Android
 - Android DataStore (Preferences) for reactive storage
 - Provider client lifecycle management (connect/disconnect)
+- Hermes engine compatibility requirements
+
+**Key pattern (from research):**
+```
+SettingsScreen (JS) → TurboModule.configure() → Kotlin ConfigStore.update() →
+  StateFlow emits → Subsystems react → TurboModule.sendEvent("configChanged") →
+  JS listener → UI state update
+```
+
+> **Migration requirement:** React Native must be upgraded to New Architecture with:
+> - Hermes engine enabled
+> - TurboModules replacing legacy NativeModules
+> - Codegen run to generate type-safe Java/Kotlin stubs
+> - All native modules migrated from ReactContextBaseJavaModule to TurboModule specs
 
 ### 10.1 Architecture
 
@@ -1171,3 +1263,56 @@ Each phase is independently deployable and revertible:
 - Desktop/CLI support
 - Cloud hosting / server deployment
 - Payment / billing integration
+
+---
+
+## Research Sources (March 2026)
+
+### Android AI Agent APIs
+- [Google: The Intelligent OS — AppFunctions + UI Automation Framework](https://android-developers.googleblog.com/2026/02/the-intelligent-os-making-ai-agents.html)
+- [Google Play AccessibilityService policy (banned for AI agents)](https://support.google.com/googleplay/android-developer/answer/10964491)
+- [DroidRun — mobile AI agent framework (3.8k stars)](https://github.com/nicepkg/droidrun)
+- [agent-device by Callstack](https://www.callstack.com/blog/agent-device-ai-native-mobile-automation-for-ios-android)
+
+### LLM Providers & Models
+- [Top LLM API Providers 2026](https://futureagi.substack.com/p/top-11-llm-api-providers-in-2026)
+- [Best LLMs 2026 — Zapier](https://zapier.com/blog/best-llm/)
+- [Top Open Source LLMs 2026](https://o-mega.ai/articles/top-10-open-source-llms-the-deepseek-revolution-2026)
+
+### On-Device Inference
+- [LiteRT-LM announcement (replaces MediaPipe LLM)](https://developers.googleblog.com/on-device-genai-in-chrome-chromebook-plus-and-pixel-watch-with-litert-lm/)
+- [Best LLMs for Mobile Deployment 2026](https://www.siliconflow.com/articles/en/best-LLMs-for-mobile-deployment)
+- [Cactus on-device inference SDK](https://www.infoq.com/news/2025/12/cactus-on-device-inference/)
+- [Local LLMs on Mobile — reality check](https://www.callstack.com/blog/local-llms-on-mobile-are-a-gimmick)
+
+### Hardware Acceleration
+- [Qualcomm Hexagon NPU (75 TOPS)](https://www.qualcomm.com/processors/hexagon)
+- [LiteRT + Qualcomm NPU performance](https://developers.googleblog.com/unlocking-peak-performance-on-qualcomm-npu-with-litert/)
+- [MediaTek NPU + LiteRT](https://developers.googleblog.com/mediatek-npu-and-litert-powering-the-next-generation-of-on-device-ai/)
+- [NNAPI deprecated → LiteRT](https://medium.com/softaai-blogs/nnapi-explained-the-ultimate-2025-guide-to-androids-ai-acceleration-33c0087f2ddf)
+
+### Push Notifications
+- [Android Push Notifications 2026 — Pushwoosh](https://www.pushwoosh.com/blog/android-push-notifications/)
+- [App Background Activity OS Restrictions](https://alexrooter.com/os-background-limits/)
+- [Push Notification Best Practices 2026](https://appbot.co/blog/app-push-notifications-2026-best-practices/)
+
+### Testing
+- [Maestro Testing Framework (v2.2.0, 10.8k stars)](https://maestro.dev/)
+- [Best Mobile Testing Frameworks 2026](https://www.qawolf.com/blog/best-mobile-app-testing-frameworks-2026)
+
+### Voice (STT/TTS)
+- [WhisperKit Android — Argmax](https://github.com/argmaxinc/WhisperKitAndroid)
+- [Google ML Kit GenAI Speech Recognition](https://developers.google.com/ml-kit/genai/speech-recognition/android)
+- [Picovoice Orca — streaming on-device TTS](https://picovoice.ai/blog/android-streaming-text-to-speech/)
+- [Kokoro TTS (Apache 2.0, 82M params)](https://www.bentoml.com/blog/exploring-the-world-of-open-source-text-to-speech-models)
+- [Speechmatics TTS (27x cheaper than ElevenLabs)](https://www.speechmatics.com/company/articles-and-news/best-tts-apis-in-2025-top-12-text-to-speech-services-for-developers)
+- [Whisper vs Google STT comparison 2026](https://is4.ai/blog/our-blog-1/whisper-vs-google-speech-to-text-comparison-2026-267)
+
+### React Native Bridge
+- [React Native New Architecture — Fabric + TurboModules](https://isitdev.com/react-native-new-architecture-fabric-turbomodules-2025-2/)
+- [Emitting Events in TurboModules — React Native docs](https://reactnative.dev/docs/the-new-architecture/native-modules-custom-events)
+- [Android Native Bridge to React Native 2026](https://oneuptime.com/blog/post/2026-01-15-react-native-android-bridge/view)
+
+### Android Intents
+- [Common Android Intents — developer.android.com](https://developer.android.com/guide/components/intents-common)
+- [Exact alarms denied by default — Android 14](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms)
