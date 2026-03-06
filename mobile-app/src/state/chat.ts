@@ -16,6 +16,7 @@ const KEY = "mobileclaw:chat:v1";
 export function sanitizeAssistantArtifacts(text: string): string {
   const value = String(text || "");
   return value
+    .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
     .replace(/<[^>]*system\s*[-_ ]?reminder[^>]*>[\s\S]*?<\/[^>]*system\s*[-_ ]?reminder\s*>/gi, "")
     .replace(/<[^>]*system\s*[-_ ]?reminder[^>]*>[\s\S]*$/gi, "")
     .replace(/<\s*system-reminder\b[^>]*>[\s\S]*?<\s*\/\s*system-reminder\s*>/gi, "")

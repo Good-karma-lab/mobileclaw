@@ -55,6 +55,8 @@ class ZeroClawBackend {
             slackBotToken: String,
             composioApiKey: String,
             braveApiKey: String,
+            localModelPath: String,
+            thinkingMode: Boolean,
         ): Long
 
         /**

@@ -3018,8 +3018,9 @@ pub async fn run(
         config.skills.prompt_injection_mode,
     );
 
-    // Append structured tool-use instructions with schemas (only for non-native providers)
-    if !native_tools {
+    // Append structured tool-use instructions with schemas (only for non-native providers).
+    // Skip for compact_context (on-device models with small context windows).
+    if !native_tools && !config.agent.compact_context {
         system_prompt.push_str(&build_tool_instructions(&tools_registry));
     }
 
@@ -3402,7 +3403,7 @@ pub async fn process_message(config: Config, message: &str) -> Result<String> {
         native_tools,
         config.skills.prompt_injection_mode,
     );
-    if !native_tools {
+    if !native_tools && !config.agent.compact_context {
         system_prompt.push_str(&build_tool_instructions(&tools_registry));
     }
 

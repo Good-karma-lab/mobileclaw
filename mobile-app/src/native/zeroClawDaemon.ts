@@ -32,6 +32,8 @@ export interface DaemonStartConfig {
   slackBotToken?: string;
   composioApiKey?: string;
   braveApiKey?: string;
+  localModelPath?: string;
+  thinkingMode?: boolean;
 }
 
 /**
@@ -67,6 +69,8 @@ export async function startDaemon(config: DaemonStartConfig = {}): Promise<void>
       slackBotToken: config.slackBotToken ?? '',
       composioApiKey: config.composioApiKey ?? '',
       braveApiKey: config.braveApiKey ?? '',
+      localModelPath: config.localModelPath ?? '',
+      thinkingMode: config.thinkingMode ?? false,
     });
     console.log('[ZeroClawDaemon] Start requested');
   } catch (error) {
@@ -131,6 +135,8 @@ export async function restartDaemon(config: DaemonStartConfig = {}): Promise<voi
         slackBotToken: config.slackBotToken ?? '',
         composioApiKey: config.composioApiKey ?? '',
         braveApiKey: config.braveApiKey ?? '',
+        localModelPath: config.localModelPath ?? '',
+        thinkingMode: config.thinkingMode ?? false,
       });
     } else {
       await ZeroClawDaemon.restartDaemon();

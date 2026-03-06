@@ -14,6 +14,7 @@ import {
   type MobileToolCapability,
   type SecurityConfig,
 } from "../state/mobileclaw";
+import { startLocalLlmServer, isLocalLlmRunning, LOCAL_LLM_URL } from "../native/localLlmServer";
 
 export type RuntimeSupervisorState = {
   status: "stopped" | "starting" | "healthy" | "degraded";
@@ -73,6 +74,8 @@ function signature(
       temperature: runtime.temperature,
       apiKeyHash: hashText(effectiveRuntimeApiKey(runtime).trim()),
       braveKeyHash: hashText(runtime.braveApiKey.trim()),
+      localModelPath: runtime.localModelPath || "",
+      thinkingMode: runtime.thinkingMode || false,
     },
     integrations: {
       telegramEnabled: integrations.telegramEnabled,
@@ -132,8 +135,8 @@ function deriveComponents(integrations: IntegrationsConfig, security: SecurityCo
   return { components, missing };
 }
 
-function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: IntegrationsConfig) {
-  return {
+async function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: IntegrationsConfig) {
+  const config = {
     apiKey: effectiveRuntimeApiKey(runtime),
     provider: runtime.provider,
     model: runtime.model,
@@ -145,7 +148,28 @@ function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: Integratio
     slackBotToken: integrations.slackEnabled ? integrations.slackBotToken : "",
     composioApiKey: integrations.composioEnabled ? integrations.composioApiKey : "",
     braveApiKey: runtime.braveApiKey || "",
+    localModelPath: runtime.localModelPath || "",
+    thinkingMode: runtime.thinkingMode || false,
   };
+
+  // If provider is "local", start the on-device LLM server and remap to Ollama
+  if (config.provider === "local" && config.localModelPath) {
+    if (!isLocalLlmRunning()) {
+      await startLocalLlmServer({
+        modelPath: config.localModelPath,
+        gpuLayers: runtime.gpuLayers ?? 0,
+        cpuThreads: runtime.cpuThreads ?? 4,
+        contextLength: runtime.contextLength ?? 2048,
+        thinkingMode: runtime.thinkingMode ?? true,
+      });
+    }
+    config.provider = "openai";
+    config.apiUrl = `${LOCAL_LLM_URL}/v1`;
+    config.apiKey = "local";
+    config.model = "local";
+  }
+
+  return config;
 }
 
 async function readState(): Promise<RuntimeSupervisorState> {
@@ -232,19 +256,22 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
   let daemonApplyError: string | null = null;
   let daemonRestarted = false;
 
-  if (Platform.OS === "android" && changed) {
-    try {
-      const daemonConfig = buildDaemonConfig(runtime, integrations);
-      const running = await isDaemonRunning();
-      if (running) {
-        await restartDaemon(daemonConfig);
-      } else {
-        await startDaemon(daemonConfig);
+  if (Platform.OS === "android") {
+    const running = await isDaemonRunning();
+    // Always start daemon if not running; restart if config changed
+    if (changed || !running) {
+      try {
+        const daemonConfig = await buildDaemonConfig(runtime, integrations);
+        if (running) {
+          await restartDaemon(daemonConfig);
+        } else {
+          await startDaemon(daemonConfig);
+        }
+        await waitForDaemonReady(25000, 750);
+        daemonRestarted = true;
+      } catch (error) {
+        daemonApplyError = error instanceof Error ? error.message : "daemon_restart_failed";
       }
-      await waitForDaemonReady(25000, 750);
-      daemonRestarted = true;
-    } catch (error) {
-      daemonApplyError = error instanceof Error ? error.message : "daemon_restart_failed";
     }
   }
 

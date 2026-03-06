@@ -27,6 +27,8 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               add(AndroidAgentToolsPackage())
               add(ZeroClawDaemonPackage())
+              add(ModelDownloaderPackage())
+              add(LocalLlmServerPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
