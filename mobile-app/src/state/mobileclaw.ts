@@ -96,7 +96,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   thinkingMode: true, // Qwen3.5 thinking mode enabled by default
   gpuLayers: 0,
   cpuThreads: 4,
-  contextLength: 2048,
+  contextLength: 8192,
   voiceProvider: "deepgram",
   whisperModel: "whisper-base",
   whisperModelPath: "",

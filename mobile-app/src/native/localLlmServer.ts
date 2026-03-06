@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from "react-native";
 import { initLlama, LlamaContext } from "llama.rn";
-import { log } from "../logger";
+import { logger } from "../logger";
 
 const { LocalLlmServer } = NativeModules;
 const eventEmitter = new NativeEventEmitter(LocalLlmServer);
@@ -9,6 +9,7 @@ const LOCAL_PORT = 8888;
 
 let llamaContext: LlamaContext | null = null;
 let serverRunning = false;
+let serverStarting = false;
 let requestSubscription: any = null;
 
 export type LocalLlmConfig = {
@@ -20,13 +21,14 @@ export type LocalLlmConfig = {
 };
 
 export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void> {
-  if (serverRunning) {
-    log("[LocalLLM] Server already running");
+  if (serverRunning || serverStarting) {
+    logger.info("[LocalLLM] Server already running or starting");
     return;
   }
+  serverStarting = true;
 
   // Load model via llama.rn
-  log(`[LocalLLM] Loading model: ${config.modelPath} (gpu_layers=${config.gpuLayers})`);
+  logger.info(`[LocalLLM] Loading model: ${config.modelPath} (gpu_layers=${config.gpuLayers})`);
   llamaContext = await initLlama({
     model: config.modelPath,
     n_ctx: config.contextLength,
@@ -34,7 +36,7 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
     n_threads: config.cpuThreads,
     use_mmap: true,
   });
-  log("[LocalLLM] Model loaded successfully");
+  logger.info("[LocalLLM] Model loaded successfully");
 
   // Listen for HTTP requests from the native server
   requestSubscription = eventEmitter.addListener("LocalLlmRequest", async (event) => {
@@ -51,8 +53,15 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
         return;
       }
 
+      // Build ChatML prompt manually for Qwen models
+      const prompt = messages.map((m: any) =>
+        `<|im_start|>${m.role}\n${m.content}<|im_end|>`
+      ).join("\n") + "\n<|im_start|>assistant\n";
+
+      logger.info(`[LocalLLM] Running inference, prompt length=${prompt.length}`);
+
       const result = await llamaContext.completion({
-        messages,
+        prompt,
         n_predict: maxTokens,
         temperature,
         top_k: 20,
@@ -79,16 +88,20 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
 
       LocalLlmServer.respondToRequest(requestId, 200, JSON.stringify(response));
     } catch (err: any) {
-      log(`[LocalLLM] Inference error: ${err.message}`);
+      const errMsg = err?.message || err?.toString() || "unknown error";
+      const errStack = err?.stack || "";
+      logger.error(`[LocalLLM] Inference error: ${errMsg}`);
+      logger.error(`[LocalLLM] Stack: ${errStack}`);
       LocalLlmServer.respondToRequest(requestId, 500,
-        JSON.stringify({ error: { message: err.message } }));
+        JSON.stringify({ error: { message: errMsg } }));
     }
   });
 
   // Start the native HTTP server
   await LocalLlmServer.start(LOCAL_PORT);
   serverRunning = true;
-  log(`[LocalLLM] Server started on http://127.0.0.1:${LOCAL_PORT}`);
+  serverStarting = false;
+  logger.info(`[LocalLLM] Server started on http://127.0.0.1:${LOCAL_PORT}`);
 }
 
 export async function stopLocalLlmServer(): Promise<void> {
@@ -104,7 +117,7 @@ export async function stopLocalLlmServer(): Promise<void> {
     await llamaContext.release();
     llamaContext = null;
   }
-  log("[LocalLLM] Server stopped");
+  logger.info("[LocalLLM] Server stopped");
 }
 
 export function isLocalLlmRunning(): boolean {

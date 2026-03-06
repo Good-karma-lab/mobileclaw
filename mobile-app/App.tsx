@@ -110,8 +110,9 @@ export default function App() {
                   contextLength: agentCfg.contextLength ?? 2048,
                   thinkingMode: agentCfg.thinkingMode ?? true,
                 });
-                daemonConfig.provider = "ollama";
-                daemonConfig.apiUrl = LOCAL_LLM_URL;
+                daemonConfig.provider = "openai";
+                daemonConfig.apiUrl = `${LOCAL_LLM_URL}/v1`;
+                daemonConfig.apiKey = "local";
                 daemonConfig.model = "local";
                 console.log("[app] local LLM server started, daemon will use Ollama at", LOCAL_LLM_URL);
               }
@@ -123,7 +124,9 @@ export default function App() {
                 await startDaemon(daemonConfig);
                 console.log("[app] daemon start requested, waiting for readiness...");
               } else {
-                console.log("[app] daemon already running");
+                // Restart with current config to pick up provider changes (e.g. local→ollama remap)
+                console.log("[app] daemon already running, restarting with current config...");
+                await restartDaemon(daemonConfig);
               }
 
               await waitForDaemonReady(25000, 750);

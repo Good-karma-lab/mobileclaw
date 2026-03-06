@@ -385,6 +385,7 @@ impl Agent {
             skills_prompt_mode: self.skills_prompt_mode,
             identity_config: Some(&self.identity_config),
             dispatcher_instructions: &instructions,
+            compact_context: self.config.compact_context,
         };
         self.prompt_builder.build(&ctx)
     }

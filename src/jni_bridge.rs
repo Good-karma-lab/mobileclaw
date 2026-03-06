@@ -242,6 +242,11 @@ pub extern "C" fn Java_com_mobileclaw_app_ZeroClawBackend_startAgent(
     // localModelPath and thinkingMode params are kept in JNI signature for Kotlin compat
     // but ignored — local inference now runs via llama.rn in React Native.
 
+    // Enable compact context for on-device local models (small context windows)
+    if config.default_model.as_deref() == Some("local") {
+        config.agent.compact_context = true;
+    }
+
     // Enable http_request tool — agent needs to call external APIs and fetch web content.
     // On Android (user's personal device) public internet access is expected.
     // Private/local hosts are still blocked by the tool's built-in guard.

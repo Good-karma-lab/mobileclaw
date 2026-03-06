@@ -17,7 +17,7 @@ import {
 } from "../../state/mobileclaw";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
-import { getModelDownloadUrl, getModelFileName, checkModelExists, downloadModel } from "../../native/modelDownloader";
+import { getModelDownloadUrl, getModelFileName, checkModelExists, downloadModel, downloadWhisperModel, checkWhisperModelExists } from "../../native/modelDownloader";
 
 type ProviderPreset = {
   id: ProviderId;
@@ -129,6 +129,9 @@ export function SettingsScreen() {
   const [openRouterLoading, setOpenRouterLoading] = useState(false);
   const [localModelStatus, setLocalModelStatus] = useState<"checking" | "not_downloaded" | "downloading" | "ready">("checking");
   const [localDownloadProgress, setLocalDownloadProgress] = useState(0);
+  const [whisperModelStatus, setWhisperModelStatus] = useState<"checking" | "not_downloaded" | "downloading" | "ready">("checking");
+  const [whisperDownloadProgress, setWhisperDownloadProgress] = useState(0);
+  const [whisperPickerOpen, setWhisperPickerOpen] = useState(false);
   const hydratedRef = useRef(false);
 
   useEffect(() => {
@@ -168,6 +171,47 @@ export function SettingsScreen() {
     })();
     return () => { cancelled = true; };
   }, [form.provider, form.model]);
+
+  // Check whisper model status
+  useEffect(() => {
+    if (form.voiceProvider !== "whisper") return;
+    let cancelled = false;
+    (async () => {
+      setWhisperModelStatus("checking");
+      try {
+        const { exists, path } = await checkWhisperModelExists(form.whisperModel || "whisper-base");
+        if (cancelled) return;
+        if (exists) {
+          setWhisperModelStatus("ready");
+          if (path && form.whisperModelPath !== path) {
+            setForm((prev) => ({ ...prev, whisperModelPath: path }));
+          }
+        } else {
+          setWhisperModelStatus("not_downloaded");
+        }
+      } catch {
+        if (!cancelled) setWhisperModelStatus("not_downloaded");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [form.voiceProvider, form.whisperModel]);
+
+  const handleDownloadWhisperModel = async () => {
+    const modelId = form.whisperModel || "whisper-base";
+    setWhisperModelStatus("downloading");
+    setWhisperDownloadProgress(0);
+    try {
+      const path = await downloadWhisperModel(modelId, (progress) => {
+        setWhisperDownloadProgress(progress);
+      });
+      setWhisperModelStatus("ready");
+      setForm((prev) => ({ ...prev, whisperModelPath: path }));
+    } catch (error) {
+      console.error("[SettingsScreen] Whisper model download failed:", error);
+      setWhisperModelStatus("not_downloaded");
+      void addActivity({ kind: "log", source: "settings", title: "Whisper model download failed", detail: error instanceof Error ? error.message : String(error) });
+    }
+  };
 
   const handleDownloadModel = async () => {
     console.log("[SettingsScreen] Starting model download for:", form.model);
@@ -373,8 +417,56 @@ export function SettingsScreen() {
 
       <GlassCard>
         <Text variant="title">Voice Mode</Text>
-        <Text variant="muted">Deepgram API key is required for chat voice transcription.</Text>
-        <LabeledInput label="Deepgram API key" testID="deepgram-key-input" value={form.deepgramApiKey} onChangeText={(value) => setForm((prev) => ({ ...prev, deepgramApiKey: value }))} secureTextEntry />
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1 }}>
+            <Text variant="label">Voice Provider</Text>
+            <Text variant="muted">{form.voiceProvider === "whisper" ? "On-device (Whisper)" : "Cloud (Deepgram)"}</Text>
+          </View>
+          <Switch
+            value={form.voiceProvider === "whisper"}
+            onValueChange={(val) => setForm((prev) => ({ ...prev, voiceProvider: val ? "whisper" : "deepgram" }))}
+            trackColor={{ false: theme.colors.stroke.subtle, true: theme.colors.base.primary }}
+          />
+        </View>
+        {form.voiceProvider === "deepgram" ? (
+          <>
+            <Text variant="muted">Deepgram API key is required for cloud voice transcription.</Text>
+            <LabeledInput label="Deepgram API key" testID="deepgram-key-input" value={form.deepgramApiKey} onChangeText={(value) => setForm((prev) => ({ ...prev, deepgramApiKey: value }))} secureTextEntry />
+          </>
+        ) : (
+          <View style={{ gap: theme.spacing.sm }}>
+            <Text variant="muted">On-device speech-to-text using Whisper. No internet required.</Text>
+            <Pressable
+              onPress={() => setWhisperPickerOpen(true)}
+              style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.stroke.subtle, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <View>
+                <Text variant="label">Whisper Model</Text>
+                <Text variant="bodyMedium">{form.whisperModel || "whisper-base"}</Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color={theme.colors.text.muted} />
+            </Pressable>
+            <Text variant="muted">
+              {whisperModelStatus === "checking" ? "Checking..." :
+               whisperModelStatus === "not_downloaded" ? "Not downloaded" :
+               whisperModelStatus === "downloading" ? `Downloading ${Math.round(whisperDownloadProgress)}%` :
+               "Ready"}
+            </Text>
+            {whisperModelStatus === "not_downloaded" ? (
+              <Pressable
+                onPress={handleDownloadWhisperModel}
+                style={{ paddingVertical: 12, borderRadius: theme.radii.lg, alignItems: "center", backgroundColor: theme.colors.base.primary }}
+              >
+                <Text variant="bodyMedium" style={{ color: "#fff" }}>Download Whisper Model</Text>
+              </Pressable>
+            ) : null}
+            {whisperModelStatus === "downloading" ? (
+              <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.colors.stroke.subtle }}>
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.colors.base.primary, width: `${whisperDownloadProgress}%` as any }} />
+              </View>
+            ) : null}
+          </View>
+        )}
       </GlassCard>
 
       <GlassCard>
@@ -438,6 +530,28 @@ export function SettingsScreen() {
               {filteredModels.length === 0 ? <Text variant="muted">No matches</Text> : null}
             </ScrollView>
             <Pressable onPress={() => setModelPickerOpen(false)} style={{ paddingVertical: 12, borderRadius: theme.radii.lg, alignItems: "center", backgroundColor: theme.colors.surface.panel }}>
+              <Text variant="bodyMedium">Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal animationType="slide" transparent visible={whisperPickerOpen} onRequestClose={() => setWhisperPickerOpen(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.alpha.scrim }}>
+          <View style={{ maxHeight: "50%", padding: theme.spacing.lg, borderTopLeftRadius: theme.radii.xl, borderTopRightRadius: theme.radii.xl, backgroundColor: theme.colors.base.background, gap: theme.spacing.sm }}>
+            <Text variant="title">Select Whisper model</Text>
+            <ScrollView contentContainerStyle={{ gap: theme.spacing.sm }}>
+              {(["whisper-tiny", "whisper-base", "whisper-small"] as const).map((id) => (
+                <Pressable
+                  key={id}
+                  onPress={() => { setForm((prev) => ({ ...prev, whisperModel: id, whisperModelPath: "" })); setWhisperPickerOpen(false); }}
+                  style={{ paddingVertical: 14, paddingHorizontal: 16, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: form.whisperModel === id ? theme.colors.base.primary : theme.colors.stroke.subtle }}
+                >
+                  <Text variant="bodyMedium">{id}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable onPress={() => setWhisperPickerOpen(false)} style={{ paddingVertical: 12, borderRadius: theme.radii.lg, alignItems: "center", backgroundColor: theme.colors.surface.panel }}>
               <Text variant="bodyMedium">Close</Text>
             </Pressable>
           </View>

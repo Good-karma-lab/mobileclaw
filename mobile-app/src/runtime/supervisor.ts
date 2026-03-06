@@ -163,8 +163,9 @@ async function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: Inte
         thinkingMode: runtime.thinkingMode ?? true,
       });
     }
-    config.provider = "ollama";
-    config.apiUrl = LOCAL_LLM_URL;
+    config.provider = "openai";
+    config.apiUrl = `${LOCAL_LLM_URL}/v1`;
+    config.apiKey = "local";
     config.model = "local";
   }
 
