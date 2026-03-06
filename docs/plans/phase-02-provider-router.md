@@ -223,25 +223,40 @@ class OpenAIProvider : OpenAICompatProvider() {
 }
 ```
 
-### 5.2 Provider API Endpoints for Model Discovery
+### 5.2 Provider API Endpoints for Model Discovery (Verified March 2026)
 
-| Provider | Endpoint | Auth | Format | Returns Capabilities? |
-|----------|----------|------|--------|----------------------|
-| **OpenAI** | `GET /v1/models` | `Bearer $key` | OpenAI | Partial (by `id` prefix) |
-| **Anthropic** | `GET /v1/models` | `x-api-key: $key` | Custom | Yes (type, display_name) |
-| **Google** | `GET /v1beta/models` | `?key=$key` | Custom | Yes (supportedGenerationMethods) |
-| **DeepSeek** | `GET /models` | `Bearer $key` | OpenAI-compat | No (infer from id) |
-| **Mistral** | `GET /v1/models` | `Bearer $key` | Custom | Yes (capabilities array) |
-| **xAI** | `GET /v1/models` | `Bearer $key` | OpenAI-compat | No (infer from id) |
-| **Cohere** | `GET /v2/models` | `Bearer $key` | Custom | Yes (endpoints array) |
-| **Groq** | `GET /openai/v1/models` | `Bearer $key` | OpenAI-compat | No (infer from id) |
-| **Together** | `GET /v1/models` | `Bearer $key` | Custom | Yes (type field) |
-| **Fireworks** | `GET /v1/models` | `Bearer $key` | OpenAI-compat | Partial |
-| **OpenRouter** | `GET /api/v1/models` | `Bearer $key` | Custom | **Yes** (richest: pricing, context, modality) |
-| **Perplexity** | `GET /models` | `Bearer $key` | OpenAI-compat | No |
-| **Ollama** | `GET /api/tags` | None | Custom | No (infer from model name) |
-| **LM Studio** | `GET /v1/models` | None | OpenAI-compat | No (local GGUF info) |
-| **Qwen** | `GET /v1/models` | `Bearer $key` | OpenAI-compat | No (infer from id) |
+| Provider | Endpoint | Auth | Format | Capabilities? | Context? | Pricing? |
+|----------|----------|------|--------|:---:|:---:|:---:|
+| **OpenAI** | `GET https://api.openai.com/v1/models` | `Bearer $key` | OpenAI ref | No | No | No |
+| **Anthropic** | `GET https://api.anthropic.com/v1/models` | `x-api-key: $key` + `anthropic-version: 2023-06-01` | Custom | No | No | No |
+| **Google** | `GET https://generativelanguage.googleapis.com/v1beta/models?key=$key` | API key in URL | Custom | **Yes** (supportedGenerationMethods, supportThinking) | **Yes** (inputTokenLimit, outputTokenLimit) | No |
+| **DeepSeek** | `GET https://api.deepseek.com/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **Mistral** | `GET https://api.mistral.ai/v1/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **xAI** | `GET https://api.x.ai/v1/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **Cohere** | `GET https://api.cohere.com/v1/models` | `Bearer $key` | Custom | **Yes** (endpoints, features) | **Yes** | No |
+| **Groq** | `GET https://api.groq.com/openai/v1/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **Together** | `GET https://api.together.xyz/v1/models` | `Bearer $key` | Partial OAI* | Partial (type field) | **Yes** | **Yes** |
+| **Fireworks** | `GET https://api.fireworks.ai/inference/v1/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **OpenRouter** | `GET https://openrouter.ai/api/v1/models` | `Bearer $key` (optional) | OpenAI-compat+ | **Yes** (tools, reasoning, json_mode, web_search) | **Yes** | **Yes** |
+| **Perplexity** | `GET /models` | `Bearer $key` | OpenAI-compat | No | No | No |
+| **Ollama** | `GET http://localhost:11434/api/tags` (native) / `/v1/models` (OAI) | None | Custom/OAI | No (param_size, quant in native) | No | N/A |
+| **LM Studio** | `GET http://localhost:1234/api/v1/models` (native) / `/v1/models` (OAI) | Optional | Custom/OAI | Partial (type: vlm) | **Yes** (native) | N/A |
+| **Qwen** | `GET /v1/models` | `Bearer $key` | OpenAI-compat | No | No | No |
+
+*Together AI response is a bare JSON array `[{...}]` not wrapped in `{"object":"list","data":[...]}`
+
+**OpenAI-compatible providers** (use same base class):
+OpenAI, DeepSeek, Mistral, xAI, Groq, Fireworks, OpenRouter, Together (partial), Perplexity, Ollama, LM Studio, Qwen
+
+**Custom API providers** (need dedicated implementation):
+Anthropic (x-api-key + anthropic-version headers), Google Gemini (completely different), Cohere (own format)
+
+> **Key insight:** Most providers return minimal data (just `id`). Use **OpenRouter** as a
+> supplementary metadata source — it aggregates context_length, pricing, and capability flags
+> for 200+ models across all major providers. Strategy:
+> 1. Fetch model **IDs** from each provider's own API (validates access + shows what user has)
+> 2. Fetch **metadata** from OpenRouter for context window, pricing, capabilities
+> 3. Use **CapabilityInferrer** as fallback when neither source has capability data
 
 ### 5.3 Capability Inference
 
@@ -331,7 +346,60 @@ data class CachedModel(
 }
 ```
 
-### 5.5 Refresh Strategy
+### 5.5 OpenRouter Metadata Enrichment
+
+Most providers return only model IDs. Use OpenRouter as a supplementary metadata source:
+
+```kotlin
+class OpenRouterMetadataEnricher(private val httpClient: HttpClient) {
+    /**
+     * Fetch rich metadata from OpenRouter for all known models.
+     * OpenRouter returns: context_length, pricing, supported_parameters (tools, reasoning, etc.)
+     *
+     * Strategy:
+     * 1. Fetch full model list from OpenRouter (no auth needed for public list)
+     * 2. Cache as a lookup map: modelId → metadata
+     * 3. When enriching a provider's models, match by model ID patterns
+     *    (e.g., "gpt-5.2" matches "openai/gpt-5.2" in OpenRouter)
+     */
+    suspend fun fetchMetadata(): Map<String, OpenRouterModelInfo> {
+        val response = httpClient.get("https://openrouter.ai/api/v1/models")
+        val body = response.body<OpenRouterModelsResponse>()
+        return body.data.associateBy { it.id }
+    }
+
+    fun enrich(model: ModelInfo, orMetadata: Map<String, OpenRouterModelInfo>): ModelInfo {
+        // Try exact match first: "openai/gpt-5.2"
+        val orKey = "${model.providerId}/${model.id}"
+        val metadata = orMetadata[orKey]
+            ?: orMetadata.values.find { it.id.endsWith("/${model.id}") }
+            ?: return model
+
+        return model.copy(
+            contextWindow = model.contextWindow ?: metadata.context_length,
+            maxOutputTokens = model.maxOutputTokens ?: metadata.max_completion_tokens,
+            inputPricePer1MTokens = model.inputPricePer1MTokens
+                ?: metadata.pricing?.prompt?.toDoubleOrNull()?.times(1_000_000),
+            outputPricePer1MTokens = model.outputPricePer1MTokens
+                ?: metadata.pricing?.completion?.toDoubleOrNull()?.times(1_000_000),
+            // Enrich capabilities from OpenRouter's supported_parameters
+            capabilities = model.capabilities + inferFromOpenRouter(metadata),
+        )
+    }
+
+    private fun inferFromOpenRouter(metadata: OpenRouterModelInfo): Set<ModelCapability> {
+        val caps = mutableSetOf<ModelCapability>()
+        metadata.supported_parameters?.let { params ->
+            if ("tools" in params) caps += ModelCapability.TOOL_USE
+            if ("reasoning" in params) caps += ModelCapability.REASONING
+            if ("web_search" in params) caps += ModelCapability.SEARCH
+        }
+        return caps
+    }
+}
+```
+
+### 5.6 Refresh Strategy
 
 ```kotlin
 class ModelDiscoveryService(
@@ -699,13 +767,32 @@ class AnthropicProvider : ProviderInterface {
     override val apiBaseUrl = "https://api.anthropic.com/v1"
 
     override suspend fun fetchModels(apiKey: String): Result<List<ModelInfo>> {
-        // Anthropic has GET /v1/models (added 2025)
-        val response = httpClient.get("$apiBaseUrl/models") {
-            header("x-api-key", apiKey)
-            header("anthropic-version", "2024-10-22")
-        }
-        // Response includes model type, display_name
-        // ...
+        // GET https://api.anthropic.com/v1/models
+        // Paginated: cursor-based via before_id/after_id, page size 1-1000 (default 20)
+        val allModels = mutableListOf<ModelInfo>()
+        var afterId: String? = null
+        do {
+            val response = httpClient.get("$apiBaseUrl/models") {
+                header("x-api-key", apiKey)
+                header("anthropic-version", "2023-06-01")
+                parameter("limit", 100)
+                if (afterId != null) parameter("after_id", afterId)
+            }
+            val body = response.body<AnthropicModelsResponse>()
+            // Response: { data: [{ id, display_name, created_at, type }], has_more, last_id }
+            allModels += body.data.map { raw ->
+                ModelInfo(
+                    id = raw.id,
+                    providerId = "anthropic",
+                    displayName = raw.display_name,
+                    capabilities = capabilityInferrer.infer(raw.id, "anthropic"),
+                    // Anthropic API doesn't return context_length or pricing —
+                    // supplement from OpenRouter metadata cache
+                )
+            }
+            afterId = body.last_id
+        } while (body.has_more)
+        return Result.success(allModels)
     }
 
     override suspend fun chat(request: ChatRequest): Result<ChatResponse> {
@@ -732,29 +819,48 @@ class GoogleProvider : ProviderInterface {
     override val apiBaseUrl = "https://generativelanguage.googleapis.com/v1beta"
 
     override suspend fun fetchModels(apiKey: String): Result<List<ModelInfo>> {
-        // GET /v1beta/models?key=$apiKey
-        // Response includes supportedGenerationMethods, inputTokenLimit, outputTokenLimit
-        val response = httpClient.get("$apiBaseUrl/models") {
-            parameter("key", apiKey)
-        }
-        val body = response.body<GeminiModelsResponse>()
-        return Result.success(body.models.map { raw ->
-            ModelInfo(
-                id = raw.name.removePrefix("models/"),
-                capabilities = inferFromGenerationMethods(raw.supportedGenerationMethods),
-                contextWindow = raw.inputTokenLimit,
-                maxOutputTokens = raw.outputTokenLimit,
-                // ...
-            )
-        })
+        // GET https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey
+        // Paginated via pageSize + pageToken
+        // Response: { models: [{ name, displayName, description, inputTokenLimit,
+        //   outputTokenLimit, supportedGenerationMethods, supportThinking, temperature }] }
+        val allModels = mutableListOf<ModelInfo>()
+        var pageToken: String? = null
+        do {
+            val response = httpClient.get("$apiBaseUrl/models") {
+                parameter("key", apiKey)
+                parameter("pageSize", 100)
+                if (pageToken != null) parameter("pageToken", pageToken)
+            }
+            val body = response.body<GeminiModelsResponse>()
+            allModels += body.models.map { raw ->
+                ModelInfo(
+                    id = raw.name.removePrefix("models/"),
+                    providerId = "google",
+                    displayName = raw.displayName,
+                    capabilities = inferFromGenerationMethods(raw.supportedGenerationMethods, raw.supportThinking),
+                    contextWindow = raw.inputTokenLimit,
+                    maxOutputTokens = raw.outputTokenLimit,
+                    // Google is the richest API — returns token limits directly
+                )
+            }
+            pageToken = body.nextPageToken
+        } while (pageToken != null)
+        return Result.success(allModels)
     }
 
-    private fun inferFromGenerationMethods(methods: List<String>): Set<ModelCapability> {
+    private fun inferFromGenerationMethods(
+        methods: List<String>,
+        supportThinking: Boolean?,
+    ): Set<ModelCapability> {
         val caps = mutableSetOf<ModelCapability>()
-        if ("generateContent" in methods) caps += ModelCapability.TEXT_CHAT
+        if ("generateContent" in methods) {
+            caps += ModelCapability.TEXT_CHAT
+            caps += ModelCapability.STREAMING
+            caps += ModelCapability.TOOL_USE
+        }
         if ("embedContent" in methods) caps += ModelCapability.EMBEDDING
         if ("generateImage" in methods) caps += ModelCapability.IMAGE_GENERATION
-        // ...
+        if (supportThinking == true) caps += ModelCapability.REASONING
         return caps
     }
 }
