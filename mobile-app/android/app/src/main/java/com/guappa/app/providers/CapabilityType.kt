@@ -1,0 +1,7 @@
+package com.guappa.app.providers
+
+enum class CapabilityType {
+    TEXT_CHAT, VISION, IMAGE_GENERATION, VIDEO_GENERATION,
+    AUDIO_STT, AUDIO_TTS, EMBEDDING, CODE, TOOL_USE,
+    STREAMING, SEARCH, REASONING
+}

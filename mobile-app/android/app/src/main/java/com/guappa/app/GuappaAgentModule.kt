@@ -260,6 +260,123 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
     }
 
     /**
+     * Collect debug info, package as ZIP, return file path.
+     * API keys are redacted with ***REDACTED***.
+     */
+    @ReactMethod
+    fun collectDebugInfo(promise: Promise) {
+        try {
+            Log.d(TAG, "collectDebugInfo() called")
+            val context = reactContext.applicationContext
+            val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd-HHmmss", java.util.Locale.US)
+                .format(java.util.Date())
+            val zipName = "guappa-debug-$timestamp.zip"
+            val cacheDir = context.cacheDir
+            val zipFile = java.io.File(cacheDir, zipName)
+
+            java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile)).use { zos ->
+                // 1. Device & app info
+                val deviceInfo = buildString {
+                    appendLine("=== Guappa Debug Info ===")
+                    appendLine("Timestamp: $timestamp")
+                    appendLine("App Version: ${BuildConfig.VERSION_NAME}")
+                    appendLine("Build Type: ${BuildConfig.BUILD_TYPE}")
+                    appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                    appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+                    appendLine("SoC: ${android.os.Build.HARDWARE}")
+                    appendLine("ABIs: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
+                    val runtime = Runtime.getRuntime()
+                    appendLine("RAM Total: ${runtime.totalMemory() / 1024 / 1024}MB")
+                    appendLine("RAM Free: ${runtime.freeMemory() / 1024 / 1024}MB")
+                    appendLine("RAM Max: ${runtime.maxMemory() / 1024 / 1024}MB")
+                    appendLine("Processors: ${runtime.availableProcessors()}")
+                }
+                zos.putNextEntry(java.util.zip.ZipEntry("device-info.txt"))
+                zos.write(deviceInfo.toByteArray())
+                zos.closeEntry()
+
+                // 2. Config snapshot (API keys redacted)
+                val prefs = context.getSharedPreferences("guappa_config", android.content.Context.MODE_PRIVATE)
+                val configSnapshot = buildString {
+                    appendLine("=== Config Snapshot (Redacted) ===")
+                    for ((key, value) in prefs.all) {
+                        val safeValue = when {
+                            key.contains("key", ignoreCase = true) ||
+                            key.contains("token", ignoreCase = true) ||
+                            key.contains("secret", ignoreCase = true) ||
+                            key.contains("password", ignoreCase = true) -> "***REDACTED***"
+                            else -> value?.toString() ?: "null"
+                        }
+                        appendLine("$key = $safeValue")
+                    }
+                }
+                zos.putNextEntry(java.util.zip.ZipEntry("config-redacted.txt"))
+                zos.write(configSnapshot.toByteArray())
+                zos.closeEntry()
+
+                // 3. Provider health status
+                val healthInfo = buildString {
+                    appendLine("=== Provider Health ===")
+                    appendLine("Daemon running: ${ZeroClawDaemonService.isRunning()}")
+                    appendLine("Daemon URL: http://127.0.0.1:8000")
+                    try {
+                        val url = java.net.URL("http://127.0.0.1:8000/health")
+                        val conn = url.openConnection() as java.net.HttpURLConnection
+                        conn.connectTimeout = 2000
+                        conn.readTimeout = 2000
+                        appendLine("Health endpoint: ${conn.responseCode}")
+                        conn.disconnect()
+                    } catch (e: Exception) {
+                        appendLine("Health endpoint: unreachable (${e.message})")
+                    }
+                }
+                zos.putNextEntry(java.util.zip.ZipEntry("provider-health.txt"))
+                zos.write(healthInfo.toByteArray())
+                zos.closeEntry()
+
+                // 4. Logcat (last 500 lines, filtered to app)
+                try {
+                    val process = Runtime.getRuntime()
+                        .exec(arrayOf("logcat", "-d", "-t", "500", "--pid=${android.os.Process.myPid()}"))
+                    val logcat = process.inputStream.bufferedReader().readText()
+                    // Redact any API keys that might appear in logs
+                    val safeLogcat = logcat
+                        .replace(Regex("(api[_-]?key|token|secret|password)\\s*[:=]\\s*\\S+", RegexOption.IGNORE_CASE), "$1=***REDACTED***")
+                    zos.putNextEntry(java.util.zip.ZipEntry("logcat.txt"))
+                    zos.write(safeLogcat.toByteArray())
+                    zos.closeEntry()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to capture logcat", e)
+                }
+
+                // 5. Permissions status
+                val permInfo = buildString {
+                    appendLine("=== Android Permissions ===")
+                    val perms = arrayOf(
+                        "RECORD_AUDIO", "CAMERA", "READ_CONTACTS", "READ_CALENDAR",
+                        "ACCESS_FINE_LOCATION", "CALL_PHONE", "SEND_SMS", "READ_SMS",
+                        "READ_EXTERNAL_STORAGE", "POST_NOTIFICATIONS", "READ_PHONE_STATE"
+                    )
+                    for (perm in perms) {
+                        val fullPerm = "android.permission.$perm"
+                        val granted = context.checkSelfPermission(fullPerm) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        appendLine("$perm: ${if (granted) "GRANTED" else "DENIED"}")
+                    }
+                }
+                zos.putNextEntry(java.util.zip.ZipEntry("permissions.txt"))
+                zos.write(permInfo.toByteArray())
+                zos.closeEntry()
+            }
+
+            Log.d(TAG, "Debug info written to ${zipFile.absolutePath}")
+            promise.resolve(zipFile.absolutePath)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to collect debug info", e)
+            promise.reject("DEBUG_INFO_FAILED", "Failed to collect debug info: ${e.message}", e)
+        }
+    }
+
+    /**
      * Constants exported to React Native
      */
     override fun getConstants(): MutableMap<String, Any> {
