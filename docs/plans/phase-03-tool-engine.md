@@ -18,7 +18,7 @@ Build the complete tool execution engine with **65+ tools** covering:
 6. **Web tools** — `web_fetch`, `web_search`, `web_scrape`, `browser_session` (MANDATORY)
 7. **System** — shell, package manager, device info
 8. **AI-powered tools** — image analysis, OCR, translation, code interpreter, calculator
-9. **Smart home / IoT** — (future, placeholder)
+9. **Smart home / IoT / Automotive** — specific hardware tools
 
 ---
 

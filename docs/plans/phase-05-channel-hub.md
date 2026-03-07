@@ -23,6 +23,7 @@ Enable Guappa to communicate through multiple messenger channels simultaneously:
 - [ ] Matrix — Client-Server API, E2EE (libolm/vodozemac), Synapse homeserver
 - [ ] Email — IMAP (idle push), SMTP, JavaMail / Jakarta Mail
 - [ ] Android SMS — SmsManager, BroadcastReceiver for incoming
+- [ ] Pairing mechanism - how OpenClaw and zeroClaw do it 
 
 ---
 

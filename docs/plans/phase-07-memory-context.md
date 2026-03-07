@@ -33,6 +33,7 @@ Build a multi-tier memory system that:
 - [ ] Memory consolidation: spaced repetition, importance scoring, decay functions
 - [ ] MemGPT/Letta architecture: self-editing memory, inner/outer monologue
 - [ ] Token-aware chunking strategies for summarization
+- [ ] RLM: https://alexzhang13.github.io/blog/2025/rlm/
 
 ---
 

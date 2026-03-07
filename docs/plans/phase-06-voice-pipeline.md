@@ -22,6 +22,7 @@ Full voice interaction: wake word detection → speech-to-text → agent process
 - [ ] **Picovoice Orca** — streaming TTS, sub-50ms latency, on-device
 - [ ] **Kokoro** — Apache 2.0, 82M params, best size/quality on-device
 - [ ] **Piper TTS** — 100+ voices, ONNX, open-source
+- [ ] **Deepgram**
 - [ ] **Speechmatics** — cloud streaming TTS, 27x cheaper than ElevenLabs
 - [ ] **ElevenLabs** — ultra-realistic cloud TTS, voice cloning
 - [ ] **Picovoice Porcupine** — wake word detection (custom keyword)
