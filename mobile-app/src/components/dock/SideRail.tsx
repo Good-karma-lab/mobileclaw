@@ -1,15 +1,33 @@
 import React from "react";
 import { View, Pressable, Text, StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../../theme/colors";
+import { typography } from "../../theme/typography";
 import type { DockTab } from "./FloatingDock";
 
 type Props = {
   tabs: DockTab[];
   activeTab: string;
   onTabPress: (key: string) => void;
+};
+
+const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
+  voice: "mic",
+  chat: "chatbubble",
+  command: "flash",
+  swarm: "globe",
+  config: "options",
+};
+
+const ICON_MAP_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
+  voice: "mic-outline",
+  chat: "chatbubble-outline",
+  command: "flash-outline",
+  swarm: "globe-outline",
+  config: "options-outline",
 };
 
 export function SideRail({ tabs, activeTab, onTabPress }: Props) {
@@ -27,6 +45,10 @@ export function SideRail({ tabs, activeTab, onTabPress }: Props) {
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
+          const iconName = isActive
+            ? (ICON_MAP[tab.key] || "ellipse")
+            : (ICON_MAP_OUTLINE[tab.key] || "ellipse-outline");
+
           return (
             <Pressable
               key={tab.key}
@@ -41,13 +63,18 @@ export function SideRail({ tabs, activeTab, onTabPress }: Props) {
               ]}
             >
               {isActive && <View style={styles.activeBar} />}
+              <Ionicons
+                name={iconName as any}
+                size={22}
+                color={isActive ? colors.accent.cyan : colors.text.secondary}
+              />
               <Text
                 style={[
-                  styles.tabIcon,
-                  { opacity: isActive ? 1 : 0.5 },
+                  styles.tabLabel,
+                  isActive && styles.tabLabelActive,
                 ]}
               >
-                {tab.icon}
+                {tab.label}
               </Text>
             </Pressable>
           );
@@ -70,30 +97,36 @@ const styles = StyleSheet.create({
   },
   blurWrap: {
     flex: 1,
-    backgroundColor: colors.glass.fill,
+    backgroundColor: "rgba(10, 10, 30, 0.65)",
     borderRightWidth: 1,
-    borderRightColor: colors.glass.border,
+    borderRightColor: "rgba(255, 255, 255, 0.12)",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 4,
   },
   tabButton: {
     width: RAIL_WIDTH,
-    height: 56,
+    height: 60,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    gap: 4,
   },
   activeBar: {
     position: "absolute",
     left: 0,
-    top: 10,
-    bottom: 10,
+    top: 12,
+    bottom: 12,
     width: 3,
     borderRadius: 2,
     backgroundColor: colors.accent.cyan,
   },
-  tabIcon: {
-    fontSize: 22,
+  tabLabel: {
+    fontSize: 10,
+    fontFamily: typography.body.fontFamily,
+    color: colors.text.tertiary,
+  },
+  tabLabelActive: {
+    color: colors.accent.cyan,
   },
 });

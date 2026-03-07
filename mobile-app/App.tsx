@@ -11,6 +11,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Inter_400Regular, Inter_500Medium } from "@expo-google-fonts/inter";
 import { SpaceGrotesk_600SemiBold } from "@expo-google-fonts/space-grotesk";
 import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
+import { Orbitron_700Bold } from "@expo-google-fonts/orbitron";
+import { Exo2_400Regular, Exo2_500Medium, Exo2_600SemiBold } from "@expo-google-fonts/exo-2";
 
 import { theme } from "./ui/theme";
 import { ToastProvider } from "./src/state/toast";
@@ -47,7 +49,11 @@ export default function App() {
     Inter_400Regular,
     Inter_500Medium,
     SpaceGrotesk_600SemiBold,
-    JetBrainsMono_500Medium
+    JetBrainsMono_500Medium,
+    Orbitron_700Bold,
+    Exo2_400Regular,
+    Exo2_500Medium,
+    Exo2_600SemiBold,
   });
 
   useEffect(() => {

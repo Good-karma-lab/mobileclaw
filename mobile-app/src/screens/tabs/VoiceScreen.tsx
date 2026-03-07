@@ -1,11 +1,21 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import { View, StyleSheet, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  FadeIn,
+  FadeOut,
+  Easing,
+} from "react-native-reanimated";
 
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
+import { springs } from "../../theme/animations";
 import { PlasmaOrb } from "../../components/plasma/PlasmaOrb";
 
 type VoiceState = "idle" | "listening" | "thinking" | "speaking";
@@ -17,13 +27,78 @@ const STATE_LABELS: Record<VoiceState, string> = {
   speaking: "Speaking...",
 };
 
+const AUTO_HIDE_DELAY = 3000;
+
 export function VoiceScreen() {
   const insets = useSafeAreaInsets();
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
+  const [chromeVisible, setChromeVisible] = useState(false);
+  const autoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMicPress = useCallback(() => {
+  // -- Reanimated shared values --
+  const chromeOpacity = useSharedValue(0);
+  const glowScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0.05);
+
+  // Breathing radial glow animation
+  useEffect(() => {
+    glowScale.value = withRepeat(
+      withSequence(
+        withTiming(1.15, {
+          duration: 3000,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        withTiming(1.0, {
+          duration: 3000,
+          easing: Easing.inOut(Easing.sin),
+        })
+      ),
+      -1,
+      true
+    );
+  }, [glowScale]);
+
+  // Update glow intensity based on voice state
+  useEffect(() => {
+    const glowLevels: Record<VoiceState, number> = {
+      idle: 0.05,
+      listening: 0.1,
+      thinking: 0.08,
+      speaking: 0.12,
+    };
+    glowOpacity.value = withTiming(glowLevels[voiceState], { duration: 600 });
+  }, [voiceState, glowOpacity]);
+
+  // Chrome show/hide
+  const showChrome = useCallback(() => {
+    if (autoHideTimer.current) {
+      clearTimeout(autoHideTimer.current);
+      autoHideTimer.current = null;
+    }
+    setChromeVisible(true);
+    chromeOpacity.value = withTiming(1, { duration: 300 });
+    autoHideTimer.current = setTimeout(() => {
+      chromeOpacity.value = withTiming(0, { duration: 400 });
+      setTimeout(() => setChromeVisible(false), 400);
+      autoHideTimer.current = null;
+    }, AUTO_HIDE_DELAY);
+  }, [chromeOpacity]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoHideTimer.current) {
+        clearTimeout(autoHideTimer.current);
+      }
+    };
+  }, []);
+
+  const handleOrbPress = useCallback(() => {
+    // Also show chrome on tap
+    showChrome();
+
     if (voiceState === "idle") {
       setVoiceState("listening");
       setTranscript("");
@@ -40,13 +115,33 @@ export function VoiceScreen() {
         }, 1500);
       }, 2000);
     } else if (voiceState === "listening") {
-      // Stop listening
       setVoiceState("thinking");
     } else if (voiceState === "speaking") {
-      // Interrupt
       setVoiceState("idle");
     }
-  }, [voiceState]);
+  }, [voiceState, showChrome]);
+
+  const handleBackgroundTap = useCallback(() => {
+    showChrome();
+  }, [showChrome]);
+
+  // Connection status
+  const connectionColor =
+    voiceState === "idle"
+      ? colors.semantic.success
+      : voiceState === "listening" || voiceState === "speaking"
+        ? colors.semantic.success
+        : colors.accent.amber;
+
+  // -- Animated styles --
+  const chromeAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: chromeOpacity.value,
+  }));
+
+  const glowAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glowScale.value }],
+    opacity: glowOpacity.value,
+  }));
 
   return (
     <LinearGradient
@@ -54,188 +149,182 @@ export function VoiceScreen() {
       style={styles.container}
       testID="voice-screen"
     >
-      {/* Status bar */}
-      <View style={[styles.statusBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.brandText}>GUAPPA</Text>
-        <View style={styles.statusDot}>
-          <View
+      <Pressable style={styles.fill} onPress={handleBackgroundTap}>
+        {/* Status bar chrome — fades in on tap, auto-hides after 3s */}
+        {chromeVisible && (
+          <Animated.View
             style={[
-              styles.dot,
-              voiceState !== "idle" && styles.dotActive,
+              styles.statusBar,
+              { paddingTop: insets.top + 8 },
+              chromeAnimatedStyle,
             ]}
-          />
-          <Text style={styles.statusText}>
-            {voiceState === "idle" ? "Ready" : "Active"}
-          </Text>
+            pointerEvents="none"
+          >
+            <Animated.Text
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.brandText}
+            >
+              GUAPPA
+            </Animated.Text>
+            <View style={styles.connectionIndicator}>
+              <View
+                style={[
+                  styles.connectionDot,
+                  { backgroundColor: connectionColor },
+                ]}
+              />
+              <Animated.Text
+                entering={FadeIn.duration(300)}
+                exiting={FadeOut.duration(300)}
+                style={styles.connectionText}
+              >
+                Ready
+              </Animated.Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Orb area with breathing glow */}
+        <View style={styles.orbContainer}>
+          {/* Breathing radial glow behind the orb */}
+          <Animated.View style={[styles.radialGlow, glowAnimatedStyle]} />
+
+          <Pressable onPress={handleOrbPress}>
+            <PlasmaOrb
+              size={300}
+              state={voiceState}
+              audioLevel={voiceState === "listening" ? 0.5 : 0}
+            />
+          </Pressable>
         </View>
-      </View>
 
-      {/* Orb area */}
-      <View style={styles.orbContainer}>
-        <Pressable onPress={handleMicPress}>
-          <PlasmaOrb
-            size={300}
-            state={voiceState}
-            audioLevel={voiceState === "listening" ? 0.5 : 0}
-          />
-        </Pressable>
-      </View>
-
-      {/* Transcript area */}
-      <View style={styles.transcriptArea}>
-        {transcript !== "" && (
-          <Text style={styles.transcriptText}>{transcript}</Text>
-        )}
-        {response !== "" && (
-          <Text style={styles.responseText}>{response}</Text>
-        )}
-        <Text style={styles.stateLabel}>
-          {STATE_LABELS[voiceState]}
-        </Text>
-      </View>
-
-      {/* Bottom controls */}
-      <View style={[styles.controls, { paddingBottom: insets.bottom + 80 }]}>
-        <Pressable
-          testID="mic-button"
-          style={({ pressed }) => [
-            styles.micButton,
-            voiceState === "listening" && styles.micButtonActive,
-            pressed && styles.micButtonPressed,
+        {/* State label + transcript area */}
+        <View
+          style={[
+            styles.transcriptArea,
+            { paddingBottom: insets.bottom + 80 },
           ]}
-          onPress={handleMicPress}
         >
-          <Ionicons
-            name={voiceState === "listening" ? "stop" : "mic"}
-            size={32}
-            color={
-              voiceState === "listening"
-                ? colors.base.spaceBlack
-                : colors.accent.cyan
-            }
-          />
-        </Pressable>
+          {/* State label with cross-fade */}
+          <Animated.Text
+            key={voiceState}
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.stateLabel}
+          >
+            {STATE_LABELS[voiceState]}
+          </Animated.Text>
 
-        <View style={styles.secondaryControls}>
-          <Pressable style={styles.secondaryButton}>
-            <Ionicons
-              name="chatbubble-outline"
-              size={24}
-              color={colors.text.secondary}
-            />
-          </Pressable>
-          <Pressable style={styles.secondaryButton}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color={colors.text.secondary}
-            />
-          </Pressable>
+          {/* Transcript text */}
+          {transcript !== "" && (
+            <Animated.Text
+              entering={FadeIn.duration(400)}
+              exiting={FadeOut.duration(300)}
+              style={styles.transcriptText}
+            >
+              {transcript}
+            </Animated.Text>
+          )}
+
+          {/* Response text */}
+          {response !== "" && (
+            <Animated.Text
+              entering={FadeIn.duration(400)}
+              exiting={FadeOut.duration(300)}
+              style={styles.responseText}
+            >
+              {response}
+            </Animated.Text>
+          )}
         </View>
-      </View>
+      </Pressable>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   statusBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 8,
+    zIndex: 10,
   },
   brandText: {
     color: colors.text.primary,
-    fontSize: 18,
-    fontFamily: typography.display?.fontFamily,
+    fontSize: 14,
+    fontFamily: typography.display.fontFamily,
     letterSpacing: 3,
-    fontWeight: "700",
+    opacity: 0.4,
   },
-  statusDot: {
+  connectionIndicator: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
-  dot: {
+  connectionDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.text.tertiary,
   },
-  dotActive: {
-    backgroundColor: colors.accent.lime,
-  },
-  statusText: {
+  connectionText: {
     color: colors.text.secondary,
-    fontSize: 13,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+    opacity: 0.6,
   },
   orbContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
+  radialGlow: {
+    position: "absolute",
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: colors.accent.cyan,
+  },
   transcriptArea: {
     paddingHorizontal: 24,
     paddingBottom: 16,
     alignItems: "center",
-    minHeight: 100,
+    minHeight: 120,
+  },
+  stateLabel: {
+    color: colors.text.primary,
+    fontSize: 16,
+    fontFamily: typography.body.fontFamily,
+    opacity: 0.6,
+    marginBottom: 12,
+    letterSpacing: 0.5,
   },
   transcriptText: {
-    color: colors.text.secondary,
-    fontSize: 16,
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.body.fontFamily,
+    opacity: 0.6,
     textAlign: "center",
     marginBottom: 8,
-    fontStyle: "italic",
   },
   responseText: {
     color: colors.text.primary,
-    fontSize: 18,
-    textAlign: "center",
-    marginBottom: 12,
-    lineHeight: 26,
-  },
-  stateLabel: {
-    color: colors.text.tertiary,
     fontSize: 14,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  controls: {
-    alignItems: "center",
-    gap: 16,
-  },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "rgba(0, 240, 255, 0.1)",
-    borderWidth: 2,
-    borderColor: "rgba(0, 240, 255, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  micButtonActive: {
-    backgroundColor: colors.accent.cyan,
-    borderColor: colors.accent.cyan,
-  },
-  micButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.95 }],
-  },
-  secondaryControls: {
-    flexDirection: "row",
-    gap: 24,
-  },
-  secondaryButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    alignItems: "center",
-    justifyContent: "center",
+    fontFamily: typography.body.fontFamily,
+    opacity: 0.6,
+    textAlign: "center",
+    lineHeight: 22,
   },
 });

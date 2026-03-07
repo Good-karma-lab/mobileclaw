@@ -1,10 +1,18 @@
 import React from "react";
-import { View, TextInput, Pressable, Text, StyleSheet } from "react-native";
+import { View, TextInput, Pressable, StyleSheet } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
 import { spacing, radius } from "../../theme/spacing";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Props = {
   value: string;
@@ -12,6 +20,7 @@ type Props = {
   onSend: () => void;
   onMicPress?: () => void;
   editable?: boolean;
+  isThinking?: boolean;
 };
 
 export function ChatInputBar({
@@ -20,48 +29,68 @@ export function ChatInputBar({
   onSend,
   onMicPress,
   editable = true,
+  isThinking = false,
 }: Props) {
   const hasText = value.trim().length > 0;
+  const buttonScale = useSharedValue(1);
+
+  const buttonAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
+
+  const handlePressIn = () => {
+    buttonScale.value = withSpring(0.85, { damping: 15, stiffness: 200 });
+  };
+
+  const handlePressOut = () => {
+    buttonScale.value = withSpring(1, { damping: 12, stiffness: 150 });
+  };
 
   return (
-    <BlurView
-      intensity={28}
-      tint="dark"
-      style={styles.container}
-    >
+    <BlurView intensity={28} tint="dark" style={styles.container}>
       <View style={styles.inner}>
         <TextInput
           testID="chat-input"
           value={value}
           onChangeText={onChangeText}
-          placeholder="Message GUAPPA..."
-          placeholderTextColor={colors.text.tertiary}
-          editable={editable}
+          placeholder={isThinking ? "GUAPPA is thinking..." : "Message GUAPPA..."}
+          placeholderTextColor={
+            isThinking ? colors.accent.violet : colors.text.tertiary
+          }
+          editable={editable && !isThinking}
           multiline
+          maxLength={4000}
           style={styles.input}
         />
         {hasText ? (
-          <Pressable
+          <AnimatedPressable
             testID="chat-send-button"
             onPress={onSend}
-            style={({ pressed }) => [
-              styles.actionButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            disabled={isThinking}
+            style={[styles.sendButton, buttonAnimStyle]}
           >
-            <Text style={styles.actionIcon}>{">"}</Text>
-          </Pressable>
+            <Ionicons
+              name="arrow-up"
+              size={20}
+              color={colors.base.spaceBlack}
+            />
+          </AnimatedPressable>
         ) : (
-          <Pressable
+          <AnimatedPressable
             testID="chat-mic-button"
             onPress={onMicPress}
-            style={({ pressed }) => [
-              styles.actionButton,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={[styles.micButton, buttonAnimStyle]}
           >
-            <Text style={styles.actionIcon}>{"mic"}</Text>
-          </Pressable>
+            <Ionicons
+              name="mic-outline"
+              size={22}
+              color={colors.accent.cyan}
+            />
+          </AnimatedPressable>
         )}
       </View>
     </BlurView>
@@ -70,7 +99,7 @@ export function ChatInputBar({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     overflow: "hidden",
     backgroundColor: colors.glass.fill,
     borderWidth: 1,
@@ -87,14 +116,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     color: colors.text.primary,
     fontFamily: typography.body.fontFamily,
     fontSize: 15,
     backgroundColor: "transparent",
   },
-  actionButton: {
+  sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -102,9 +131,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.accent.cyan,
   },
-  actionIcon: {
-    color: colors.base.spaceBlack,
-    fontSize: 16,
-    fontWeight: "bold",
+  micButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 240, 255, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 240, 255, 0.25)",
   },
 });

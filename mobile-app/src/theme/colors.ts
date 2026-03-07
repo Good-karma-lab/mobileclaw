@@ -7,6 +7,7 @@ export const colors = {
     fill: 'rgba(255, 255, 255, 0.08)',
     fillActive: 'rgba(255, 255, 255, 0.12)',
     border: 'rgba(255, 255, 255, 0.15)',
+    borderSubtle: 'rgba(255, 255, 255, 0.10)',
   },
   accent: {
     cyan: '#00F0FF',
@@ -14,6 +15,7 @@ export const colors = {
     rose: '#FF3366',
     amber: '#FFAA33',
     gold: '#FFD700',
+    lime: '#D4F49C',
   },
   semantic: {
     success: '#14B8A6',

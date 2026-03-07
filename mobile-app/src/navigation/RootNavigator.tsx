@@ -44,41 +44,44 @@ function NavigatorContent() {
   const ActiveScreen = SCREENS[activeTab] ?? VoiceScreen;
 
   return (
-    <LinearGradient
-      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
+      <LinearGradient
+        colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
+        style={StyleSheet.absoluteFill}
+      />
       <StatusBar
         barStyle="light-content"
         translucent
         backgroundColor="transparent"
       />
 
-      {/* Screen content */}
+      {/* Screen content layer */}
       <View
         style={[
-          styles.content,
+          styles.screenLayer,
           useSidebar && { paddingLeft: RAIL_WIDTH },
         ]}
       >
         <ActiveScreen />
       </View>
 
-      {/* Navigation */}
-      {useSidebar ? (
-        <SideRail
-          tabs={TABS}
-          activeTab={activeTab}
-          onTabPress={setActiveTab}
-        />
-      ) : (
-        <FloatingDock
-          tabs={TABS}
-          activeTab={activeTab}
-          onTabPress={setActiveTab}
-        />
-      )}
-    </LinearGradient>
+      {/* Navigation overlay layer — separate from content for reliable touch handling */}
+      <View style={styles.navLayer} pointerEvents="box-none">
+        {useSidebar ? (
+          <SideRail
+            tabs={TABS}
+            activeTab={activeTab}
+            onTabPress={setActiveTab}
+          />
+        ) : (
+          <FloatingDock
+            tabs={TABS}
+            activeTab={activeTab}
+            onTabPress={setActiveTab}
+          />
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -128,8 +131,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  screenLayer: {
     flex: 1,
+  },
+  navLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 100,
   },
   loading: {
     flex: 1,

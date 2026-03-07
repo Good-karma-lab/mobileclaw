@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../../theme/colors";
@@ -91,17 +93,49 @@ export function ConfigScreen() {
       style={styles.container}
       testID="config-screen"
     >
+      {/* Glass Header */}
+      <BlurView
+        intensity={30}
+        tint="dark"
+        style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
+      >
+        <View style={styles.headerInner}>
+          <Text style={styles.headerTitle}>Configuration</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.searchButton,
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={() => {
+              /* search placeholder */
+            }}
+            hitSlop={8}
+          >
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+        </View>
+        {/* Bottom gradient line: cyan -> transparent -> cyan */}
+        <LinearGradient
+          colors={[colors.accent.cyan, "transparent", colors.accent.cyan]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerLine}
+        />
+      </BlurView>
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + 100 },
+          { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.screenTitle}>Configuration</Text>
-
         {/* 1. How GUAPPA Thinks */}
         <CollapsibleSection
           title="How GUAPPA Thinks"
@@ -249,43 +283,75 @@ export function ConfigScreen() {
           <PermissionRow label="Accessibility Service" status="not granted" />
         </CollapsibleSection>
 
-        {/* 10. Download Debug Info */}
-        <View style={styles.debugButtonWrapper}>
-          <GlassButton
-            title="Download Debug Info"
-            onPress={() => console.log("Download debug info placeholder")}
-            variant="secondary"
-            icon="download-outline"
-          />
+        {/* 10. Debug Info — warm-tinted glass card */}
+        <View style={styles.debugCard}>
+          <BlurView intensity={15} tint="dark" style={styles.debugBlur}>
+            <Pressable
+              onPress={() => console.log("Download debug info placeholder")}
+              style={({ pressed }) => [
+                styles.debugInner,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={styles.debugIconContainer}>
+                <Ionicons
+                  name="download-outline"
+                  size={18}
+                  color={colors.accent.amber}
+                />
+                <Ionicons
+                  name="bug-outline"
+                  size={14}
+                  color={colors.accent.amber}
+                  style={styles.debugBugIcon}
+                />
+              </View>
+              <View style={styles.debugTextContainer}>
+                <Text style={styles.debugTitle}>Download Debug Info</Text>
+                <Text style={styles.debugSubtitle}>
+                  Export logs, config snapshot, and diagnostics
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.text.tertiary}
+              />
+            </Pressable>
+          </BlurView>
         </View>
       </ScrollView>
     </LinearGradient>
   );
 }
 
-// --- Small helper component for permission rows ---
+// --- Permission row with glass pill status badges ---
 
 function PermissionRow({ label, status }: { label: string; status: string }) {
   const granted = status === "granted";
+  const pillColor = granted ? colors.semantic.success : colors.semantic.error;
+  const pillLabel = granted ? "Granted" : "Denied";
+
   return (
     <View style={permStyles.row}>
-      <View style={permStyles.labelRow}>
-        <View
-          style={[
-            permStyles.dot,
-            { backgroundColor: granted ? colors.semantic.success : colors.text.tertiary },
-          ]}
-        />
-        <Text style={permStyles.label}>{label}</Text>
-      </View>
-      <Text
+      <Text style={permStyles.label}>{label}</Text>
+      <View
         style={[
-          permStyles.status,
-          { color: granted ? colors.semantic.success : colors.text.tertiary },
+          permStyles.pill,
+          {
+            backgroundColor: granted
+              ? "rgba(20, 184, 166, 0.12)"
+              : "rgba(239, 68, 68, 0.12)",
+            borderColor: granted
+              ? "rgba(20, 184, 166, 0.30)"
+              : "rgba(239, 68, 68, 0.30)",
+          },
         ]}
       >
-        {status}
-      </Text>
+        <Text style={[permStyles.pillText, { color: pillColor }]}>
+          {pillLabel}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -299,25 +365,23 @@ const permStyles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing.sm,
-  },
   label: {
     color: colors.text.primary,
     fontSize: 14,
     fontFamily: typography.body.fontFamily,
   },
-  status: {
-    fontSize: 12,
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  pillText: {
+    fontSize: 11,
     fontFamily: typography.mono.fontFamily,
     textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });
 
@@ -325,17 +389,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
+  // ── Glass Header ──────────────────────────────────────────
+  header: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderBottomWidth: 0,
+    overflow: "hidden",
+  },
+  headerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  headerTitle: {
+    color: colors.text.primary,
+    fontSize: 18,
+    fontFamily: typography.display.fontFamily,
+    letterSpacing: 1,
+  },
+  searchButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLine: {
+    height: 1,
+    width: "100%",
+  },
+
+  // ── Content ───────────────────────────────────────────────
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-  },
-  screenTitle: {
-    color: colors.text.primary,
-    fontSize: 28,
-    fontFamily: typography.display.fontFamily,
-    marginBottom: spacing.lg,
+    paddingTop: spacing.md,
   },
   placeholder: {
     color: colors.text.tertiary,
@@ -344,8 +439,49 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginVertical: spacing.sm,
   },
-  debugButtonWrapper: {
+
+  // ── Debug Info Card (warm tint) ───────────────────────────
+  debugCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 170, 51, 0.15)",
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  debugBlur: {
+    backgroundColor: "rgba(255, 170, 51, 0.04)",
+  },
+  debugInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  debugIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 170, 51, 0.10)",
+    justifyContent: "center",
+  },
+  debugBugIcon: {
+    marginLeft: -4,
+  },
+  debugTextContainer: {
+    flex: 1,
+  },
+  debugTitle: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.bodySemiBold.fontFamily,
+  },
+  debugSubtitle: {
+    color: colors.text.tertiary,
+    fontSize: 12,
+    fontFamily: typography.body.fontFamily,
+    marginTop: 2,
   },
 });

@@ -1,16 +1,151 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSpring,
+  Easing,
+} from "react-native-reanimated";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../../theme/colors";
+import { typography } from "../../theme/typography";
+import { spacing } from "../../theme/spacing";
+import { springs } from "../../theme/animations";
 
-type SwarmTab = "feed" | "peers" | "identity";
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type FilterKey = "all" | "tasks" | "messages" | "reputation" | "network";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "tasks", label: "Tasks" },
+  { key: "messages", label: "Messages" },
+  { key: "reputation", label: "Reputation" },
+  { key: "network", label: "Network" },
+];
+
+// ---------------------------------------------------------------------------
+// Animated filter pill
+// ---------------------------------------------------------------------------
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function FilterPill({
+  label,
+  isActive,
+  onPress,
+}: {
+  label: string;
+  isActive: boolean;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const bg = useSharedValue(isActive ? 1 : 0);
+
+  useEffect(() => {
+    bg.value = withSpring(isActive ? 1 : 0, springs.snappy);
+  }, [isActive, bg]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor:
+      bg.value > 0.5
+        ? "rgba(139, 92, 246, 0.20)"
+        : "rgba(255, 255, 255, 0.06)",
+    borderColor:
+      bg.value > 0.5
+        ? "rgba(139, 92, 246, 0.40)"
+        : "rgba(255, 255, 255, 0.12)",
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.93, springs.snappy);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, springs.snappy);
+  }, [scale]);
+
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[filterStyles.pill, pillStyle]}
+    >
+      <Text
+        style={[
+          filterStyles.pillText,
+          isActive && filterStyles.pillTextActive,
+        ]}
+      >
+        {label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
+const filterStyles = StyleSheet.create({
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  pillText: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontFamily: typography.bodySemiBold.fontFamily,
+  },
+  pillTextActive: {
+    color: colors.accent.violet,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Rotating globe for empty / disconnected state
+// ---------------------------------------------------------------------------
+
+function RotatingGlobe() {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 12000, easing: Easing.linear }),
+      -1,
+      false,
+    );
+  }, [rotation]);
+
+  const globeStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <View style={emptyStyles.iconContainer}>
+      <Animated.View style={globeStyle}>
+        <Ionicons name="globe-outline" size={56} color={colors.accent.violet} />
+      </Animated.View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 
 export function SwarmScreen() {
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<SwarmTab>("feed");
+  const [connected, setConnected] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
 
   return (
     <LinearGradient
@@ -18,107 +153,137 @@ export function SwarmScreen() {
       style={styles.container}
       testID="swarm-screen"
     >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.title}>World Wide Swarm</Text>
-        <View style={styles.statusPill}>
-          <View style={styles.offlineDot} />
-          <Text style={styles.statusText}>Offline</Text>
+      {/* ---- Glass header ---- */}
+      <BlurView
+        intensity={24}
+        tint="dark"
+        style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
+      >
+        <View style={styles.headerInner}>
+          <Text style={styles.headerTitle}>Swarm</Text>
+          <Pressable style={styles.statsButton}>
+            <Ionicons
+              name="stats-chart-outline"
+              size={16}
+              color={colors.text.secondary}
+            />
+            <Text style={styles.statsButtonText}>Stats</Text>
+          </Pressable>
         </View>
-      </View>
+        {/* Bottom gradient line: violet -> transparent -> violet */}
+        <LinearGradient
+          colors={[
+            colors.accent.violet,
+            "transparent",
+            colors.accent.violet,
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerLine}
+        />
+      </BlurView>
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {(
-          [
-            { key: "feed", label: "Live Feed", icon: "pulse-outline" },
-            { key: "peers", label: "Peers", icon: "people-outline" },
-            { key: "identity", label: "Identity", icon: "finger-print-outline" },
-          ] as const
-        ).map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
+      {/* ---- Glass status bar ---- */}
+      <View style={styles.statusBar}>
+        <BlurView intensity={16} tint="dark" style={styles.statusBarBlur}>
+          <View style={styles.statusBarInner}>
+            {/* Connection toggle */}
             <Pressable
-              key={tab.key}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
+              style={[
+                styles.togglePill,
+                connected && styles.togglePillActive,
+              ]}
+              onPress={() => setConnected((v) => !v)}
             >
-              <Ionicons
-                name={tab.icon}
-                size={18}
-                color={isActive ? "#8B5CF6" : colors.text.tertiary}
+              <View
+                style={[
+                  styles.toggleDot,
+                  connected ? styles.toggleDotOn : styles.toggleDotOff,
+                ]}
               />
               <Text
-                style={[styles.tabLabel, isActive && styles.tabLabelActive]}
+                style={[
+                  styles.toggleLabel,
+                  connected && styles.toggleLabelActive,
+                ]}
               >
-                {tab.label}
+                {connected ? "ON" : "OFF"}
               </Text>
             </Pressable>
-          );
-        })}
+
+            {/* Peer count */}
+            <Text style={styles.peerCount}>0 Peers</Text>
+
+            {/* Tier badge */}
+            <View style={styles.tierBadge}>
+              <Text style={styles.tierBadgeText}>EXECUTOR</Text>
+            </View>
+
+            {/* Reputation placeholder */}
+            <View style={styles.reputationContainer}>
+              <Ionicons
+                name="star-outline"
+                size={14}
+                color={colors.text.tertiary}
+              />
+              <Text style={styles.reputationText}>--</Text>
+            </View>
+          </View>
+        </BlurView>
       </View>
 
+      {/* ---- Filter pills ---- */}
       <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentInner}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+        style={styles.filterScroll}
       >
-        {activeTab === "feed" && (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="globe-outline" size={56} color={colors.text.tertiary} />
-            </View>
-            <Text style={styles.emptyTitle}>Not connected</Text>
-            <Text style={styles.emptySubtitle}>
-              Join the World Wide Swarm to discover and collaborate with other GUAPPA agents
+        {FILTERS.map((f) => (
+          <FilterPill
+            key={f.key}
+            label={f.label}
+            isActive={activeFilter === f.key}
+            onPress={() => setActiveFilter(f.key)}
+          />
+        ))}
+      </ScrollView>
+
+      {/* ---- Scrollable feed ---- */}
+      <ScrollView
+        style={styles.feed}
+        contentContainerStyle={styles.feedContent}
+      >
+        {!connected ? (
+          /* ---- Disconnected empty state ---- */
+          <View style={emptyStyles.container}>
+            <RotatingGlobe />
+            <Text style={emptyStyles.title}>Connect to the Swarm</Text>
+            <Text style={emptyStyles.subtitle}>
+              Join the World Wide Swarm to discover and collaborate with other
+              agents across the network
             </Text>
-            <Pressable style={styles.connectButton}>
-              <Ionicons name="link-outline" size={20} color={colors.base.spaceBlack} />
-              <Text style={styles.connectButtonText}>Connect to Swarm</Text>
+            <Pressable
+              style={styles.enableButton}
+              onPress={() => setConnected(true)}
+            >
+              <Ionicons name="flash-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.enableButtonText}>Enable</Text>
             </Pressable>
           </View>
-        )}
-
-        {activeTab === "peers" && (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="people-outline" size={56} color={colors.text.tertiary} />
-            </View>
-            <Text style={styles.emptyTitle}>No peers discovered</Text>
-            <Text style={styles.emptySubtitle}>
-              Connect to the swarm to discover nearby agents
+        ) : (
+          /* ---- Connected placeholder ---- */
+          <View style={emptyStyles.container}>
+            <Ionicons
+              name="radio-outline"
+              size={48}
+              color={colors.accent.violet}
+            />
+            <Text style={emptyStyles.title}>Listening...</Text>
+            <Text style={emptyStyles.subtitle}>
+              No swarm events yet. Activity will appear here as peers connect
+              and tasks are distributed.
             </Text>
-          </View>
-        )}
-
-        {activeTab === "identity" && (
-          <View style={styles.identitySection}>
-            <View style={styles.identityCard}>
-              <Ionicons name="finger-print-outline" size={40} color="#8B5CF6" />
-              <Text style={styles.identityLabel}>Agent Identity</Text>
-              <Text style={styles.identityStatus}>Not configured</Text>
-              <Text style={styles.identityHint}>
-                Generate an Ed25519 keypair to join the swarm with a unique identity
-              </Text>
-              <Pressable style={styles.generateButton}>
-                <Text style={styles.generateButtonText}>Generate Identity</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.statsCard}>
-              <Text style={styles.statsTitle}>Swarm Stats</Text>
-              {[
-                { label: "Messages sent", value: "0" },
-                { label: "Messages received", value: "0" },
-                { label: "Tasks delegated", value: "0" },
-                { label: "Tasks completed", value: "0" },
-                { label: "Uptime", value: "—" },
-              ].map((stat) => (
-                <View key={stat.label} style={styles.statRow}>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                </View>
-              ))}
-            </View>
           </View>
         )}
       </ScrollView>
@@ -126,186 +291,217 @@ export function SwarmScreen() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+  container: {
+    flex: 1,
   },
-  title: {
+
+  // Glass header
+  header: {
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderBottomWidth: 0,
+  },
+  headerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerTitle: {
     color: colors.text.primary,
-    fontSize: 24,
+    fontFamily: typography.display.fontFamily,
+    fontSize: 18,
+    letterSpacing: 2,
     fontWeight: "700",
   },
-  statusPill: {
+  headerLine: {
+    height: 1,
+    width: "100%",
+  },
+  statsButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  offlineDot: {
+  statsButtonText: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontFamily: typography.bodySemiBold.fontFamily,
+  },
+
+  // Glass status bar
+  statusBar: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+  },
+  statusBarBlur: {
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  statusBarInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    gap: 12,
+  },
+
+  // Toggle pill
+  togglePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  togglePillActive: {
+    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    borderColor: "rgba(139, 92, 246, 0.35)",
+  },
+  toggleDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  toggleDotOff: {
     backgroundColor: colors.text.tertiary,
   },
-  statusText: {
+  toggleDotOn: {
+    backgroundColor: colors.accent.violet,
+  },
+  toggleLabel: {
     color: colors.text.tertiary,
     fontSize: 12,
+    fontFamily: typography.mono.fontFamily,
     fontWeight: "600",
   },
-  tabBar: {
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    gap: 4,
-    marginBottom: 4,
+  toggleLabelActive: {
+    color: colors.accent.violet,
   },
-  tab: {
-    flex: 1,
+
+  // Peer count
+  peerCount: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontFamily: typography.mono.fontFamily,
+  },
+
+  // Tier badge
+  tierBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  tierBadgeText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+    letterSpacing: 1,
+  },
+
+  // Reputation
+  reputationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    gap: 4,
+    marginLeft: "auto",
   },
-  tabActive: {
-    backgroundColor: "rgba(139, 92, 246, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.15)",
-  },
-  tabLabel: {
+  reputationText: {
     color: colors.text.tertiary,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: typography.mono.fontFamily,
   },
-  tabLabelActive: {
-    color: "#8B5CF6",
+
+  // Filter pills row
+  filterScroll: {
+    flexGrow: 0,
+    marginTop: spacing.sm,
   },
-  content: { flex: 1 },
-  contentInner: {
-    padding: 16,
-    paddingBottom: 100,
+  filterRow: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
-  emptyState: {
+
+  // Feed
+  feed: {
+    flex: 1,
+  },
+  feedContent: {
+    padding: spacing.md,
+    paddingBottom: 120,
+  },
+
+  // Enable button (violet accent)
+  enableButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(139, 92, 246, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.40)",
+    borderRadius: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  enableButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: typography.bodySemiBold.fontFamily,
+  },
+});
+
+// Empty / disconnected state styles
+const emptyStyles = StyleSheet.create({
+  container: {
     alignItems: "center",
     paddingTop: 60,
+    gap: 12,
   },
-  emptyIcon: {
+  iconContainer: {
     width: 112,
     height: 112,
     borderRadius: 56,
-    backgroundColor: "rgba(139, 92, 246, 0.05)",
+    backgroundColor: "rgba(139, 92, 246, 0.06)",
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.1)",
+    borderColor: "rgba(139, 92, 246, 0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    color: colors.text.primary,
-    fontSize: 20,
-    fontWeight: "600",
     marginBottom: 8,
   },
-  emptySubtitle: {
+  title: {
+    color: colors.text.primary,
+    fontFamily: typography.body.fontFamily,
+    fontSize: 18,
+    opacity: 0.5,
+  },
+  subtitle: {
     color: colors.text.tertiary,
+    fontFamily: typography.body.fontFamily,
     fontSize: 14,
     textAlign: "center",
     maxWidth: 300,
     lineHeight: 20,
-    marginBottom: 24,
-  },
-  connectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#8B5CF6",
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
-  },
-  connectButtonText: {
-    color: colors.base.spaceBlack,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  identitySection: { gap: 16 },
-  identityCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 20,
-    padding: 24,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  identityLabel: {
-    color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 12,
-  },
-  identityStatus: {
-    color: colors.text.tertiary,
-    fontSize: 14,
-    marginTop: 4,
     marginBottom: 12,
-  },
-  identityHint: {
-    color: colors.text.tertiary,
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 16,
-    maxWidth: 280,
-  },
-  generateButton: {
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-  },
-  generateButtonText: {
-    color: "#8B5CF6",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  statsCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-  },
-  statsTitle: {
-    color: colors.text.primary,
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.04)",
-  },
-  statLabel: {
-    color: colors.text.secondary,
-    fontSize: 14,
-  },
-  statValue: {
-    color: colors.text.primary,
-    fontSize: 14,
-    fontWeight: "600",
   },
 });

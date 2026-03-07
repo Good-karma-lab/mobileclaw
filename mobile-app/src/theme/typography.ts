@@ -1,7 +1,7 @@
 export const typography = {
-  display: { fontFamily: 'Orbitron-Bold' },
-  body: { fontFamily: 'Exo2-Regular' },
-  bodyMedium: { fontFamily: 'Exo2-Medium' },
-  bodySemiBold: { fontFamily: 'Exo2-SemiBold' },
-  mono: { fontFamily: 'JetBrainsMono-Regular' },
+  display: { fontFamily: 'Orbitron_700Bold' },
+  body: { fontFamily: 'Exo2_400Regular' },
+  bodyMedium: { fontFamily: 'Exo2_500Medium' },
+  bodySemiBold: { fontFamily: 'Exo2_600SemiBold' },
+  mono: { fontFamily: 'JetBrainsMono_500Medium' },
 } as const;
