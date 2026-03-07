@@ -1,57 +1,106 @@
-# MobileClaw Mobile
+# GUAPPA
 
-![MobileClaw Logo](../assets/logo.png)
+**Your phone is the agent.** GUAPPA turns any Android device into an autonomous AI agent with liquid glass UI, multi-provider intelligence, and World Wide Swarm connectivity.
 
-Turn your old Android phone into a personal assistant.
+## Architecture
 
-MobileClaw is not just chat. You ask in natural language, and the app can execute Android-native capabilities (when enabled) through the agent runtime.
-
-## Demo
-
-[![MobileClaw demo](https://img.youtube.com/vi/-3fpcQAL6II/maxresdefault.jpg)](https://youtu.be/-3fpcQAL6II)
-
-Video: https://youtu.be/-3fpcQAL6II
-
-## What this app can do
-
-- chat with agent + voice input
-- read files, SMS, and call log (with permissions)
-- trigger call/SMS/camera flows from chat
-- read location, contacts, calendar, notifications, and sensors
-- run accessibility-based UI automation (after manual OS enable)
-- run browser session actions (open, navigate, read state, fetch page text)
-
-## Build and run on a real Android device
-
-1. On your phone, enable Developer Options and USB debugging.
-2. Connect phone via USB and accept the debug prompt.
-3. Verify connection:
-
-```bash
-adb devices
+```
+┌─────────────────────────────────────────────┐
+│  React Native + Expo 54 (TypeScript)        │
+│  ┌─────────────────────────────────────────┐│
+│  │ Liquid Glass Design System              ││
+│  │ GlassCard│Button│Input│Toggle│Modal│... ││
+│  └─────────────────────────────────────────┘│
+│  ┌──────┬──────┬──────┬──────┬──────┐      │
+│  │Voice │ Chat │ Cmd  │Swarm │Config│      │
+│  │Screen│Screen│Center│Screen│Screen│      │
+│  └──────┴──────┴──────┴──────┴──────┘      │
+│  FloatingDock (morphing nav)                │
+├─────────────────────────────────────────────┤
+│  NativeModules Bridge                       │
+│  GuappaAgent │ GuappaConfig                 │
+├─────────────────────────────────────────────┤
+│  Kotlin Android Backend (com.guappa.app)    │
+│  ┌──────────────────────────────────────┐   │
+│  │ ProviderRouter (OpenAI│Anthropic│    │   │
+│  │   Gemini│OpenRouter│13 total)        │   │
+│  ├──────────────────────────────────────┤   │
+│  │ ToolEngine (15 tools, 30s timeout)   │   │
+│  ├──────────────────────────────────────┤   │
+│  │ ReAct Orchestrator (5-iteration max) │   │
+│  ├──────────────────────────────────────┤   │
+│  │ ProactiveEngine (triggers/schedules) │   │
+│  ├──────────────────────────────────────┤   │
+│  │ ChannelHub (Telegram│Discord│Slack)  │   │
+│  ├──────────────────────────────────────┤   │
+│  │ SwarmManager (WWSP connector client) │   │
+│  └──────────────────────────────────────┘   │
+│  MessageBus (SharedFlow pub/sub)            │
+└─────────────────────────────────────────────┘
 ```
 
-4. Build and run:
+## Screens
+
+| Screen | Purpose |
+|--------|---------|
+| **Voice** | Plasma orb visualization, mic input, real-time transcription |
+| **Chat** | Streaming glass message bubbles, ReAct tool execution |
+| **Command Center** | Tasks, schedules, triggers, 5-tier memory viewer |
+| **Swarm** | World Wide Swarm — peers, feed, Ed25519 identity |
+| **Config** | Capability-first settings (how GUAPPA thinks/sees/speaks/connects) |
+
+## Key Features
+
+- **Multi-provider AI**: OpenAI, Anthropic, Google Gemini, OpenRouter + 9 more via OpenAI-compatible base
+- **15 native tools**: alarms, SMS, calls, contacts, browser, web search, calculator, translation, image analysis
+- **Proactive agent**: time/event/location/condition-based triggers with SharedPreferences persistence
+- **Channel hub**: Telegram bot, Discord webhook, Slack webhook, email intent
+- **World Wide Swarm**: WWSP connector, EC keypair in Android Keystore, peer discovery, task delegation
+- **Onboarding wizard**: 4-step flow (welcome → provider setup → model download → permissions)
+- **Glass design system**: 13 reusable glass components with translucent surfaces and animations
+- **122 Maestro E2E tests**: Comprehensive coverage across all screens
+
+## Security
+
+- API keys stored in Android Keystore / EncryptedSharedPreferences only
+- Swarm identity keys never leave secure hardware
+- No tokens committed to git
+- Tool execution sandboxed with 30s timeout
+- Deny-by-default permission model
+
+## Development
 
 ```bash
-npm install
-npm run android
+# Install dependencies
+cd mobile-app && npm install
+
+# Start Metro bundler
+npx expo start
+
+# Build Android debug
+cd android && ./gradlew assembleDebug
+
+# Verify Kotlin compiles
+./gradlew compileDebugKotlin
+
+# Run Maestro tests
+maestro test .maestro/guappa_all_screens_smoke.yaml
 ```
 
-If Metro is not reachable from the phone:
+## Package Structure (Kotlin)
 
-```bash
-adb reverse tcp:8081 tcp:8081
+```
+com.guappa.app/
+├── agent/          # MessageBus, GuappaConfig, Session, Orchestrator
+├── providers/      # Provider interface, Router, OpenAI/Anthropic/Gemini
+├── tools/          # Tool interface, Engine, Registry, 15 implementations
+├── proactive/      # ProactiveTrigger, Engine, NotificationManager
+├── channels/       # Channel interface, Hub, Telegram/Discord/Slack/Email
+├── swarm/          # SwarmIdentity, Manager, ConnectorClient, PeerInfo
+├── config/         # ConfigBridge NativeModule (JS↔Kotlin sync)
+└── *.kt            # Activity, Application, native modules
 ```
 
-## First launch checklist
+## License
 
-1. Open Device tab.
-2. Enable capabilities you want.
-3. Grant Android permissions when prompted.
-4. For UI automation, enable Accessibility service from in-app instructions.
-
-## Notes
-
-- Some actions still require Android system confirmation.
-- Access depends on enabled toggles, permissions, and OS settings.
+Proprietary. All rights reserved.
