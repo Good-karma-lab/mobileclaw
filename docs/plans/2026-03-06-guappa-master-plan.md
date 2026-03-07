@@ -231,13 +231,13 @@ providers/
 ├── CostTracker.kt             — per-request cost estimation
 ├── cloud/
 │   ├── CloudProvider.kt       — base HTTP provider (OkHttp + Ktor)
-│   ├── OpenAIProvider.kt      — OpenAI (GPT-4o, GPT-4.5, o3, o4-mini)
-│   ├── AnthropicProvider.kt   — Anthropic (Claude 4.5/4.6 Opus/Sonnet/Haiku)
-│   ├── GoogleProvider.kt      — Google (Gemini 2.5 Pro/Flash, Gemma 3)
-│   ├── DeepSeekProvider.kt    — DeepSeek (V3, R1)
-│   ├── MistralProvider.kt     — Mistral (Large, Medium, Small, Codestral)
-│   ├── MetaProvider.kt        — Meta (Llama 4 Scout, Maverick, Behemoth via API)
-│   ├── XAIProvider.kt         — xAI (Grok 3, Grok 3 Mini)
+│   ├── OpenAIProvider.kt      — OpenAI (GPT-5.4, GPT-5-mini, GPT-5-nano, o3-pro)
+│   ├── AnthropicProvider.kt   — Anthropic (Claude Opus 4.6, Sonnet 4.6, Haiku 4.5)
+│   ├── GoogleProvider.kt      — Google (Gemini 3.1 Pro, Gemini 3 Flash, Gemma 3n)
+│   ├── DeepSeekProvider.kt    — DeepSeek (V3.2, R1)
+│   ├── MistralProvider.kt     — Mistral (Large 3, Magistral Medium/Small, Codestral)
+│   ├── MetaProvider.kt        — Meta (Llama 4 Scout, Maverick via API partners)
+│   ├── XAIProvider.kt         — xAI (Grok 4, Grok 4 Mini)
 │   ├── CohereProvider.kt      — Cohere (Command R+, Command A)
 │   ├── GroqProvider.kt        — Groq (fast inference, Llama/Mixtral)
 │   ├── TogetherProvider.kt    — Together AI (open model hosting)
@@ -245,9 +245,9 @@ providers/
 │   ├── PerplexityProvider.kt  — Perplexity (online search-augmented)
 │   ├── OpenRouterProvider.kt  — OpenRouter (multi-provider gateway)
 │   ├── CopilotProvider.kt     — GitHub Copilot API
-│   ├── QwenProvider.kt        — Alibaba Qwen (Qwen 3, QwQ)
-│   ├── GLMProvider.kt         — Zhipu GLM-4
-│   ├── MoonshotProvider.kt    — Moonshot (Kimi)
+│   ├── QwenProvider.kt        — Alibaba Qwen (Qwen 3.5, QwQ)
+│   ├── GLMProvider.kt         — Zhipu GLM-4-Plus
+│   ├── MoonshotProvider.kt    — Moonshot (Kimi K2.5)
 │   ├── MinimaxProvider.kt     — Minimax
 │   ├── VeniceProvider.kt      — Venice AI
 │   ├── LMStudioProvider.kt    — LM Studio (local, OpenAI-compatible)
@@ -278,25 +278,25 @@ providers/
 
 | Provider | Models | Streaming | Tool Use | Vision | Auth |
 |----------|--------|-----------|----------|--------|------|
-| **OpenAI** | **GPT-5.2** (unified, 400K ctx), GPT-4o, o3, o4-mini | ✅ | ✅ | ✅ | API key |
-| **Anthropic** | **Claude Opus 4**, **Claude Sonnet 4.5**, Claude Haiku 4.5 | ✅ | ✅ | ✅ | API key |
-| **Google** | **Gemini 2.5 Pro**, **Gemini 2.5 Flash**, Gemini 3 Pro, Gemma 3 27B | ✅ | ✅ | ✅ | API key / OAuth |
-| **DeepSeek** | **DeepSeek-V3.1**, DeepSeek-R1 | ✅ | ✅ | ✅ | API key |
-| **Mistral** | **Magistral 2**, Mixtral 12x24B MoE, Mistral Large (25.03), Codestral, Pixtral Large | ✅ | ✅ | ✅ | API key |
-| **Meta** | **Llama 4 Maverick** (400B/17B active), **Llama 4 Scout** (109B/17B active, 10M ctx), Llama 4 Behemoth | ✅ | ✅ | ✅ | via API partners |
-| **xAI** | Grok 3, Grok 3 Mini | ✅ | ✅ | ✅ | API key |
-| **Cohere** | **Command A** (03-2025), Command R+, Embed v4 | ✅ | ✅ | ❌ | API key |
+| **OpenAI** | **GPT-5.4** (1M ctx, reasoning levels), GPT-5.4-pro, GPT-5-mini, GPT-5-nano, o3-pro | ✅ | ✅ | ✅ | API key |
+| **Anthropic** | **Claude Opus 4.6** (200K, 1M beta), **Claude Sonnet 4.6**, Claude Haiku 4.5 | ✅ | ✅ | ✅ | API key |
+| **Google** | **Gemini 3.1 Pro** (preview), **Gemini 3 Flash**, Gemini 3.1 Flash-Lite, Gemini 2.5 Pro/Flash | ✅ | ✅ | ✅ | API key / OAuth |
+| **DeepSeek** | **DeepSeek-V3.2**, DeepSeek-V3.2-Speciale, DeepSeek-R1-0528 | ✅ | ✅ | ✅ | API key |
+| **Mistral** | **Mistral Large 3** (675B MoE), Magistral Medium 1.2, Magistral Small, Codestral, Pixtral Large | ✅ | ✅ | ✅ | API key |
+| **Meta** | **Llama 4 Maverick** (400B/17B active), **Llama 4 Scout** (109B/17B active, 10M ctx) | ✅ | ✅ | ✅ | via API partners |
+| **xAI** | **Grok 4**, Grok 4 Mini | ✅ | ✅ | ✅ | API key |
+| **Cohere** | **Command A**, Command A Reasoning, Command A Vision, Embed v4 | ✅ | ✅ | ✅ | API key |
 | **Groq** | Llama 4 Scout, DeepSeek-R1, Qwen QwQ (ultra-fast inference) | ✅ | ✅ | ❌ | API key |
 | **Together** | 100+ open models hosted | ✅ | ✅ | Varies | API key |
 | **Fireworks** | Llama 4, DeepSeek, Qwen (fast inference) | ✅ | ✅ | Varies | API key |
-| **Perplexity** | Sonar Pro, Sonar (search-augmented) | ✅ | ❌ | ❌ | API key |
+| **Perplexity** | **Sonar Pro**, Sonar, Sonar Reasoning Pro, Sonar Deep Research | ✅ | ❌ | ❌ | API key |
 | **OpenRouter** | 200+ models (unified gateway) | ✅ | ✅ | Varies | API key |
-| **Qwen** | **Qwen 2.5** series (72B, 32B, 14B, 7B), QwQ-32B | ✅ | ✅ | ✅ | API key |
+| **Qwen** | **Qwen 3.5** series (72B, 32B, 14B, 7B), Qwen 3.5 Small (0.8B-9B), QwQ | ✅ | ✅ | ✅ | API key |
 | **GLM** | GLM-4-Plus, GLM-4V-Plus | ✅ | ✅ | ✅ | API key |
-| **Moonshot** | Kimi k2 | ✅ | ✅ | ❌ | API key |
+| **Moonshot** | **Kimi K2.5** (multimodal, Agent Swarm) | ✅ | ✅ | ✅ | API key |
 | **Minimax** | MiniMax-01 | ✅ | ✅ | ❌ | API key |
 | **Venice** | Open models (privacy-focused) | ✅ | ✅ | Varies | API key |
-| **GitHub Copilot** | GPT-5.2, Claude Sonnet (via Copilot) | ✅ | ✅ | ❌ | OAuth |
+| **GitHub Copilot** | GPT-5.4, Claude Sonnet 4.6 (via Copilot) | ✅ | ✅ | ❌ | OAuth |
 | **LM Studio** | Any GGUF model (local) | ✅ | ✅ | ❌ | None |
 | **Ollama** | Any GGUF model (local) | ✅ | ✅ | Varies | None |
 
@@ -305,17 +305,17 @@ providers/
 | Model | Size | Quantization | Use Case | Min RAM |
 |-------|------|-------------|----------|---------|
 | Gemini Nano | ~built-in | LiteRT-LM native | Google Pixel/Samsung (pre-installed) | 4GB |
-| Qwen 2.5 0.5B | ~350MB | Q4_K_M GGUF | Ultra-fast, simple tasks | 2GB |
-| Qwen 2.5 1.5B | ~1GB | Q4_K_M GGUF | Fast, good quality | 4GB |
-| Phi-4-mini 3.8B | ~2.5GB | Q4_K_M GGUF | Microsoft, code-optimized | 6GB |
-| Qwen 2.5 7B | ~4.5GB | Q4_K_M GGUF | High quality, flagship phones | 8GB |
+| Gemma 3n 5B (2B effective) | ~1.5GB | Q4_K_M GGUF | Mobile-first, 2B memory footprint | 4GB |
+| Qwen 3.5 Small 0.8B | ~500MB | Q4_K_M GGUF | Ultra-fast, simple tasks | 2GB |
+| Qwen 3.5 Small 3B | ~2GB | Q4_K_M GGUF | Fast, good quality | 4GB |
+| SmolLM3 3B | ~2GB | Q4_K_M GGUF | Think/no-think modes, ultra-efficient | 4GB |
+| Phi-4-mini 3.8B | ~2.5GB | Q4_K_M GGUF | Microsoft, 128K context, code-optimized | 6GB |
+| Ministral 3 | ~2GB | Q4_K_M GGUF | Mistral edge model | 4GB |
+| Qwen 3.5 Small 9B | ~6GB | Q4_K_M GGUF | High quality, flagship phones | 8GB |
 | Gemma 3 4B | ~2.8GB | Q4_K_M GGUF | Google-optimized, edge-first | 6GB |
-| Llama 3.1 8B Instruct | ~5GB | Q4_K_M GGUF | Best open-source general | 8GB |
 | DeepSeek-R1-Distill 1.5B | ~1GB | Q4_K_M GGUF | Reasoning on device | 4GB |
-| SmolLM2 1.7B | ~1.1GB | Q4_K_M GGUF | Ultra-efficient | 4GB |
 | Llama 4 Scout 17B (MoE) | ~10GB | Q4_K_M GGUF | Best quality, 16GB+ RAM | 16GB |
-| Qwen 2.5-VL-7B-Instruct | ~5GB | Q4_K_M GGUF | Vision + language on device | 8GB |
-| Mistral Small 3.1 24B | ~15GB | Q4_K_M GGUF | High-end devices only | 16GB |
+| Qwen 3.5-VL-7B | ~5GB | Q4_K_M GGUF | Vision + language on device | 8GB |
 
 **Performance expectations (March 2026):**
 - Flagship (SD 8 Elite, 16GB): 15-30 tok/s for 7B, targeting 200 tok/s with NPU
