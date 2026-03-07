@@ -111,6 +111,7 @@
 | **8** | Documentation | Complete Guappa docs from scratch (40+ files) | Phase 1-7 | [phase-08-documentation.md](phase-08-documentation.md) |
 | **9** | Testing & QA | Maestro E2E (40+ flows), JUnit, Espresso, resilience, CI | Phase 1-7 | [phase-09-testing-qa.md](phase-09-testing-qa.md) |
 | **10** | Live Config | TurboModules bridge, reactive StateFlow, hot-swap everything | Phase 1, 2, 3 | [phase-10-live-config.md](phase-10-live-config.md) |
+| **11** | World Wide Swarm | WWSP connector, decentralized agent collaboration, swarm tasks | Phase 1, 2, 4 | [phase-11-world-wide-swarm.md](phase-11-world-wide-swarm.md) |
 
 ### Key Design Decisions (updated)
 
@@ -776,12 +777,76 @@ channels/
 | **Email** | IMAP/SMTP | ✅ | ✅ | Attachments | Credentials |
 | **SMS** | Android API | ✅ | ✅ | Text only | Permissions |
 
-### 5.3 Documentation Plan
+### 5.3 Pairing & Security Mechanism (from ZeroClaw)
+
+Adapted from ZeroClaw's proven pairing system (`src/security/pairing.rs` + `src/gateway/mod.rs`).
+
+#### 5.3.1 Gateway Pairing Flow
+
+```
+Step 1: Agent backend starts → generates one-time 6-digit code → displays in app UI
+Step 2: User enters code in Settings → POST /pair with X-Pairing-Code header
+Step 3: Backend validates → returns bearer token (zc_<32-byte-hex>, 256 bits entropy)
+Step 4: Token stored in Android KeyStore (SHA-256 hashed on server side)
+```
+
+**Security hardening (ported from ZeroClaw):**
+- Max 5 failed pairing attempts → 5-minute lockout per client
+- Rate limiting: configurable (default 10 `/pair` requests/minute)
+- Constant-time token comparison (prevents timing attacks)
+- Tokens never stored in plaintext — only SHA-256 hashes persisted
+- Memory-bounded failed attempts map (max 10K entries, LRU eviction)
+
+#### 5.3.2 Per-Channel Identity Binding
+
+Each messenger channel maintains an `allowed_users` allowlist:
+
+```kotlin
+data class ChannelConfig(
+    val botToken: String,
+    val allowedUsers: MutableList<String>,  // Empty = deny all, "*" = allow all (insecure)
+)
+
+fun isUserAllowed(userId: String): Boolean =
+    allowedUsers.any { it == "*" || it == userId }
+```
+
+**Two binding mechanisms per channel:**
+
+**A. In-Messenger `/bind <code>` Command:**
+1. If `allowedUsers` is empty → generate 6-digit bind code, show in app
+2. User sends `/bind <code>` in Telegram/Discord/Slack
+3. Channel validates code → adds user ID to `allowedUsers` → persists to config
+4. Responds: "Account bound successfully"
+
+**B. In-App Settings Binding (UI flow):**
+1. User enters their Telegram/Discord user ID in Settings
+2. App calls internal API to add identity to `allowedUsers`
+3. Identity persisted to local config (DataStore/encrypted prefs)
+
+#### 5.3.3 Allowlist Semantics
+
+| State | Behavior |
+|-------|----------|
+| Empty list `[]` | Deny all inbound messages (forces pairing first) |
+| Explicit IDs `["12345", "67890"]` | Allow only listed users |
+| Wildcard `["*"]` | Allow all senders (insecure, for testing only) |
+
+**Identity resolution per channel:**
+- Telegram: numeric user ID (preferred) or `@username` (fallback, normalized without `@`)
+- Discord: numeric user ID (snowflake)
+- Slack: user ID (e.g., `U0123456789`)
+- WhatsApp: phone number (E.164 format)
+- Matrix: Matrix user ID (`@user:server.org`)
+- Email: email address
+
+### 5.4 Documentation Plan
 - `docs/reference/channels.md` — all channels with setup instructions
 - `docs/guides/telegram-setup.md` — Telegram bot setup guide
 - `docs/guides/messenger-integration.md` — multi-channel setup
+- `docs/guides/channel-pairing.md` — pairing and security for each channel
 
-### 5.4 Test Plan
+### 5.5 Test Plan
 - Unit: Each channel — send, receive, format, health check
 - Unit: Channel hub — routing, failover
 - Integration: Message received on Telegram → agent processes → reply sent
@@ -1233,6 +1298,229 @@ config/
 
 ---
 
+## Phase 11: World Wide Swarm — Decentralized Agent Network
+
+### 11.0 Overview
+
+Integrate Guappa as a node in the [World Wide Swarm Protocol](https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol) (WWSP) — a decentralized network for AI agent collaboration. This enables Guappa to:
+- Receive tasks from the global agent swarm
+- Collaborate with other AI agents on complex multi-step tasks
+- Participate in deliberation councils (holons) for collective decision-making
+- Share capabilities and results across the network
+
+**Default state: Connected (enabled).** User can toggle on/off in Settings UI.
+
+### 11.1 WWSP Architecture (Three Layers)
+
+```
+┌─────────────────────────────────────┐
+│         Guappa Agent (Kotlin)       │  ← Agent Layer
+│  AgentLoop ↔ SwarmConnectorClient   │
+└───────────────┬─────────────────────┘
+                │ JSON-RPC 2.0 over TCP (port 9370)
+                │ OR HTTP REST/WebSocket (port 9371)
+┌───────────────┴─────────────────────┐
+│     wws-connector (Rust sidecar)    │  ← Connector Layer
+│  Identity, crypto, peer discovery   │
+│  Ed25519 keypair, did:swarm: DID    │
+└───────────────┬─────────────────────┘
+                │ Noise XX encrypted P2P (libp2p)
+                │ Kademlia DHT + GossipSub
+┌───────────────┴─────────────────────┐
+│        Global Swarm Network         │  ← Network Layer
+│  Peers, holons, elections, tasks    │
+└─────────────────────────────────────┘
+```
+
+Discovery is zero-configuration:
+1. **mDNS** — local network multicast
+2. **DNS TXT** — `_wws._tcp.worldwideswarm.net`
+3. **Hardcoded bootstrap peers** — fallback
+
+### 11.2 Integration Approach: Hybrid (Option B first, Option A later)
+
+**Phase 11a — Remote Connector (HTTP/WebSocket):**
+- Run `wws-connector` on user's server or cloud
+- Guappa connects via HTTP REST (port 9371) + WebSocket for real-time events
+- Standard Ktor/OkHttp client — no NDK complexity
+- Lower battery usage, works behind NAT
+
+**Phase 11b — Embedded Connector (full P2P, future):**
+- Cross-compile `wws-connector` to Android ARM64 via NDK
+- Run as Android foreground service
+- Connect via TCP `localhost:9370` (JSON-RPC 2.0, newline-delimited)
+- Full decentralized participation including local mDNS discovery
+
+### 11.3 Module Structure
+
+```
+swarm/
+├── SwarmConnector.kt           — unified interface (abstracts Option A/B)
+├── SwarmConfig.kt              — connection settings, toggle state
+├── SwarmRegistration.kt        — agent registration + anti-bot challenge solver
+├── SwarmTaskReceiver.kt        — poll/receive tasks from swarm
+├── SwarmResultSubmitter.kt     — submit task results with Merkle proofs
+├── SwarmMessageBus.kt          — inter-agent messaging
+├── SwarmReputationTracker.kt   — track and display agent reputation
+├── remote/
+│   ├── RemoteSwarmClient.kt   — HTTP REST + WebSocket client (Option B)
+│   ├── SwarmEventStream.kt    — SSE/WebSocket event processing
+│   └── SwarmRestApi.kt        — typed REST API calls
+├── embedded/
+│   ├── EmbeddedConnector.kt   — NDK bridge to wws-connector (Option A, future)
+│   └── ConnectorService.kt    — Android foreground service wrapper
+└── ui/
+    ├── SwarmSettingsScreen.kt — toggle on/off, connection status, peer count
+    ├── SwarmTasksScreen.kt    — view assigned/completed tasks
+    └── SwarmStatusWidget.kt   — dashboard widget showing swarm status
+```
+
+### 11.4 Registration Flow (Anti-Bot Challenge)
+
+```kotlin
+// Step 1: Register — connector returns arithmetic challenge
+val result = swarmClient.call("swarm.register_agent", mapOf(
+    "agent_id" to deviceId,
+    "name" to "Guappa Mobile Agent",
+    "capabilities" to listOf("text_generation", "tool_use", "vision", "app_control"),
+))
+// Returns: { "challenge": "wHAt 1S 64 pLus 33?", "verification_code": "abc123" }
+
+// Step 2: Solve challenge programmatically (parse integers, compute sum)
+val answer = solveArithmeticChallenge(result.challenge) // → 97
+
+// Step 3: Verify
+swarmClient.call("swarm.verify_agent", mapOf(
+    "code" to result.verificationCode,
+    "answer" to answer,
+))
+
+// Step 4: Re-register → { "registered": true }
+swarmClient.call("swarm.register_agent", mapOf(
+    "agent_id" to deviceId,
+    "name" to "Guappa Mobile Agent",
+    "capabilities" to listOf("text_generation", "tool_use", "vision", "app_control"),
+))
+```
+
+Additional security: proof-of-work (24-bit difficulty) for anti-Sybil protection.
+
+### 11.5 Key JSON-RPC Methods (27 total on port 9370)
+
+| Category | Methods |
+|----------|---------|
+| **Registration** | `swarm.register_agent`, `swarm.verify_agent` |
+| **Identity** | `swarm.register_name`, `swarm.resolve_name`, `swarm.rotate_key` |
+| **Status** | `swarm.get_status`, `swarm.get_hierarchy`, `swarm.get_network_stats` |
+| **Tasks** | `swarm.receive_task`, `swarm.get_task`, `swarm.inject_task`, `swarm.propose_plan`, `swarm.submit_result` |
+| **Messaging** | `swarm.send_message`, `swarm.get_messages` |
+| **Reputation** | `swarm.get_reputation`, `swarm.get_reputation_events`, `swarm.submit_reputation_event` |
+| **Receipts** | `swarm.create_receipt`, `swarm.fulfill_receipt`, `swarm.verify_receipt` |
+| **Security** | `swarm.emergency_revocation`, `swarm.register_guardians`, `swarm.guardian_recovery_vote` |
+
+### 11.6 REST API Surface (Option B — Remote Connector, port 9371)
+
+```
+GET  /api/health          — connector health check
+GET  /api/identity        — agent DID and peer ID
+GET  /api/network         — connected peers, bandwidth
+GET  /api/reputation      — agent reputation score and events
+GET  /api/topology        — network hierarchy visualization
+GET  /api/tasks           — assigned and completed tasks
+POST /api/tasks           — submit new task (body: {"description": "..."})
+GET  /api/directory       — known agents in the swarm
+GET  /api/holons          — active deliberation councils
+GET  /api/voting          — current election state
+GET  /api/events          — SSE stream (real-time events)
+WS   /api/stream          — WebSocket stream (real-time events)
+```
+
+### 11.7 Swarm Integration with Agent Loop
+
+```kotlin
+// When swarm assigns a task → route to AgentLoop
+swarmEventStream.collect { event ->
+    when (event.type) {
+        "task_assigned" -> {
+            val task = event.parseTask()
+            val result = agentLoop.execute(task.description, tools = task.requiredTools)
+            swarmClient.submitResult(task.id, result)
+            pushNotifier.notify("Swarm task completed: ${task.description.take(50)}")
+        }
+        "message_received" -> {
+            swarmMessageBus.emit(event.parseMessage())
+        }
+        "reputation_changed" -> {
+            swarmReputationTracker.update(event.parseReputation())
+        }
+    }
+}
+```
+
+### 11.8 Holon Deliberation Lifecycle
+
+When Guappa participates in a holon (temporary deliberation council):
+
+1. **Board Formation** — coordinator invites agents matching task requirements
+2. **Commit-Reveal** — agents submit sealed SHA-256 proposal hashes, then reveal
+3. **Critique Phase** — adversarial agent challenges all proposals
+4. **IRV Voting** — ranked-choice elimination (feasibility 30%, completeness 30%, parallelism 25%, risk 15%)
+5. **Execution** — subtasks with complexity > 0.4 recursively spawn sub-holons
+6. **Synthesis** — results combined, holon dissolved
+
+### 11.9 Tier System & Elections
+
+| Tier | Role | How to Achieve |
+|------|------|----------------|
+| **Executor** | Leaf node, does atomic tasks | Starting tier (all new agents) |
+| **Tier2** | Coordinator, supervises executors | Elected via IRV voting per epoch (~1h) |
+| **Tier1** | Leader, receives top-level tasks | Elected, oversees Tier2 nodes |
+
+- Task injection requires Member tier (100+ reputation)
+- Max 50 concurrent injections, 200-point blast radius per principal
+- Rate limit: 10 task injections/minute
+- Pyramid structure: branching factor k=10, max depth 10
+
+### 11.10 UI — Settings & Dashboard
+
+```
+Settings → Swarm Network
+├── [Toggle] Connected to World Wide Swarm (default: ON)
+├── Connection Mode: Remote / Embedded (future)
+├── Connector URL: http://<address>:9371
+├── Status: 🟢 Connected (42 peers, Tier: Executor)
+├── Reputation: 150 points
+├── Agent ID: did:swarm:z6Mk...
+├── [Button] View Swarm Tasks
+└── [Button] View Network Topology
+```
+
+**Polling cadences (Android-aware):**
+- Active: task poll every 5-10s, status every 10s, network stats every 30s
+- Background (Doze): use `WorkManager`, poll every 60s
+- Battery saver: disabled entirely
+- Minimum poll interval: 2s per method
+
+**Notifications:**
+- Persistent notification when swarm active: "Guappa connected to swarm (42 peers)"
+- Push notification on task completion / reputation change
+- Connector URL stored in encrypted SharedPreferences
+
+### 11.11 Test Plan
+
+- Unit: SwarmRegistration — challenge solving, verification flow
+- Unit: SwarmTaskReceiver — task parsing, routing to AgentLoop
+- Unit: SwarmResultSubmitter — result formatting
+- Integration: Register → receive task → execute → submit result
+- Integration: Toggle off → verify no swarm traffic → toggle on → reconnect
+- Maestro E2E: Settings → toggle swarm on/off → verify status indicator
+- Maestro E2E: Configure connector URL → verify connection
+- Resilience: Connector disconnect → automatic reconnection with exponential backoff
+- Resilience: Task execution failure → proper error reporting to swarm
+- Resilience: Network switch (WiFi ↔ cellular) → reconnection
+
+---
+
 ## Implementation Timeline
 
 | Phase | Name | Estimated Effort | Dependencies |
@@ -1247,10 +1535,12 @@ config/
 | 8 | Documentation | Medium | Phase 1-7 |
 | 9 | Testing & QA | Large | Phase 1-7 |
 | 10 | Live Config | Medium | Phase 1, 2, 3 |
+| 11 | World Wide Swarm | Medium | Phase 1, 2, 4 |
 
 **Phases 1-3 can partially overlap (3 depends on 1, 2 depends on 1, but 2 and 3 are independent).**
 **Phase 4 requires Phase 3 (tool completion triggers notifications).**
 **Phase 10 can start after Phase 2 (hot-swap provider is the first target).**
+**Phase 11 can start after Phase 4 (needs agent loop + push notifications for swarm task execution).**
 
 ---
 
@@ -1327,3 +1617,10 @@ Each phase is independently deployable and revertible:
 ### Android Intents
 - [Common Android Intents — developer.android.com](https://developer.android.com/guide/components/intents-common)
 - [Exact alarms denied by default — Android 14](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms)
+
+### World Wide Swarm Protocol
+- [World Wide Swarm Protocol — GitHub](https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol)
+- Architecture: 3-layer (Agent → Connector → Network), libp2p, Kademlia DHT, GossipSub
+- Protocols: JSON-RPC 2.0 (TCP port 9370), HTTP REST + SSE + WebSocket (port 9371)
+- Identity: Ed25519 keypairs, `did:swarm:` DIDs, Noise XX mutual auth
+- Consensus: commit-reveal, IRV voting, cascade planning via holons
