@@ -10,7 +10,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "What is your name?"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Wait for agent to respond
 - extendedWaitUntil:

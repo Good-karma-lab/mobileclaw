@@ -9,7 +9,7 @@ appId: com.guappa.app
 - assertVisible:
     id: "chat-input"
 - assertVisible:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 # Floating dock should have accessibility
 - assertVisible:
     id: "floating-dock"

@@ -10,7 +10,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Bubble test"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # User bubble should be visible
 - assertVisible:

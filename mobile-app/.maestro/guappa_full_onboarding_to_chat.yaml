@@ -29,6 +29,6 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Hello after onboarding"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Hello after onboarding"

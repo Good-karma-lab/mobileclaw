@@ -21,7 +21,10 @@ appId: com.guappa.app
 
 # Step 4: Permissions
 - assertVisible: "Permissions GUAPPA needs"
-- assertVisible: "Continue"
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 5000
 - tapOn: "Continue"
 
 # Should reach main app

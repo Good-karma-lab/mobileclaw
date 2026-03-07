@@ -23,7 +23,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Test error"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Error state should appear when no provider is configured
 - extendedWaitUntil:

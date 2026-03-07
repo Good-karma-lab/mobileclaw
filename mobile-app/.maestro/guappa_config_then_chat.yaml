@@ -22,6 +22,6 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Test after config"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Test after config"

@@ -32,6 +32,6 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Switched from voice"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Switched from voice"

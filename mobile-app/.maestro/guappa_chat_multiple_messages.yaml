@@ -11,21 +11,21 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "First message"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Message 2
 - tapOn:
     id: "chat-input"
 - inputText: "Second message"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Message 3
 - tapOn:
     id: "chat-input"
 - inputText: "Third message"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # All three should be visible
 - assertVisible: "First message"

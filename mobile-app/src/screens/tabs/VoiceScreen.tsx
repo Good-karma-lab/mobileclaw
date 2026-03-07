@@ -97,6 +97,7 @@ export function VoiceScreen() {
       {/* Bottom controls */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + 80 }]}>
         <Pressable
+          testID="mic-button"
           style={({ pressed }) => [
             styles.micButton,
             voiceState === "listening" && styles.micButtonActive,

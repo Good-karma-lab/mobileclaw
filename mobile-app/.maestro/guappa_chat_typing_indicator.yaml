@@ -10,7 +10,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Tell me a story"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 # Typing indicator should appear while agent is responding
 - extendedWaitUntil:
     visible:

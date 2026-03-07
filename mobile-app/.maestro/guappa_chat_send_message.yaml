@@ -10,6 +10,6 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Hello from Maestro test"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Hello from Maestro test"

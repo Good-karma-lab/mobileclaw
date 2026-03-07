@@ -11,13 +11,13 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Message one"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - tapOn:
     id: "chat-input"
 - inputText: "Message two"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Scroll up to see older messages
 - scroll:

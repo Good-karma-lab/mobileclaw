@@ -11,7 +11,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Persist this message"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Persist this message"
 # Navigate away to Voice

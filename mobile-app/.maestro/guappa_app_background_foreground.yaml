@@ -11,7 +11,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Before background"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Before background"
 # Send app to background

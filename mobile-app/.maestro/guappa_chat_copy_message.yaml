@@ -11,7 +11,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "Copy me"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 - assertVisible: "Copy me"
 # Long press the message bubble

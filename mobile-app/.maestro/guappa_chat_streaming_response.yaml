@@ -10,7 +10,7 @@ appId: com.guappa.app
     id: "chat-input"
 - inputText: "What is 2 + 2?"
 - tapOn:
-    id: "chat-send-btn"
+    id: "chat-send-button"
 - waitForAnimationToEnd
 # Streaming bubble should appear with agent response
 - extendedWaitUntil:

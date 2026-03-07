@@ -94,7 +94,7 @@ export function PlasmaOrb({
   const glowSize = size;
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View testID="plasma-orb" style={[styles.container, { width: size, height: size }]}>
       {/* Outer glow */}
       <Animated.View
         style={[
