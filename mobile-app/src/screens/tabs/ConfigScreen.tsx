@@ -18,9 +18,12 @@ import {
 import {
   loadAgentConfig,
   saveAgentConfig,
+  loadIntegrationsConfig,
   DEFAULT_AGENT_CONFIG,
   type AgentRuntimeConfig,
 } from "../../state/guappa";
+import { startAgent } from "../../native/guappaAgent";
+import { startLocalLlmServer, LOCAL_LLM_URL } from "../../native/localLlmServer";
 
 // --- Option lists ---
 
@@ -55,6 +58,7 @@ export function ConfigScreen() {
   const insets = useSafeAreaInsets();
   const [config, setConfig] = useState<AgentRuntimeConfig>(DEFAULT_AGENT_CONFIG);
   const [loaded, setLoaded] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load config on mount
@@ -74,6 +78,54 @@ export function ConfigScreen() {
       saveAgentConfig(updated);
     }, SAVE_DEBOUNCE_MS);
   }, []);
+
+  // Restart agent with current config (hot-reload)
+  const restartAgent = useCallback(async () => {
+    setRestarting(true);
+    try {
+      await saveAgentConfig(config);
+      const integCfg = await loadIntegrationsConfig();
+      const runtimeApiKey =
+        config.authMode === "oauth_token" ? config.oauthAccessToken : config.apiKey;
+
+      const agentConfig: Record<string, any> = {
+        apiKey: runtimeApiKey,
+        provider: config.provider,
+        model: config.model,
+        apiUrl: config.apiUrl,
+        temperature: config.temperature,
+        telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : "",
+        telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : "",
+        discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : "",
+        slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : "",
+        composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : "",
+        braveApiKey: config.braveApiKey || "",
+        localModelPath: config.localModelPath || "",
+        thinkingMode: config.thinkingMode ?? false,
+      };
+
+      if (agentConfig.provider === "local" && agentConfig.localModelPath) {
+        await startLocalLlmServer({
+          modelPath: agentConfig.localModelPath,
+          gpuLayers: config.gpuLayers ?? 0,
+          cpuThreads: config.cpuThreads ?? 4,
+          contextLength: config.contextLength ?? 2048,
+          thinkingMode: config.thinkingMode ?? true,
+        });
+        agentConfig.provider = "openai";
+        agentConfig.apiUrl = `${LOCAL_LLM_URL}/v1`;
+        agentConfig.apiKey = "local";
+        agentConfig.model = "local";
+      }
+
+      await startAgent(agentConfig);
+      console.log("[config] agent restarted with new config");
+    } catch (err) {
+      console.warn("[config] agent restart failed:", err);
+    } finally {
+      setRestarting(false);
+    }
+  }, [config]);
 
   // Helper to update a single config key
   const updateConfig = useCallback(
@@ -103,19 +155,22 @@ export function ConfigScreen() {
           <Text style={styles.headerTitle}>Configuration</Text>
           <Pressable
             style={({ pressed }) => [
-              styles.searchButton,
+              styles.restartButton,
               pressed && { opacity: 0.7 },
+              restarting && { opacity: 0.5 },
             ]}
-            onPress={() => {
-              /* search placeholder */
-            }}
+            onPress={restartAgent}
+            disabled={restarting}
             hitSlop={8}
           >
             <Ionicons
-              name="search-outline"
-              size={20}
-              color={colors.text.secondary}
+              name="refresh-outline"
+              size={16}
+              color={colors.accent.cyan}
             />
+            <Text style={styles.restartButtonText}>
+              {restarting ? "Restarting..." : "Apply"}
+            </Text>
           </Pressable>
         </View>
         {/* Bottom gradient line: cyan -> transparent -> cyan */}
@@ -409,15 +464,22 @@ const styles = StyleSheet.create({
     fontFamily: typography.display.fontFamily,
     letterSpacing: 1,
   },
-  searchButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    borderWidth: 1,
-    borderColor: colors.glass.borderSubtle,
+  restartButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "rgba(0, 240, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 240, 255, 0.20)",
+  },
+  restartButtonText: {
+    color: colors.accent.cyan,
+    fontSize: 12,
+    fontFamily: typography.bodySemiBold.fontFamily,
+    letterSpacing: 0.3,
   },
   headerLine: {
     height: 1,
