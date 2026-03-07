@@ -11,6 +11,7 @@ import { typography } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import { MessageBubble, type Message } from "../../components/chat/MessageBubble";
 import { ChatInputBar } from "../../components/chat/ChatInputBar";
+import { runAgentTurn } from "../../runtime/session";
 
 const STORAGE_KEY = "guappa:chat:messages:v1";
 const DEBOUNCE_MS = 300;
@@ -65,9 +66,11 @@ export function ChatScreen() {
     };
   }, []);
 
-  const handleSend = useCallback(() => {
+  const [isThinking, setIsThinking] = useState(false);
+
+  const handleSend = useCallback(async () => {
     const trimmed = draft.trim();
-    if (!trimmed) return;
+    if (!trimmed || isThinking) return;
 
     const userMessage: Message = {
       id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -83,11 +86,37 @@ export function ChatScreen() {
       return next;
     });
 
-    // Scroll to end after adding message
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
-  }, [draft, saveMessages]);
+
+    // Call real agent backend
+    setIsThinking(true);
+    try {
+      const { assistantText } = await runAgentTurn(trimmed);
+      const agentMessage: Message = {
+        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        role: "assistant",
+        content: assistantText,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => {
+        const next = [...prev, agentMessage];
+        saveMessages(next);
+        return next;
+      });
+    } catch (e: any) {
+      const errorMessage: Message = {
+        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        role: "assistant",
+        content: `Error: ${e?.message || "Unknown error"}`,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsThinking(false);
+    }
+  }, [draft, saveMessages, isThinking]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => (

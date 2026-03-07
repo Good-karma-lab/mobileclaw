@@ -53,12 +53,6 @@
       android:enabled="true"
       android:exported="false"
       android:foregroundServiceType="dataSync" />
-    <!-- Legacy daemon service (kept for migration) -->
-    <service
-      android:name=".ZeroClawDaemonService"
-      android:enabled="false"
-      android:exported="false"
-      android:foregroundServiceType="dataSync" />
     <!-- Guappa Agent Service -->
     <service
       android:name=".GuappaAgentService"

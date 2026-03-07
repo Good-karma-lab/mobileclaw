@@ -3,10 +3,6 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
-def repoRoot = new File(projectRoot).getParentFile().getAbsolutePath()
-def rustAssetsDir = file("$buildDir/generated/rustAssets")
-def rustJniLibsDir = file("$buildDir/generated/rustJniLibs")
-def cargoBin = "${System.getProperty('user.home')}/.cargo/bin/cargo"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -136,39 +132,9 @@ android {
     }
     sourceSets {
         main {
-            assets.srcDirs += rustAssetsDir
-            // Commented out: Using manually placed binaries in src/main/jniLibs instead
-            // jniLibs.srcDirs += rustJniLibsDir
         }
     }
 }
-
-// JNI libs are pre-built via build_android_jni.sh and placed in src/main/jniLibs/.
-// This task is a no-op placeholder so the preBuild dependency chain stays intact.
-tasks.register("buildGuappaAndroidBinaries") {
-    doLast { /* no-op: JNI .so files placed manually */ }
-}
-
-tasks.register("prepareGuappaAndroidAssets", Copy) {
-    dependsOn "buildGuappaAndroidBinaries"
-    into rustAssetsDir
-    from("$repoRoot/target/x86_64-linux-android/release/guappa") {
-        into "guappa/x86_64"
-        rename { "guappa" }
-    }
-    from("$repoRoot/target/aarch64-linux-android/release/guappa") {
-        into "guappa/arm64-v8a"
-        rename { "guappa" }
-    }
-}
-
-tasks.register("prepareGuappaAndroidJniLibs", Copy) {
-    dependsOn "buildGuappaAndroidBinaries"
-    doLast { /* JNI libs are provided by build_android_jni.sh in src/main/jniLibs */ }
-}
-
-preBuild.dependsOn("prepareGuappaAndroidAssets")
-preBuild.dependsOn("prepareGuappaAndroidJniLibs")
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:

@@ -15,8 +15,8 @@ import org.json.JSONObject
 class GuappaOrchestrator(
     private val messageBus: MessageBus,
     private val config: GuappaConfig,
-    private val providerRouter: ProviderRouter? = null,
-    private val context: Context? = null
+    private var providerRouter: ProviderRouter? = null,
+    private var context: Context? = null
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sessions = mutableMapOf<String, GuappaSession>()
@@ -32,6 +32,11 @@ class GuappaOrchestrator(
     companion object {
         private const val MAX_REACT_ITERATIONS = 5
         private const val SYSTEM_PROMPT = "You are Guappa, a helpful AI assistant running on an Android device. You have access to device tools to help the user. Use tools when appropriate to fulfill user requests."
+    }
+
+    fun configure(router: ProviderRouter, ctx: Context) {
+        this.providerRouter = router
+        this.context = ctx
     }
 
     fun start() {

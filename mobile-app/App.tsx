@@ -23,7 +23,7 @@ import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./s
 import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
-import { startDaemon, restartDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/guappaAgent";
+import { startAgent, isAgentRunning } from "./src/native/guappaAgent";
 import { startLocalLlmServer, stopLocalLlmServer, LOCAL_LLM_URL } from "./src/native/localLlmServer";
 
 // Dev-only: prepopulate credentials for faster local testing
@@ -72,10 +72,10 @@ export default function App() {
           log("info", "dev credentials prepopulated");
         }
 
-        // Never block UI on daemon startup.
+        // Never block UI on agent startup.
         setIsReady(true);
 
-        // Start embedded daemon in background (Android only)
+        // Start Kotlin agent in background (Android only)
         if (Platform.OS === 'android') {
           void (async () => {
             try {
@@ -83,7 +83,7 @@ export default function App() {
               const integCfg = await loadIntegrationsConfig();
               const runtimeApiKey =
                 agentCfg.authMode === "oauth_token" ? agentCfg.oauthAccessToken : agentCfg.apiKey;
-              const daemonConfig = {
+              const agentConfig = {
                 apiKey: runtimeApiKey,
                 provider: agentCfg.provider,
                 model: agentCfg.model,
@@ -100,50 +100,30 @@ export default function App() {
               };
 
               // If provider is "local", start the on-device LLM server first
-              // and remap to Ollama provider pointing at it
-              if (daemonConfig.provider === "local" && daemonConfig.localModelPath) {
+              if (agentConfig.provider === "local" && agentConfig.localModelPath) {
                 console.log("[app] starting local LLM server...");
                 await startLocalLlmServer({
-                  modelPath: daemonConfig.localModelPath,
+                  modelPath: agentConfig.localModelPath,
                   gpuLayers: agentCfg.gpuLayers ?? 0,
                   cpuThreads: agentCfg.cpuThreads ?? 4,
                   contextLength: agentCfg.contextLength ?? 2048,
                   thinkingMode: agentCfg.thinkingMode ?? true,
                 });
-                daemonConfig.provider = "openai";
-                daemonConfig.apiUrl = `${LOCAL_LLM_URL}/v1`;
-                daemonConfig.apiKey = "local";
-                daemonConfig.model = "local";
-                console.log("[app] local LLM server started, daemon will use Ollama at", LOCAL_LLM_URL);
+                agentConfig.provider = "openai";
+                agentConfig.apiUrl = `${LOCAL_LLM_URL}/v1`;
+                agentConfig.apiKey = "local";
+                agentConfig.model = "local";
+                console.log("[app] local LLM server started");
               }
 
-              console.log("[app] starting embedded Guappa daemon...");
-              const running = await isDaemonRunning();
-
-              if (!running) {
-                await startDaemon(daemonConfig);
-                console.log("[app] daemon start requested, waiting for readiness...");
-              } else {
-                // Restart with current config to pick up provider changes (e.g. local→ollama remap)
-                console.log("[app] daemon already running, restarting with current config...");
-                await restartDaemon(daemonConfig);
-              }
-
-              await waitForDaemonReady(25000, 750);
+              console.log("[app] starting Guappa agent...");
+              await startAgent(agentConfig);
               setDaemonReady(true);
-              log("info", "embedded daemon ready", { url: "http://127.0.0.1:8000" });
+              log("info", "Guappa agent started");
             } catch (err) {
-              console.warn("[app] embedded daemon not ready, attempting one restart:", err);
-              try {
-                await restartDaemon(daemonConfig);
-                await waitForDaemonReady(30000, 1000);
-                setDaemonReady(true);
-                log("info", "embedded daemon recovered after restart", { url: "http://127.0.0.1:8000" });
-              } catch (restartErr) {
-                console.warn("[app] embedded daemon still not ready:", restartErr);
-                setDaemonReady(false);
-                log("warn", "embedded daemon failed", { error: restartErr instanceof Error ? restartErr.message : String(restartErr) });
-              }
+              console.warn("[app] agent start failed:", err);
+              setDaemonReady(false);
+              log("warn", "agent start failed", { error: err instanceof Error ? err.message : String(err) });
             }
           })();
         } else {
@@ -218,18 +198,7 @@ export default function App() {
           title: "Incoming call hook",
           detail: `${event.state} from ${phone}`,
         });
-        try {
-          await fetch('http://127.0.0.1:8000/agent/event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event_type: 'incoming_call',
-              data: { phone, state: event.state },
-            }),
-          });
-        } catch (err) {
-          console.warn('[app] Failed to forward call event to agent:', err);
-        }
+        // Call events are handled by native Kotlin BroadcastReceiver directly
       })();
     }, (event) => {
       void (async () => {
@@ -243,18 +212,7 @@ export default function App() {
           title: "Incoming SMS hook",
           detail: `from ${address}`,
         });
-        try {
-          await fetch('http://127.0.0.1:8000/agent/event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              event_type: 'incoming_sms',
-              data: { address },
-            }),
-          });
-        } catch (err) {
-          console.warn('[app] Failed to forward SMS event to agent:', err);
-        }
+        // SMS events are handled by native Kotlin BroadcastReceiver directly
       })();
     });
 
