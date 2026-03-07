@@ -20,6 +20,7 @@ Integrate Guappa as a first-class node in the World Wide Swarm Protocol (WWSP) �
 
 Before writing code, study:
 
+- [ ] WWS Repo: https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 - [ ] WWSP protocol specification — `GET /SKILL.md` from any running connector
 - [ ] WWSP connector codebase — `wws-connector/` (Rust, crate structure)
 - [ ] JSON-RPC 2.0 specification (newline-delimited over TCP)

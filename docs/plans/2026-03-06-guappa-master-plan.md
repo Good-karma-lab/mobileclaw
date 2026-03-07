@@ -108,10 +108,11 @@
 | **5** | Channel Hub | Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Email, SMS | Phase 1, 4 | [phase-05-channel-hub.md](phase-05-channel-hub.md) |
 | **6** | Voice Pipeline | STT + streaming TTS + wake word + VAD + voice mode | Phase 2 | [phase-06-voice-pipeline.md](phase-06-voice-pipeline.md) |
 | **7** | Memory & Context | 5-tier memory, auto-summarization, recursive LLM, RAG, consolidation | Phase 1 | [phase-07-memory-context.md](phase-07-memory-context.md) |
-| **8** | Documentation | Complete Guappa docs from scratch (40+ files) | Phase 1-7 | [phase-08-documentation.md](phase-08-documentation.md) |
+| **13** | Documentation | Complete Guappa docs from scratch (40+ files) | Phase 1-12 | [phase-13-documentation.md](phase-13-documentation.md) |
 | **9** | Testing & QA | Maestro E2E (40+ flows), JUnit, Espresso, resilience, CI | Phase 1-7 | [phase-09-testing-qa.md](phase-09-testing-qa.md) |
 | **10** | Live Config | TurboModules bridge, reactive StateFlow, hot-swap everything | Phase 1, 2, 3 | [phase-10-live-config.md](phase-10-live-config.md) |
 | **11** | World Wide Swarm | WWSP connector, decentralized agent collaboration, swarm tasks | Phase 1, 2, 4 | [phase-11-world-wide-swarm.md](phase-11-world-wide-swarm.md) |
+| **12** | Android UI | Ultra-futuristic liquid glass interface, plasma orb voice mode, 5-screen redesign, 122 Maestro E2E tests | Phase 1-7, 10, 11 | [phase-12-android-ui.md](phase-12-android-ui.md) |
 
 ### Key Design Decisions (updated)
 
