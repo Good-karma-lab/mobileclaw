@@ -14,6 +14,6 @@ appId: com.guappa.app
 - waitForAnimationToEnd:
     timeout: 180000
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 - assertNotVisible:
     text: "Network request failed"

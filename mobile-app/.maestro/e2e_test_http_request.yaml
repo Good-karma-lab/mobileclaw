@@ -18,7 +18,7 @@ appId: com.guappa.app
     timeout: 120000
 # No errors
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 - assertNotVisible:
     text: "disabled"
 # Agent should show HTTP response

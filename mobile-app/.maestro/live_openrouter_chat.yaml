@@ -61,7 +61,7 @@ appId: com.guappa.app
 - assertNotVisible:
     text: "Network request failed"
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 
 - tapOn:
     id: dock-tab-activity

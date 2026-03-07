@@ -16,7 +16,7 @@ class ModelDownloaderModule(reactContext: ReactApplicationContext) :
     override fun getName(): String = "ModelDownloader"
 
     private fun modelsDir(): File {
-        val dir = File(reactApplicationContext.filesDir, ".zeroclaw/models")
+        val dir = File(reactApplicationContext.filesDir, ".guappa/models")
         if (!dir.exists()) dir.mkdirs()
         return dir
     }

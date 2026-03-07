@@ -37,16 +37,6 @@ jobs:
             - name: Install mobile app dependencies
               run: npm ci
 
-            - name: Install Rust toolchain and cargo-ndk
-              run: |
-                  set -euo pipefail
-                  rustup toolchain install 1.92.0 --profile minimal
-                  rustup default 1.92.0
-                  rustup target add aarch64-linux-android x86_64-linux-android
-                  if ! cargo ndk --version >/dev/null 2>&1; then
-                    cargo install cargo-ndk --locked
-                  fi
-
             - name: Generate Android native project
               env:
                   CI: "1"
@@ -97,7 +87,7 @@ jobs:
                   VERSION="${GITHUB_REF_NAME}"
                   RELEASE_DIR="release-artifacts"
                   APK_SOURCE="android/app/build/outputs/apk/release/app-release.apk"
-                  APK_NAME="mobileclaw-${VERSION}.apk"
+                  APK_NAME="guappa-${VERSION}.apk"
 
                   mkdir -p "$RELEASE_DIR"
                   cp "$APK_SOURCE" "$RELEASE_DIR/$APK_NAME"
@@ -109,7 +99,7 @@ jobs:
             - name: Upload release artifacts
               uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
               with:
-                  name: mobileclaw-android-release
+                  name: guappa-android-release
                   path: |
                       mobile-app/release-artifacts/*.apk
                       mobile-app/release-artifacts/SHA256SUMS

@@ -2,12 +2,12 @@
 # E2E test: geofence SMS — set GPS near home, verify SMS is sent
 #
 # Required env vars:
-#   ZEROCLAW_HOME_LAT   — home latitude (e.g. 37.7749)
-#   ZEROCLAW_HOME_LON   — home longitude (e.g. -122.4194)
-#   ZEROCLAW_WIFE_NUMBER — wife's phone number
+#   GUAPPA_HOME_LAT   — home latitude (e.g. 37.7749)
+#   GUAPPA_HOME_LON   — home longitude (e.g. -122.4194)
+#   GUAPPA_WIFE_NUMBER — wife's phone number
 #
 # Optional env vars:
-#   ZEROCLAW_EMULATOR — ADB device ID (default: emulator-5554)
+#   GUAPPA_EMULATOR — ADB device ID (default: emulator-5554)
 #
 # What this tests (end-to-end):
 #   1. Maestro: ask agent to set up home-arrival SMS trigger
@@ -18,10 +18,10 @@
 set -euo pipefail
 
 ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
-EMULATOR="${ZEROCLAW_EMULATOR:-emulator-5554}"
-HOME_LAT="${ZEROCLAW_HOME_LAT:-37.7749}"
-HOME_LON="${ZEROCLAW_HOME_LON:--122.4194}"
-WIFE_NUMBER="${ZEROCLAW_WIFE_NUMBER:?Need ZEROCLAW_WIFE_NUMBER}"
+EMULATOR="${GUAPPA_EMULATOR:-emulator-5554}"
+HOME_LAT="${GUAPPA_HOME_LAT:-37.7749}"
+HOME_LON="${GUAPPA_HOME_LON:--122.4194}"
+WIFE_NUMBER="${GUAPPA_WIFE_NUMBER:?Need GUAPPA_WIFE_NUMBER}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

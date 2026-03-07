@@ -15,7 +15,7 @@ appId: com.guappa.app
     timeout: 360000
 # No errors — these are hard failures
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 - assertNotVisible:
     text: "Network request failed"
 - assertNotVisible:

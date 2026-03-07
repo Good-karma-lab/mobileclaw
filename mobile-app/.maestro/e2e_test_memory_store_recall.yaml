@@ -18,7 +18,7 @@ appId: com.guappa.app
     timeout: 120000
 # No errors
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 - assertNotVisible:
     text: "disabled"
 # Step 2: Force stop app to clear chat context (simulates new session)
@@ -38,7 +38,7 @@ appId: com.guappa.app
 - waitForAnimationToEnd:
     timeout: 120000
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 # Agent should recall QUANTUM_BANANA_42 from memory (not chat history)
 - assertVisible:
     text: "QUANTUM_BANANA_42"

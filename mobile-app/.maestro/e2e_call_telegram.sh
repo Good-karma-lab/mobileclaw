@@ -2,12 +2,12 @@
 # E2E test: incoming call → Telegram notification
 #
 # Required env vars:
-#   ZEROCLAW_TG_BOT_TOKEN      — Telegram bot token
-#   ZEROCLAW_TG_CHAT_ID        — Telegram chat ID of the recipient (numeric)
-#   ZEROCLAW_TEST_CALLER_NUMBER — Phone number that triggers the hook
+#   GUAPPA_TG_BOT_TOKEN      — Telegram bot token
+#   GUAPPA_TG_CHAT_ID        — Telegram chat ID of the recipient (numeric)
+#   GUAPPA_TEST_CALLER_NUMBER — Phone number that triggers the hook
 #
 # Optional env vars:
-#   ZEROCLAW_EMULATOR — ADB device ID (default: emulator-5554)
+#   GUAPPA_EMULATOR — ADB device ID (default: emulator-5554)
 #
 # What this tests (end-to-end):
 #   1. Maestro: ask agent to set up incoming call hook + Telegram notification
@@ -19,17 +19,17 @@
 set -euo pipefail
 
 ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
-EMULATOR="${ZEROCLAW_EMULATOR:-emulator-5554}"
-BOT_TOKEN="${ZEROCLAW_TG_BOT_TOKEN:?Need ZEROCLAW_TG_BOT_TOKEN}"
-CHAT_ID="${ZEROCLAW_TG_CHAT_ID:?Need ZEROCLAW_TG_CHAT_ID}"
-TEST_NUMBER="${ZEROCLAW_TEST_CALLER_NUMBER:?Need ZEROCLAW_TEST_CALLER_NUMBER}"
+EMULATOR="${GUAPPA_EMULATOR:-emulator-5554}"
+BOT_TOKEN="${GUAPPA_TG_BOT_TOKEN:?Need GUAPPA_TG_BOT_TOKEN}"
+CHAT_ID="${GUAPPA_TG_CHAT_ID:?Need GUAPPA_TG_CHAT_ID}"
+TEST_NUMBER="${GUAPPA_TEST_CALLER_NUMBER:?Need GUAPPA_TEST_CALLER_NUMBER}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "=== Step 1: Run Maestro scenario — set up call hook + Telegram ==="
 maestro test --device "$EMULATOR" "$SCRIPT_DIR/test_scenario_incoming_call_telegram.yaml"
 
-echo "=== Step 2: Wait 30s for hook to register in daemon ==="
+echo "=== Step 2: Wait 30s for hook to register in backend ==="
 sleep 30
 
 echo "=== Step 3: Record last Telegram message ID before test ==="
@@ -81,7 +81,7 @@ echo ""
 echo "⚠️  No new Telegram bot updates detected."
 echo "    This could mean:"
 echo "    1. The bot sent a message successfully but no user response came back"
-echo "    2. The hook did not fire (check daemon logs)"
+echo "    2. The hook did not fire (check backend logs)"
 echo "    3. The Telegram chat_id is not configured in app settings"
 echo ""
 echo "    Manual check: Open Telegram and see if you received a call notification"

@@ -48,7 +48,7 @@ import java.lang.ref.WeakReference
 class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) : ReactContextBaseJavaModule(appContext) {
 
     private val prefs: SharedPreferences by lazy {
-        appContext.getSharedPreferences("mobileclaw-agent-tools", Context.MODE_PRIVATE)
+        appContext.getSharedPreferences("guappa-agent-tools", Context.MODE_PRIVATE)
     }
 
     init {
@@ -137,7 +137,7 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
             if (context?.hasActiveReactInstance() == true) {
                 context
                     .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    .emit("mobileclaw_photo_captured", payload.toString())
+                    .emit("guappa_photo_captured", payload.toString())
                 return
             }
 
@@ -398,14 +398,14 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
     }
 
     private fun postNotification(payload: ReadableMap): JSONObject {
-        val title = payload.getString("title")?.ifBlank { "MobileClaw" } ?: "MobileClaw"
+        val title = payload.getString("title")?.ifBlank { "Guappa" } ?: "Guappa"
         val text = payload.getString("text")?.trim().orEmpty()
         require(text.isNotEmpty()) { "post_notification requires payload.text" }
 
         val manager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "mobileclaw-agent"
+        val channelId = "guappa-agent"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "MobileClaw Agent", NotificationManager.IMPORTANCE_DEFAULT)
+            val channel = NotificationChannel(channelId, "Guappa Agent", NotificationManager.IMPORTANCE_DEFAULT)
             manager.createNotificationChannel(channel)
         }
 
@@ -658,7 +658,7 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
         require(text.isNotEmpty()) { "set_clipboard requires payload.text" }
 
         val clipboard = appContext.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val clip = ClipData.newPlainText("mobileclaw", text)
+        val clip = ClipData.newPlainText("guappa", text)
         clipboard.setPrimaryClip(clip)
         return JSONObject().put("ok", true).put("action", "set_clipboard")
     }
@@ -929,7 +929,7 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
         return JSONObject()
             .put("ok", true)
             .put("action", "ui_automation_enable")
-            .put("note", "Enable MobileClaw accessibility service in system settings")
+            .put("note", "Enable Guappa accessibility service in system settings")
     }
 
     private fun uiAutomationTap(payload: ReadableMap): JSONObject {

@@ -20,9 +20,9 @@ appId: com.guappa.app
 # Wait for agent response (web search can take time)
 - waitForAnimationToEnd:
     timeout: 90000
-# Assert no gateway error text
+# Assert no backend error text
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 # Assert there is a response (any assistant message appeared)
 - assertVisible:
     id: screen-chat

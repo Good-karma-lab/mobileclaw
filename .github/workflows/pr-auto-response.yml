@@ -52,16 +52,15 @@ jobs:
 
             Before maintainers triage it, please confirm:
             - Repro steps are complete and run on latest `main`
-            - Environment details are included (OS, Rust version, ZeroClaw version)
+            - Environment details are included (OS, Node.js version, Guappa version)
             - Sensitive values are redacted
 
             This helps us keep issue throughput high and response latency low.
           pr_message: |
-            Thanks for contributing to ZeroClaw.
+            Thanks for contributing to Guappa.
 
             For faster review, please ensure:
             - PR template sections are fully completed
-            - `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test` are included
             - If automation/agents were used heavily, add brief workflow notes
             - Scope is focused (prefer one concern per PR)
 

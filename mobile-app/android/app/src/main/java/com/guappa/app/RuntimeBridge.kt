@@ -46,7 +46,7 @@ import android.telephony.SmsManager
 import androidx.core.app.NotificationCompat
 
 object RuntimeBridge {
-    const val PREFS = "mobileclaw-runtime-bridge"
+    const val PREFS = "guappa-runtime-bridge"
     private const val QUEUE_KEY = "pending_events"
     private const val TELEGRAM_ENABLED = "telegram_enabled"
     private const val TELEGRAM_BOT_TOKEN = "telegram_bot_token"
@@ -80,22 +80,22 @@ object RuntimeBridge {
     private const val WEBHOOK_FAIL_COUNT = "webhook_fail_count"
     private const val LAST_EVENT_NOTE = "last_event_note"
     private const val MAX_QUEUE = 500
-    private const val LOCAL_GATEWAY = "http://127.0.0.1:8000"
+    private const val LOCAL_GATEWAY = "http://127.0.0.1:8080"
     private const val RUNTIME_DIR = "runtime"
     private const val RUNTIME_BIN_DIR = "bin"
     private const val RUNTIME_WORKSPACE_DIR = "workspace"
     private const val RUNTIME_LOG_DIR = "logs"
     private const val DAEMON_STDOUT = "daemon.out.log"
     private const val DAEMON_STDERR = "daemon.err.log"
-    private const val RUNTIME_CONFIG_FILE = "zeroclaw-mobile.toml"
+    private const val RUNTIME_CONFIG_FILE = "guappa-mobile.toml"
     const val LAST_CAPTURE_URI = "last_capture_uri"
     const val LAST_CAPTURE_TS = "last_capture_ts"
     const val ANDROID_BRIDGE_HOST = "127.0.0.1"
     const val ANDROID_BRIDGE_PORT = 9797
     const val ANDROID_BRIDGE_PATH = "/v1/android/actions"
-    private const val PERIODIC_WORK_NAME = "mobileclaw-runtime-bridge-periodic"
-    private const val ONETIME_WORK_NAME = "mobileclaw-runtime-bridge-onetime"
-    const val CHANNEL_ID = "mobileclaw_runtime"
+    private const val PERIODIC_WORK_NAME = "guappa-runtime-bridge-periodic"
+    private const val ONETIME_WORK_NAME = "guappa-runtime-bridge-onetime"
+    const val CHANNEL_ID = "guappa_runtime"
     @Volatile
     private var actionBridgeServer: AndroidActionBridgeServer? = null
 
@@ -308,7 +308,7 @@ object RuntimeBridge {
     private fun runtimeRoot(context: Context): File = File(context.filesDir, RUNTIME_DIR)
 
     private fun runtimeBinaryFile(context: Context): File {
-        return File(context.applicationInfo.nativeLibraryDir, "libzeroclaw.so")
+        return File(context.applicationInfo.nativeLibraryDir, "libguappa.so")
     }
 
     private fun runtimeConfigFile(context: Context): File {
@@ -405,10 +405,10 @@ object RuntimeBridge {
         }
 
         val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "x86_64"
-        val target = File(File(runtimeRoot(context), RUNTIME_BIN_DIR), "zeroclaw-$abi")
+        val target = File(File(runtimeRoot(context), RUNTIME_BIN_DIR), "guappa-$abi")
         target.parentFile?.mkdirs()
 
-        val assetPath = "zeroclaw/$abi/zeroclaw"
+        val assetPath = "guappa/$abi/guappa"
         context.assets.open(assetPath).use { input ->
             FileOutputStream(target, false).use { output ->
                 input.copyTo(output)
@@ -449,7 +449,7 @@ object RuntimeBridge {
                 "8080",
             )
             launcher.directory(runtimeRoot(context))
-            launcher.environment()["ZEROCLAW_WORKSPACE"] = workspaceDir.absolutePath
+            launcher.environment()["GUAPPA_WORKSPACE"] = workspaceDir.absolutePath
             launcher.environment()["HOME"] = runtimeRoot(context).absolutePath
             launcher.environment()["RUST_LOG"] = "info"
 
@@ -482,7 +482,7 @@ object RuntimeBridge {
             ProcessBuilder(
                 "sh",
                 "-c",
-                "pkill -f 'libzeroclaw.so daemon --host 127.0.0.1 --port 8080' || true",
+                "pkill -f 'libguappa.so daemon --host 127.0.0.1 --port 8080' || true",
             ).start().waitFor(2, TimeUnit.SECONDS)
         } catch (_: Throwable) {
             // best effort
@@ -569,7 +569,7 @@ object RuntimeBridge {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "MobileClaw Runtime",
+            "Guappa Runtime",
             NotificationManager.IMPORTANCE_LOW,
         )
         channel.description = "Keeps runtime hooks and Telegram relay active"
@@ -754,7 +754,7 @@ private class AndroidActionBridgeServer(private val context: Context) {
     fun isRunning(): Boolean = running
 
     fun start() {
-        Thread({ runLoop() }, "mobileclaw-android-bridge").apply {
+        Thread({ runLoop() }, "guappa-android-bridge").apply {
             isDaemon = true
             start()
         }
@@ -959,14 +959,14 @@ private class AndroidActionBridgeServer(private val context: Context) {
     }
 
     private fun postNotification(payload: JSONObject): JSONObject {
-        val title = payload.optString("title", "MobileClaw")
+        val title = payload.optString("title", "Guappa")
         val body = payload.optString("body", "")
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = android.app.NotificationChannel("zeroclaw_agent", "MobileClaw Agent", NotificationManager.IMPORTANCE_DEFAULT)
+            val ch = android.app.NotificationChannel("guappa_agent", "Guappa Agent", NotificationManager.IMPORTANCE_DEFAULT)
             nm.createNotificationChannel(ch)
         }
-        val notif = NotificationCompat.Builder(context, "zeroclaw_agent")
+        val notif = NotificationCompat.Builder(context, "guappa_agent")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(body)
@@ -1079,7 +1079,7 @@ private class AndroidActionBridgeServer(private val context: Context) {
     private fun setClipboard(payload: JSONObject): JSONObject {
         val text = payload.optString("text", "")
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-        cm?.setPrimaryClip(android.content.ClipData.newPlainText("zeroclaw", text))
+        cm?.setPrimaryClip(android.content.ClipData.newPlainText("guappa", text))
         return JSONObject().put("ok", true).put("action", "set_clipboard")
     }
 

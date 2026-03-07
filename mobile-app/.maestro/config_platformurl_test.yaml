@@ -65,7 +65,7 @@ appId: com.guappa.app
     id: dock-tab-chat
 - tapOn:
     id: chat-input
-- inputText: "test invalid gateway"
+- inputText: "test invalid backend"
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:
@@ -73,7 +73,7 @@ appId: com.guappa.app
 
 # Should show error message
 - assertVisible:
-    text: "Gateway error"
+    text: "Backend error"
     optional: true
 
 # Test 5: Clear Platform URL to test fallback mode

@@ -38,7 +38,7 @@ class RuntimeAlwaysOnService : Service() {
 
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, RuntimeBridge.CHANNEL_ID)
-            .setContentTitle("MobileClaw runtime active")
+            .setContentTitle("Guappa runtime active")
             .setContentText("Keeping hooks and Telegram relay active")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)

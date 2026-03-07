@@ -43,15 +43,15 @@ jobs:
       - name: Generate new NOTICE file
         run: |
           cat > NOTICE << 'EOF'
-          ZeroClaw
-          Copyright 2025 ZeroClaw Labs
+          Guappa
+          Copyright 2025 Guappa Labs
 
-          This product includes software developed at ZeroClaw Labs (https://github.com/zeroclaw-labs).
+          This product includes software developed at Guappa Labs (https://github.com/guappa-labs).
 
           Contributors
           ============
 
-          The following individuals have contributed to ZeroClaw:
+          The following individuals have contributed to Guappa:
 
           EOF
 
@@ -68,7 +68,7 @@ jobs:
           This project uses the following third-party libraries and components,
           each licensed under their respective terms:
 
-          See Cargo.lock for a complete list of dependencies and their licenses.
+          See package-lock.json for a complete list of dependencies and their licenses.
           EOF
 
       - name: Check if NOTICE changed

@@ -15,7 +15,7 @@ appId: com.guappa.app
     timeout: 360000
 # No errors — hard failures
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 - assertNotVisible:
     text: "Network request failed"
 - assertNotVisible:
@@ -34,7 +34,7 @@ appId: com.guappa.app
 - assertVisible:
     text: "341234567890"
     optional: true
-# Navigate to Tasks & Hooks screen — gateway should be online after agent responded
+# Navigate to Tasks & Hooks screen — backend should be online after agent responded
 - tapOn:
     id: chat-tasks-hooks
 - waitForAnimationToEnd:

@@ -19,7 +19,7 @@ appId: com.guappa.app
     timeout: 120000
 # No errors
 - assertNotVisible:
-    text: "Gateway error"
+    text: "Backend error"
 # Navigate to Tasks screen to verify hooks are enabled
 - tapOn:
     id: chat-tasks-hooks
