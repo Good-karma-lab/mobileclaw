@@ -11,7 +11,7 @@ import {
   type MobileToolCapability,
   loadDeviceToolsConfig,
   saveDeviceToolsConfig,
-} from "../../state/mobileclaw";
+} from "../../state/guappa";
 import { executeAndroidToolAction } from "../../native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
@@ -283,9 +283,9 @@ export function DeviceScreen() {
       } catch {
         setSaveStatus("Could not open accessibility settings");
       }
-      await addActivity({ kind: "action", source: "device", title: "UI automation requested", detail: "Open Android Accessibility settings and enable MobileClaw accessibility service" });
+      await addActivity({ kind: "action", source: "device", title: "UI automation requested", detail: "Open Android Accessibility settings and enable Guappa accessibility service" });
     } else {
-      await addActivity({ kind: "action", source: "device", title: "UI automation toggled off", detail: "MobileClaw UI automation capabilities disabled in app policy" });
+      await addActivity({ kind: "action", source: "device", title: "UI automation toggled off", detail: "Guappa UI automation capabilities disabled in app policy" });
     }
     setTimeout(() => { void refreshUiAutomationStatus(); }, 500);
   };
@@ -513,7 +513,7 @@ export function DeviceScreen() {
           </Pressable>
           <Text variant="muted">How to enable:</Text>
           <Text variant="muted">1) Tap "Open Accessibility Settings".</Text>
-          <Text variant="muted">2) Select "MobileClaw" service.</Text>
+          <Text variant="muted">2) Select "Guappa" service.</Text>
           <Text variant="muted">3) Turn on accessibility permission and confirm prompt.</Text>
           <Text variant="muted">4) Return here and verify `service_enabled=true`.</Text>
         </View>

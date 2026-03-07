@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # Test newly implemented gateway integration features
 # Tests: platformUrl configuration, gateway mode, context preservation

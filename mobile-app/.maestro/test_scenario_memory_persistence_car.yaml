@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # Test that agent remembers context across messages
 - launchApp:
@@ -9,7 +9,7 @@ appId: com.mobileclaw.app
     id: chat-input
 - tapOn:
     id: chat-input
-- inputText: "Remember: my name is ZeroClawUser and my wife's name is Maria"
+- inputText: "Remember: my name is GuappaUser and my wife's name is Maria"
 - hideKeyboard
 - tapOn:
     id: chat-send-or-voice

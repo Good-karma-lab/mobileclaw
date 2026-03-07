@@ -11,7 +11,7 @@ import {
   type IntegrationsConfig,
   loadIntegrationsConfig,
   saveIntegrationsConfig,
-} from "../../state/mobileclaw";
+} from "../../state/guappa";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
 
@@ -116,7 +116,7 @@ export function IntegrationsScreen() {
       "Create a bot via @BotFather, then paste your bot token below.",
       "Open Telegram chat with your bot and send any message (for example: /start).",
       "Tap Detect chat from Telegram updates to auto-fill Chat ID.",
-      "Keep Telegram toggle ON. MobileClaw saves and applies runtime config automatically.",
+      "Keep Telegram toggle ON. Guappa saves and applies runtime config automatically.",
     ],
     discord: [
       "Create a Discord app and bot in the Developer Portal.",
@@ -132,7 +132,7 @@ export function IntegrationsScreen() {
     ],
     whatsapp: [
       "Create a Meta app with WhatsApp Business integration.",
-      "Set webhook endpoint to your MobileClaw gateway URL.",
+      "Set webhook endpoint to your Guappa gateway URL.",
       "Paste access token here and keep WhatsApp toggle ON.",
       "Use Meta dashboard webhook test to confirm delivery.",
     ],
@@ -140,7 +140,7 @@ export function IntegrationsScreen() {
       "Create an account at app.composio.dev and generate API key.",
       "Paste key here and keep Composio toggle ON.",
       "Connect target SaaS tools in Composio dashboard.",
-      "MobileClaw auto-saves and reloads runtime tool configuration.",
+      "Guappa auto-saves and reloads runtime tool configuration.",
     ],
   };
 

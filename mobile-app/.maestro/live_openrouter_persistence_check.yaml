@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 - launchApp:
     clearState: false
@@ -42,7 +42,7 @@ appId: com.mobileclaw.app
 - tapOn:
     id: chat-send-or-voice
 - assertNotVisible:
-    text: "MobileClaw agent is unavailable right now"
+    text: "Guappa agent is unavailable right now"
 - assertNotVisible:
     text: "Agent execution failed"
 - assertNotVisible:

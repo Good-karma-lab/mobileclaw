@@ -10,7 +10,7 @@ export type ActivityItem = {
   detail?: string;
 };
 
-const KEY = "mobileclaw:activity:v1";
+const KEY = "guappa:activity:v1";
 
 async function readAll(): Promise<ActivityItem[]> {
   const raw = await AsyncStorage.getItem(KEY);

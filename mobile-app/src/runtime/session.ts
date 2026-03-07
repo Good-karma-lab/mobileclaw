@@ -1,4 +1,4 @@
-import { runAgentChat, runZeroClawAgent, type ChatCompletionMessage } from "../api/mobileclaw";
+import { runAgentChat, runGuappaAgent, type ChatCompletionMessage } from "../api/guappa";
 import { addActivity } from "../state/activity";
 import { sanitizeAssistantArtifacts } from "../state/chat";
 import {
@@ -6,7 +6,7 @@ import {
   loadDeviceToolsConfig,
   loadIntegrationsConfig,
   loadSecurityConfig,
-} from "../state/mobileclaw";
+} from "../state/guappa";
 import { getRuntimeSupervisorState } from "./supervisor";
 import { executeToolDirective, parseToolDirective } from "./tooling";
 import type { AgentTurnResult } from "./types";
@@ -73,7 +73,7 @@ function makeSystemInstruction(enabledTools: string[], enabledIntegrations: stri
   const integrationList = enabledIntegrations.length ? enabledIntegrations.join(", ") : "none";
 
   return [
-    "You are MobileClaw: a lightweight autonomous AI agent with Mobile UX designed to run on Android devices.",
+    "You are Guappa: a lightweight autonomous AI agent with Mobile UX designed to run on Android devices.",
     "Do not pretend to execute device actions.",
     `Enabled tool ids: ${toolList}.`,
     `Enabled integrations: ${integrationList}.`,
@@ -290,7 +290,7 @@ function integrationToolIds(integrations: string[]): string[] {
 }
 
 /**
- * Run agent turn using the ZeroClaw backend gateway.
+ * Run agent turn using the Guappa backend gateway.
  * This provides full agent runtime with tools, memory, and multi-step reasoning.
  * Falls back to local direct LLM calls if gateway is unavailable.
  */
@@ -303,7 +303,7 @@ export async function runAgentTurnWithGateway(userPrompt: string, sessionId?: st
   if (!useGateway) {
     return {
       assistantText:
-        "MobileClaw agent backend is not configured yet. Open Settings > Agent Config and keep Platform URL on localhost.",
+        "Guappa agent backend is not configured yet. Open Settings > Agent Config and keep Platform URL on localhost.",
       toolEvents: [
         {
           tool: "gateway",
@@ -316,7 +316,7 @@ export async function runAgentTurnWithGateway(userPrompt: string, sessionId?: st
 
   try {
     // Call the full agent runtime via gateway
-    const response = await runZeroClawAgent(userPrompt, runtime, sessionId);
+    const response = await runGuappaAgent(userPrompt, runtime, sessionId);
 
     await addActivity({
       kind: "action",
@@ -333,8 +333,8 @@ export async function runAgentTurnWithGateway(userPrompt: string, sessionId?: st
     return {
         assistantText:
           error instanceof Error
-          ? `MobileClaw agent is unavailable right now: ${error.message}. Please wait a moment and try again.`
-          : "MobileClaw agent is unavailable right now. Please try again.",
+          ? `Guappa agent is unavailable right now: ${error.message}. Please wait a moment and try again.`
+          : "Guappa agent is unavailable right now. Please try again.",
       toolEvents: [
         {
           tool: "gateway",
@@ -353,7 +353,7 @@ export async function runAgentTurnWithGateway(userPrompt: string, sessionId?: st
 export async function runAgentTurn(userPrompt: string): Promise<AgentTurnResult> {
   return {
     assistantText:
-      "Direct provider mode is disabled. MobileClaw uses the embedded backend agent for all chat turns.",
+      "Direct provider mode is disabled. Guappa uses the embedded backend agent for all chat turns.",
     toolEvents: [
       {
         tool: "gateway",
@@ -374,7 +374,7 @@ export async function runAgentTurn(userPrompt: string): Promise<AgentTurnResult>
   if (supervisor.status === "degraded" && isInboundIntegrationIntent(userPrompt)) {
     return {
       assistantText:
-        "MobileClaw agent is degraded, so inbound channel events may not reach the assistant right now. Check Activity status and retry.",
+        "Guappa agent is degraded, so inbound channel events may not reach the assistant right now. Check Activity status and retry.",
       toolEvents: [],
     };
   }

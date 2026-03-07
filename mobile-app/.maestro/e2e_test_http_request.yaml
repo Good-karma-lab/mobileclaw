@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: HTTP Request Tool
 # Tests that agent can make HTTP requests to external APIs

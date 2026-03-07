@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Device Information Query
 # Tests that agent can query device status (battery, apps, etc)

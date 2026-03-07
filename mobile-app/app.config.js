@@ -2,9 +2,9 @@ const requireEnv = (key) => {
   const value = process.env[key];
   if (value) return value;
   const defaults = {
-    EXPO_APP_NAME: "MobileClaw",
-    EXPO_APP_SLUG: "mobileclaw",
-    EXPO_APP_SCHEME: "mobileclaw",
+    EXPO_APP_NAME: "Guappa",
+    EXPO_APP_SLUG: "guappa",
+    EXPO_APP_SCHEME: "guappa",
     EXPO_APP_VERSION: "0.1.0",
     EXPO_PUBLIC_PLATFORM_URL: "http://10.0.2.2:8080",
     EXPO_PUBLIC_LOG_LEVEL: "info",
@@ -28,14 +28,14 @@ module.exports = {
     platforms: ["ios", "android", "web"],
     plugins: [],
     ios: {
-      bundleIdentifier: "com.mobileclaw.app",
+      bundleIdentifier: "com.guappa.app",
       infoPlist: {
         NSMicrophoneUsageDescription: "We use your microphone to capture voice input for real-time transcription.",
-        LSApplicationQueriesSchemes: ["mobileclaw-preview"]
+        LSApplicationQueriesSchemes: ["guappa-preview"]
       }
     },
     android: {
-      package: "com.mobileclaw.app",
+      package: "com.guappa.app",
       permissions: [
         "RECORD_AUDIO",
         "POST_NOTIFICATIONS",

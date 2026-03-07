@@ -19,11 +19,11 @@ import { RootNavigator } from "./src/navigation/RootNavigator";
 import { log } from "./src/logger";
 import { ErrorBoundary } from "./src/state/ErrorBoundary";
 import { addActivity } from "./src/state/activity";
-import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./src/state/mobileclaw";
+import { loadSecurityConfig, loadAgentConfig, loadIntegrationsConfig } from "./src/state/guappa";
 import { subscribeIncomingDeviceEvents } from "./src/native/incomingCalls";
 import { getAndroidRuntimeBridgeStatus } from "./src/native/androidAgentBridge";
 import { applyRuntimeSupervisorConfig, reportRuntimeHookEvent, startRuntimeSupervisor } from "./src/runtime/supervisor";
-import { startDaemon, restartDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/zeroClawDaemon";
+import { startDaemon, restartDaemon, isDaemonRunning, waitForDaemonReady } from "./src/native/guappaAgent";
 import { startLocalLlmServer, stopLocalLlmServer, LOCAL_LLM_URL } from "./src/native/localLlmServer";
 
 // Dev-only: prepopulate credentials for faster local testing
@@ -117,7 +117,7 @@ export default function App() {
                 console.log("[app] local LLM server started, daemon will use Ollama at", LOCAL_LLM_URL);
               }
 
-              console.log("[app] starting embedded MobileClaw daemon...");
+              console.log("[app] starting embedded Guappa daemon...");
               const running = await isDaemonRunning();
 
               if (!running) {

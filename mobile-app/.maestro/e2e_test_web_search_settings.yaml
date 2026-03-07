@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Web Search Settings UI
 # Tests that Web Search settings card is visible and accepts Brave API key

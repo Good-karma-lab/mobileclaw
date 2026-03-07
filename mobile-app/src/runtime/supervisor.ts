@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 import { configureAndroidRuntimeBridge, getAndroidRuntimeBridgeStatus } from "../native/androidAgentBridge";
-import { isDaemonRunning, restartDaemon, startDaemon, waitForDaemonReady } from "../native/zeroClawDaemon";
+import { isDaemonRunning, restartDaemon, startDaemon, waitForDaemonReady } from "../native/guappaAgent";
 import { addActivity } from "../state/activity";
 import {
   loadAgentConfig,
@@ -13,7 +13,7 @@ import {
   type IntegrationsConfig,
   type MobileToolCapability,
   type SecurityConfig,
-} from "../state/mobileclaw";
+} from "../state/guappa";
 import { startLocalLlmServer, isLocalLlmRunning, LOCAL_LLM_URL } from "../native/localLlmServer";
 
 export type RuntimeSupervisorState = {
@@ -28,7 +28,7 @@ export type RuntimeSupervisorState = {
   configHash: string;
 };
 
-const KEY = "mobileclaw:runtime-supervisor:v1";
+const KEY = "guappa:runtime-supervisor:v1";
 
 const DEFAULT_STATE: RuntimeSupervisorState = {
   status: "stopped",
@@ -101,7 +101,7 @@ function signature(
 }
 
 function deriveComponents(integrations: IntegrationsConfig, security: SecurityConfig) {
-  const components = ["daemon:mobileclaw_agent"];
+  const components = ["daemon:guappa_agent"];
   const missing: string[] = [];
 
   if (integrations.telegramEnabled) {
@@ -216,7 +216,7 @@ export async function startRuntimeSupervisor(reason: string): Promise<RuntimeSup
   await addActivity({
     kind: "action",
     source: "runtime",
-    title: "MobileClaw agent starting",
+    title: "Guappa agent starting",
     detail: reason,
   });
 
@@ -321,7 +321,7 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     await addActivity({
       kind: "action",
       source: "runtime",
-      title: status === "healthy" ? "MobileClaw agent healthy" : "MobileClaw agent needs attention",
+      title: status === "healthy" ? "Guappa agent healthy" : "Guappa agent needs attention",
       detail: detailParts.join(" | "),
     });
   }
@@ -345,7 +345,7 @@ export async function stopRuntimeSupervisor(reason: string): Promise<RuntimeSupe
   await addActivity({
     kind: "action",
     source: "runtime",
-    title: "MobileClaw agent stopped",
+    title: "Guappa agent stopped",
     detail: reason,
   });
   return next;

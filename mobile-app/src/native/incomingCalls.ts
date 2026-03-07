@@ -51,12 +51,12 @@ export function subscribeIncomingDeviceEvents(onCall: (event: IncomingCallEvent)
     return () => {};
   }
 
-  const callSub = DeviceEventEmitter.addListener("mobileclaw_incoming_call", (raw: string) => {
+  const callSub = DeviceEventEmitter.addListener("guappa_incoming_call", (raw: string) => {
     const parsed = parseIncomingCallEvent(String(raw || ""));
     if (parsed) onCall(parsed);
   });
 
-  const smsSub = DeviceEventEmitter.addListener("mobileclaw_incoming_sms", (raw: string) => {
+  const smsSub = DeviceEventEmitter.addListener("guappa_incoming_sms", (raw: string) => {
     const parsed = parseIncomingSmsEvent(String(raw || ""));
     if (parsed) onSms(parsed);
   });

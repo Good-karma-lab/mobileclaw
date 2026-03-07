@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 - launchApp:
     clearState: false
@@ -8,7 +8,7 @@ appId: com.mobileclaw.app
     id: chat-input
 - tapOn:
     id: chat-input
-- inputText: "MobileClaw telegram bot pairing: ${TELEGRAM_ID}"
+- inputText: "Guappa telegram bot pairing: ${TELEGRAM_ID}"
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:

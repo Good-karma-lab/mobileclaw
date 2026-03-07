@@ -1,8 +1,8 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "MobileClaw agent chat with voice mode."
+    visible: "Guappa agent chat with voice mode."
     timeout: 30000
 - tapOn:
     id: "dock-tab-integrations"

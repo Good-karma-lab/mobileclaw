@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Incoming Call Hook Setup
 # Tests that agent can configure incoming call hooks

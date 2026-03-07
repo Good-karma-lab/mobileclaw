@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Telegram Message Sending
 # Tests that agent can send Telegram messages through integration

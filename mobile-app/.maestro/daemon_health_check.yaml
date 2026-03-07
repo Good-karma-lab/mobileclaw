@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # Verify embedded daemon health and status
 
@@ -33,7 +33,7 @@ appId: com.mobileclaw.app
 # Check for runtime status (daemon should be running)
 - scrollUntilVisible:
     element:
-      text: "ZeroClaw"
+      text: "Guappa"
       optional: true
     direction: DOWN
     speed: 40

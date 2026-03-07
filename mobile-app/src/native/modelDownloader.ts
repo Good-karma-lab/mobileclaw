@@ -1,6 +1,6 @@
 import { File, Directory, Paths } from "expo-file-system";
 
-const MODEL_DIR_NAME = ".zeroclaw/models";
+const MODEL_DIR_NAME = ".guappa/models";
 
 const MODEL_URLS: Record<string, string> = {
   "Qwen/Qwen3.5-0.8B":

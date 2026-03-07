@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Web Search Agent Query
 # Tests that the agent can perform a web search and return results

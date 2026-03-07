@@ -1,6 +1,6 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
-# Test embedded ZeroClaw daemon functionality
+# Test embedded Guappa daemon functionality
 # Tests: daemon auto-start, health check, gateway integration
 
 - launchApp:

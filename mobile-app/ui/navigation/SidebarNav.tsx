@@ -67,7 +67,7 @@ export function SidebarNav({ state, descriptors, navigation }: BottomTabBarProps
             textTransform: "uppercase",
           }}
         >
-          MobileClaw
+          Guappa
         </Text>
       </View>
 

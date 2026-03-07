@@ -1,5 +1,5 @@
 import { executeAndroidToolAction } from "../native/androidAgentBridge";
-import type { IntegrationsConfig, MobileToolCapability, SecurityConfig } from "../state/mobileclaw";
+import type { IntegrationsConfig, MobileToolCapability, SecurityConfig } from "../state/guappa";
 import type { ToolCallDirective, ToolExecutionEvent } from "./types";
 
 const HIGH_RISK_TOOLS = new Set<string>([
@@ -542,7 +542,7 @@ function integrationBlockedEvent(tool: string, enabled: boolean, configured: boo
   return {
     tool,
     status: "failed",
-    detail: `${detail} execution from mobile chat is not implemented yet. Keep MobileClaw backend agent healthy and use ${detail} channel inbound for now.`,
+    detail: `${detail} execution from mobile chat is not implemented yet. Keep Guappa backend agent healthy and use ${detail} channel inbound for now.`,
   };
 }
 

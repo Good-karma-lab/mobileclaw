@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: List Installed Apps
 # Tests that agent can list installed Android applications

@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # Test embedded daemon memory and context preservation
 # This validates that the backend agent runtime is working properly

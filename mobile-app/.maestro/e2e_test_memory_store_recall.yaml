@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Memory Store and Recall (Long-term memory)
 # Tests that agent can store and retrieve memories across chat sessions

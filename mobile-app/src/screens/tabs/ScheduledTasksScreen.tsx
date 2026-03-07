@@ -5,7 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
-import { loadSecurityConfig, loadAgentConfig } from "../../state/mobileclaw";
+import { loadSecurityConfig, loadAgentConfig } from "../../state/guappa";
 import { useActivity, type ActivityItem } from "../../state/activity";
 
 type GatewayHealth = "checking" | "ok" | "error";

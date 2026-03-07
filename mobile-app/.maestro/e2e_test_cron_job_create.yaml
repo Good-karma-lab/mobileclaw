@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # E2E Test: Cron Job Creation via Chat
 # Tests that agent can create scheduled jobs through conversation

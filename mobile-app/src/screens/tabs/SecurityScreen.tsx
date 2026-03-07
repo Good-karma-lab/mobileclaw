@@ -6,7 +6,7 @@ import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
 import { addActivity } from "../../state/activity";
-import { DEFAULT_SECURITY, loadSecurityConfig, saveSecurityConfig } from "../../state/mobileclaw";
+import { DEFAULT_SECURITY, loadSecurityConfig, saveSecurityConfig } from "../../state/guappa";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 
 export function SecurityScreen() {

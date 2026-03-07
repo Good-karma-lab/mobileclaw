@@ -11,7 +11,7 @@ export type ChatMessage = {
   };
 };
 
-const KEY = "mobileclaw:chat:v1";
+const KEY = "guappa:chat:v1";
 
 export function sanitizeAssistantArtifacts(text: string): string {
   const value = String(text || "");

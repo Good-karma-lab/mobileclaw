@@ -91,9 +91,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.mobileclaw.app'
+    namespace 'com.guappa.app'
     defaultConfig {
-        applicationId 'com.mobileclaw.app'
+        applicationId 'com.guappa.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -145,30 +145,30 @@ android {
 
 // JNI libs are pre-built via build_android_jni.sh and placed in src/main/jniLibs/.
 // This task is a no-op placeholder so the preBuild dependency chain stays intact.
-tasks.register("buildZeroClawAndroidBinaries") {
+tasks.register("buildGuappaAndroidBinaries") {
     doLast { /* no-op: JNI .so files placed manually */ }
 }
 
-tasks.register("prepareZeroClawAndroidAssets", Copy) {
-    dependsOn "buildZeroClawAndroidBinaries"
+tasks.register("prepareGuappaAndroidAssets", Copy) {
+    dependsOn "buildGuappaAndroidBinaries"
     into rustAssetsDir
-    from("$repoRoot/target/x86_64-linux-android/release/zeroclaw") {
-        into "zeroclaw/x86_64"
-        rename { "zeroclaw" }
+    from("$repoRoot/target/x86_64-linux-android/release/guappa") {
+        into "guappa/x86_64"
+        rename { "guappa" }
     }
-    from("$repoRoot/target/aarch64-linux-android/release/zeroclaw") {
-        into "zeroclaw/arm64-v8a"
-        rename { "zeroclaw" }
+    from("$repoRoot/target/aarch64-linux-android/release/guappa") {
+        into "guappa/arm64-v8a"
+        rename { "guappa" }
     }
 }
 
-tasks.register("prepareZeroClawAndroidJniLibs", Copy) {
-    dependsOn "buildZeroClawAndroidBinaries"
+tasks.register("prepareGuappaAndroidJniLibs", Copy) {
+    dependsOn "buildGuappaAndroidBinaries"
     doLast { /* JNI libs are provided by build_android_jni.sh in src/main/jniLibs */ }
 }
 
-preBuild.dependsOn("prepareZeroClawAndroidAssets")
-preBuild.dependsOn("prepareZeroClawAndroidJniLibs")
+preBuild.dependsOn("prepareGuappaAndroidAssets")
+preBuild.dependsOn("prepareGuappaAndroidJniLibs")
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:

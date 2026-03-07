@@ -7,14 +7,14 @@ import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
 import { addActivity } from "../../state/activity";
-import { fetchOpenRouterModels } from "../../api/mobileclaw";
+import { fetchOpenRouterModels } from "../../api/guappa";
 import {
   type AgentRuntimeConfig,
   type ProviderId,
   loadAgentConfig,
   saveAgentConfig,
   DEFAULT_AGENT_CONFIG,
-} from "../../state/mobileclaw";
+} from "../../state/guappa";
 import { applyRuntimeSupervisorConfig } from "../../runtime/supervisor";
 import { useLayoutContext } from "../../state/layout";
 import { getModelDownloadUrl, getModelFileName, checkModelExists, downloadModel, downloadWhisperModel, checkWhisperModelExists } from "../../native/modelDownloader";

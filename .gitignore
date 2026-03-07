@@ -63,3 +63,4 @@ test_config.json
 .env.test
 test_integration.sh
 .worktrees/
+.worktrees/

@@ -53,9 +53,15 @@
       android:enabled="true"
       android:exported="false"
       android:foregroundServiceType="dataSync" />
-    <!-- ZeroClaw Embedded Backend Daemon Service -->
+    <!-- Legacy daemon service (kept for migration) -->
     <service
       android:name=".ZeroClawDaemonService"
+      android:enabled="false"
+      android:exported="false"
+      android:foregroundServiceType="dataSync" />
+    <!-- Guappa Agent Service -->
+    <service
+      android:name=".GuappaAgentService"
       android:enabled="true"
       android:exported="false"
       android:foregroundServiceType="dataSync" />
@@ -68,7 +74,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="mobileclaw"/>
+        <data android:scheme="guappa"/>
       </intent-filter>
     </activity>
     <activity android:name=".DirectPhotoCaptureActivity" android:exported="false" android:theme="@style/AppTheme"/>

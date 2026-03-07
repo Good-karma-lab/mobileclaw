@@ -7,14 +7,14 @@ import { Screen } from "../../../ui/primitives/Screen";
 import { Text } from "../../../ui/primitives/Text";
 import { theme } from "../../../ui/theme";
 import { useLayoutContext } from "../../state/layout";
-import { loadAgentConfig } from "../../state/mobileclaw";
+import { loadAgentConfig } from "../../state/guappa";
 import {
   fetchMemories,
   recallMemories,
   fetchMemoryCount,
   forgetMemory,
   type MemoryEntry,
-} from "../../api/mobileclaw";
+} from "../../api/guappa";
 import { addActivity } from "../../state/activity";
 
 const CATEGORY_COLORS: Record<string, string> = {

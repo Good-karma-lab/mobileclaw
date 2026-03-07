@@ -1,4 +1,4 @@
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 # Test backend gateway integration
 # Prerequisites: Backend must be running at http://10.0.2.2:8000

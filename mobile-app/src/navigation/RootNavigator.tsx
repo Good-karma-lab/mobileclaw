@@ -1,59 +1,95 @@
-import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React, { useState } from "react";
+import { View, StatusBar, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { NavigationShell } from "../../ui/navigation/NavigationShell";
-import { DockMorphProvider } from "../../ui/animation/DockMorphProvider";
-import { LayoutProvider } from "../state/layout";
+import { LayoutProvider, useLayoutContext } from "../state/layout";
+import { FloatingDock, type DockTab } from "../components/dock/FloatingDock";
+import { SideRail } from "../components/dock/SideRail";
 
-import { ActivityScreen } from "../screens/tabs/ActivityScreen";
+import { VoiceScreen } from "../screens/tabs/VoiceScreen";
 import { ChatScreen } from "../screens/tabs/ChatScreen";
-import { SettingsScreen } from "../screens/tabs/SettingsScreen";
-import { IntegrationsScreen } from "../screens/tabs/IntegrationsScreen";
-import { DeviceScreen } from "../screens/tabs/DeviceScreen";
-import { SecurityScreen } from "../screens/tabs/SecurityScreen";
-import { ScheduledTasksScreen } from "../screens/tabs/ScheduledTasksScreen";
-import { MemoryScreen } from "../screens/tabs/MemoryScreen";
+import { CommandScreen } from "../screens/tabs/CommandScreen";
+import { SwarmScreen } from "../screens/tabs/SwarmScreen";
+import { ConfigScreen } from "../screens/tabs/ConfigScreen";
 
-type MainTabParamList = {
-  chat: undefined;
-  activity: undefined;
-  settings: undefined;
-  integrations: undefined;
-  device: undefined;
+import { colors } from "../theme/colors";
+
+const TABS: DockTab[] = [
+  { key: "voice", icon: "\uD83C\uDF99", label: "Voice" },
+  { key: "chat", icon: "\uD83D\uDCAC", label: "Chat" },
+  { key: "command", icon: "\u26A1", label: "Command" },
+  { key: "swarm", icon: "\uD83C\uDF10", label: "Swarm" },
+  { key: "config", icon: "\u2699", label: "Config" },
+];
+
+const SCREENS: Record<string, React.ComponentType> = {
+  voice: VoiceScreen,
+  chat: ChatScreen,
+  command: CommandScreen,
+  swarm: SwarmScreen,
+  config: ConfigScreen,
 };
 
-const MainTabs = createBottomTabNavigator<MainTabParamList>();
-const Stack = createNativeStackNavigator();
+const RAIL_WIDTH = 72;
 
-function MainTabsNavigator() {
+function NavigatorContent() {
+  const { useSidebar } = useLayoutContext();
+  const [activeTab, setActiveTab] = useState("voice");
+
+  const ActiveScreen = SCREENS[activeTab] ?? VoiceScreen;
+
   return (
-    <MainTabs.Navigator
-      id="main-tabs"
-      initialRouteName="chat"
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <NavigationShell {...props} />}
+    <LinearGradient
+      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
+      style={styles.container}
     >
-      <MainTabs.Screen name="activity" component={ActivityScreen} options={{ title: "Activity" }} />
-      <MainTabs.Screen name="integrations" component={IntegrationsScreen} options={{ title: "Integrations" }} />
-      <MainTabs.Screen name="chat" component={ChatScreen} options={{ title: "Chat" }} />
-      <MainTabs.Screen name="device" component={DeviceScreen} options={{ title: "Device" }} />
-      <MainTabs.Screen name="settings" component={SettingsScreen} options={{ title: "Settings" }} />
-    </MainTabs.Navigator>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+
+      {/* Screen content */}
+      <View
+        style={[
+          styles.content,
+          useSidebar && { paddingLeft: RAIL_WIDTH },
+        ]}
+      >
+        <ActiveScreen />
+      </View>
+
+      {/* Navigation */}
+      {useSidebar ? (
+        <SideRail
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabPress={setActiveTab}
+        />
+      ) : (
+        <FloatingDock
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabPress={setActiveTab}
+        />
+      )}
+    </LinearGradient>
   );
 }
 
 export function RootNavigator() {
   return (
     <LayoutProvider>
-      <DockMorphProvider>
-        <Stack.Navigator id="root-stack" screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="MainTabs" component={MainTabsNavigator} />
-          <Stack.Screen name="Security" component={SecurityScreen} />
-          <Stack.Screen name="Tasks" component={ScheduledTasksScreen} />
-          <Stack.Screen name="Memory" component={MemoryScreen} />
-        </Stack.Navigator>
-      </DockMorphProvider>
+      <NavigatorContent />
     </LayoutProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+});
