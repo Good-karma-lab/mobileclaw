@@ -1,0 +1,14 @@
+appId: com.guappa.app
+---
+# Voice: Verify status bar shows current state
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Status should show idle state text
+- assertVisible: "Tap to speak"
+# Verify the status label element exists
+- assertVisible:
+    id: "voice-status-label"
+    optional: true

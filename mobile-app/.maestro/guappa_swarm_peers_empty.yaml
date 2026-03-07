@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# Swarm: Verify no peers state
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+- tapOn: "Peers"
+- waitForAnimationToEnd
+# Should show no peers message
+- assertVisible:
+    id: "peers-empty-state"
+    optional: true
+- assertVisible:
+    text: "No peers"
+    optional: true

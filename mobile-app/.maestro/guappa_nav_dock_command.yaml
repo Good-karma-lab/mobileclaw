@@ -1,0 +1,12 @@
+appId: com.guappa.app
+---
+# Navigation: Navigate to Command Center via dock
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "command-screen"
+- assertVisible: "Command Center"

@@ -1,0 +1,27 @@
+appId: com.guappa.app
+---
+# Config: Check permissions section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Scroll to Permissions section
+- scrollUntilVisible:
+    element: "Permissions"
+    direction: DOWN
+- tapOn: "Permissions"
+- waitForAnimationToEnd
+# Look for permission toggles
+- assertVisible:
+    text: "Microphone"
+    optional: true
+- assertVisible:
+    text: "Location"
+    optional: true
+- assertVisible:
+    text: "Notifications"
+    optional: true
+# Collapse
+- tapOn: "Permissions"
+- waitForAnimationToEnd

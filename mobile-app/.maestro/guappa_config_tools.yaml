@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# Config: Configure "What GUAPPA Can Do" (tools) section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand tools section
+- tapOn: "What GUAPPA Can Do"
+- waitForAnimationToEnd
+# Look for tool toggles
+- assertVisible:
+    text: "Shell"
+    optional: true
+- assertVisible:
+    text: "Browser"
+    optional: true
+- assertVisible:
+    text: "File"
+    optional: true
+# Collapse it
+- tapOn: "What GUAPPA Can Do"
+- waitForAnimationToEnd

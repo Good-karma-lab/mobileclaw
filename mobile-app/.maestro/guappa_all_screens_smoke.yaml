@@ -1,0 +1,39 @@
+appId: com.guappa.app
+---
+# Integration: Quick smoke test visiting all 5 screens
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+# Voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "voice-screen"
+# Chat screen
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "chat-screen"
+- assertVisible:
+    id: "chat-input"
+# Command Center
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "command-screen"
+# Swarm
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "swarm-screen"
+# Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "config-screen"
+- assertVisible: "How GUAPPA Thinks"

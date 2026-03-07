@@ -1,0 +1,29 @@
+appId: com.guappa.app
+---
+# Integration: Send app to background and restore
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a message before backgrounding
+- tapOn:
+    id: "chat-input"
+- inputText: "Before background"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Before background"
+# Send app to background
+- pressKey: home
+# Wait briefly
+- extendedWaitUntil:
+    visible: "Before background"
+    timeout: 3000
+    optional: true
+# Bring app back to foreground
+- launchApp
+# Message should still be visible
+- assertVisible:
+    id: "chat-screen"
+- assertVisible: "Before background"

@@ -1,0 +1,25 @@
+appId: com.guappa.app
+---
+# Config: Configure "How GUAPPA Thinks" section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand thinking section
+- tapOn: "How GUAPPA Thinks"
+- waitForAnimationToEnd
+# Look for provider/model selection
+- assertVisible:
+    text: "Provider"
+    optional: true
+- assertVisible:
+    text: "Model"
+    optional: true
+- assertVisible:
+    text: "Temperature"
+    optional: true
+# Tap provider selector if present
+- tapOn:
+    id: "thinking-provider-selector"
+    optional: true

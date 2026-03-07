@@ -1,0 +1,15 @@
+appId: com.guappa.app
+---
+# Chat: Send a very long message
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "This is a very long message to test how GUAPPA handles extended text input that exceeds typical short messages. The chat bubble should properly wrap this text and remain scrollable within the conversation view without any layout issues or truncation."
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "This is a very long message"

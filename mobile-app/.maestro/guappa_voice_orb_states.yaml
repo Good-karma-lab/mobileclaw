@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Voice: Verify orb state transitions (idle -> listening -> processing)
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Idle state
+- assertVisible:
+    id: "plasma-orb"
+- assertVisible: "Tap to speak"
+# Tap to start listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Should transition to listening or show permission
+- assertVisible:
+    id: "voice-status-label"
+    optional: true

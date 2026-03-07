@@ -1,0 +1,28 @@
+appId: com.guappa.app
+---
+# Chat: Leave chat, come back, verify history persists
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a message
+- tapOn:
+    id: "chat-input"
+- inputText: "Persist this message"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Persist this message"
+# Navigate away to Voice
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Navigate back to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Message should still be there
+- assertVisible: "Persist this message"

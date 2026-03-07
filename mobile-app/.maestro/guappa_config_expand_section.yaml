@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Config: Expand and collapse sections
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand "How GUAPPA Thinks"
+- tapOn: "How GUAPPA Thinks"
+- waitForAnimationToEnd
+- assertVisible: "Temperature"
+# Collapse it
+- tapOn: "How GUAPPA Thinks"
+- waitForAnimationToEnd
+# Expand "How GUAPPA Speaks"
+- tapOn: "How GUAPPA Speaks"
+- waitForAnimationToEnd
+# Collapse it
+- tapOn: "How GUAPPA Speaks"
+- waitForAnimationToEnd

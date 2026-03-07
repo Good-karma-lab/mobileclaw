@@ -1,0 +1,36 @@
+appId: com.guappa.app
+---
+# Navigation: Tap through all 5 dock tabs sequentially
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+# Voice
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "voice-screen"
+# Chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "chat-screen"
+# Command Center
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "command-screen"
+# Swarm
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "swarm-screen"
+# Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "config-screen"

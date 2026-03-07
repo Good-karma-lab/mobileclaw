@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Swarm: Switch between Feed/Peers/Identity tabs
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Tap Feed tab
+- tapOn: "Feed"
+- waitForAnimationToEnd
+- assertVisible: "Feed"
+# Tap Peers tab
+- tapOn: "Peers"
+- waitForAnimationToEnd
+- assertVisible: "Peers"
+# Tap Identity tab
+- tapOn: "Identity"
+- waitForAnimationToEnd
+- assertVisible: "Identity"

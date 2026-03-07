@@ -1,0 +1,10 @@
+appId: com.guappa.app
+---
+# Voice: Verify plasma orb renders on voice screen
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+- assertVisible:
+    id: "plasma-orb"

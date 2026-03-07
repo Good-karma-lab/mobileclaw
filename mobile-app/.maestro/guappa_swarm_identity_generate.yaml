@@ -1,0 +1,22 @@
+appId: com.guappa.app
+---
+# Swarm: Tap "Generate Identity" button
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+- tapOn: "Identity"
+- waitForAnimationToEnd
+# Tap generate identity
+- tapOn:
+    text: "Generate Identity"
+    optional: true
+- tapOn:
+    id: "generate-identity-btn"
+    optional: true
+- waitForAnimationToEnd
+# Identity card should appear after generation
+- assertVisible:
+    id: "identity-card"
+    optional: true

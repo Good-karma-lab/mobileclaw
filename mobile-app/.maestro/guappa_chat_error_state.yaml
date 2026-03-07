@@ -1,0 +1,33 @@
+appId: com.guappa.app
+---
+# Chat: Test error handling display when no provider configured
+- launchApp:
+    clearState: true
+# Skip onboarding
+- tapOn:
+    text: "Get Started"
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- tapOn:
+    text: "Skip for now"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- tapOn:
+    id: "chat-input"
+- inputText: "Test error"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Error state should appear when no provider is configured
+- extendedWaitUntil:
+    visible:
+      id: "chat-error-message"
+    timeout: 15000
+    optional: true

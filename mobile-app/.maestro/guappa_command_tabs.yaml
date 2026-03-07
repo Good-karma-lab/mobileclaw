@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# Command Center: Switch between Tasks/Schedules/Triggers/Memory tabs
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+# Tap Tasks tab
+- tapOn: "Tasks"
+- waitForAnimationToEnd
+- assertVisible: "Tasks"
+# Tap Schedules tab
+- tapOn: "Schedules"
+- waitForAnimationToEnd
+- assertVisible: "Schedules"
+# Tap Triggers tab
+- tapOn: "Triggers"
+- waitForAnimationToEnd
+- assertVisible: "Triggers"
+# Tap Memory tab
+- tapOn: "Memory"
+- waitForAnimationToEnd
+- assertVisible: "Memory"

@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Chat: Send message and wait for agent response
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "What is your name?"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Wait for agent to respond
+- extendedWaitUntil:
+    visible:
+      id: "chat-bubble-agent"
+    timeout: 30000
+- assertVisible:
+    id: "chat-bubble-agent"

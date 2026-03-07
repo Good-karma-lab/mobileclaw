@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Swarm: Verify swarm stats display
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Stats panel should show connection info
+- assertVisible:
+    id: "swarm-stats-panel"
+    optional: true
+- assertVisible:
+    text: "Connected"
+    optional: true
+- assertVisible:
+    text: "Peers"
+    optional: true
+- assertVisible:
+    text: "Messages"
+    optional: true

@@ -1,0 +1,22 @@
+appId: com.guappa.app
+---
+# Chat: Long press a message to copy
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a message first
+- tapOn:
+    id: "chat-input"
+- inputText: "Copy me"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Copy me"
+# Long press the message bubble
+- longPressOn: "Copy me"
+# Context menu or copy confirmation should appear
+- assertVisible:
+    text: "Copy"
+    optional: true

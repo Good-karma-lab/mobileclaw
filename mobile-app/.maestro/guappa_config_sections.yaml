@@ -1,0 +1,27 @@
+appId: com.guappa.app
+---
+# Config: Verify all 10 collapsible sections exist
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Verify all capability sections
+- assertVisible: "How GUAPPA Thinks"
+- assertVisible: "How GUAPPA Sees"
+- assertVisible: "How GUAPPA Speaks"
+- assertVisible: "How GUAPPA Connects"
+- assertVisible: "What GUAPPA Can Do"
+- assertVisible: "What GUAPPA Remembers"
+- scrollUntilVisible:
+    element: "Local Intelligence"
+    direction: DOWN
+- assertVisible: "Local Intelligence"
+- scrollUntilVisible:
+    element: "Permissions"
+    direction: DOWN
+- assertVisible: "Permissions"
+- scrollUntilVisible:
+    element: "Download Debug Info"
+    direction: DOWN
+- assertVisible: "Download Debug Info"

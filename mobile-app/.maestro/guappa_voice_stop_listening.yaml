@@ -1,0 +1,18 @@
+appId: com.guappa.app
+---
+# Voice: Start then stop listening
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Start listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Stop listening by tapping again
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Should return to idle state
+- assertVisible: "Tap to speak"

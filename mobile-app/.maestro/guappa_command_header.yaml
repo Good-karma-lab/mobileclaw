@@ -1,0 +1,12 @@
+appId: com.guappa.app
+---
+# Command Center: Verify header text
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- assertVisible: "Command Center"
+# Verify tab bar is present
+- assertVisible: "Tasks"
+- assertVisible: "Schedules"

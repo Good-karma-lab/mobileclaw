@@ -1,0 +1,29 @@
+appId: com.guappa.app
+---
+# Chat: Verify empty state on first launch
+- launchApp:
+    clearState: true
+# Dismiss onboarding if present
+- tapOn:
+    text: "Get Started"
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- tapOn:
+    text: "Skip for now"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Empty state should show prompt or welcome
+- assertVisible:
+    id: "chat-empty-state"
+    optional: true
+- assertVisible:
+    id: "chat-input"

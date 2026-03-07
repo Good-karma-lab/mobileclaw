@@ -1,0 +1,15 @@
+appId: com.guappa.app
+---
+# Chat: Tap input bar and verify keyboard appears
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+# Keyboard should be visible; type to confirm focus
+- inputText: "test input focus"
+- assertVisible: "test input focus"
+# Tap outside to dismiss
+- pressKey: back

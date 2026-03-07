@@ -1,0 +1,14 @@
+appId: com.guappa.app
+---
+# Navigation: Navigate to Voice screen via dock
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "voice-screen"
+- assertVisible: "Tap to speak"
+- assertVisible:
+    id: "plasma-orb"

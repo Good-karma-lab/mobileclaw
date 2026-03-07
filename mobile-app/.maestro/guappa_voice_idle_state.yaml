@@ -1,0 +1,16 @@
+appId: com.guappa.app
+---
+# Voice: Verify idle state appearance
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Orb should be in idle state
+- assertVisible:
+    id: "plasma-orb"
+- assertVisible: "Tap to speak"
+- assertVisible: "GUAPPA"
+# Floating dock should be visible
+- assertVisible:
+    id: "floating-dock"

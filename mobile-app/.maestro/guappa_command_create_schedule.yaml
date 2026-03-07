@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Command Center: Attempt to create a schedule
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- tapOn: "Schedules"
+- waitForAnimationToEnd
+# Tap create/add button
+- tapOn:
+    id: "create-schedule-btn"
+    optional: true
+- tapOn:
+    text: "Add Schedule"
+    optional: true
+# If a form appears, verify it
+- assertVisible:
+    id: "schedule-form"
+    optional: true

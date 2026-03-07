@@ -1,0 +1,19 @@
+appId: com.guappa.app
+---
+# Config: Tap "Download Debug Info" button
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Scroll to bottom
+- scrollUntilVisible:
+    element: "Download Debug Info"
+    direction: DOWN
+# Tap debug info button
+- tapOn: "Download Debug Info"
+- waitForAnimationToEnd
+# Should trigger download or show debug dialog
+- assertVisible:
+    text: "Debug"
+    optional: true

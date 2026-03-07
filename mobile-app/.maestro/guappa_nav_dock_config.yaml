@@ -1,0 +1,12 @@
+appId: com.guappa.app
+---
+# Navigation: Navigate to Config screen via dock
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "config-screen"
+- assertVisible: "How GUAPPA Thinks"

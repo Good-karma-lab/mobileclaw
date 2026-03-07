@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Config: Configure "How GUAPPA Sees" section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand vision section
+- tapOn: "How GUAPPA Sees"
+- waitForAnimationToEnd
+# Look for vision model settings
+- assertVisible:
+    text: "Vision"
+    optional: true
+- assertVisible:
+    text: "Provider"
+    optional: true
+# Collapse it
+- tapOn: "How GUAPPA Sees"
+- waitForAnimationToEnd

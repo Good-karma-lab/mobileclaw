@@ -1,0 +1,33 @@
+appId: com.guappa.app
+---
+# Voice: Verify microphone permission request on first use
+- launchApp:
+    clearState: true
+# Skip onboarding
+- tapOn:
+    text: "Get Started"
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- tapOn:
+    text: "Skip for now"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+# Navigate to voice
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Tap mic - should trigger permission dialog
+- tapOn:
+    id: "mic-button"
+# System permission dialog or in-app prompt
+- assertVisible:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true

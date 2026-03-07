@@ -1,0 +1,18 @@
+appId: com.guappa.app
+---
+# Chat: Verify typing indicator shows while agent responds
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "Tell me a story"
+- tapOn:
+    id: "chat-send-btn"
+# Typing indicator should appear while agent is responding
+- extendedWaitUntil:
+    visible:
+      id: "chat-typing-indicator"
+    timeout: 10000

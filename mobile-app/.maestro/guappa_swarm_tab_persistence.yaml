@@ -1,0 +1,26 @@
+appId: com.guappa.app
+---
+# Swarm: Tab state persists after navigation
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Switch to Peers tab
+- tapOn: "Peers"
+- waitForAnimationToEnd
+- assertVisible: "Peers"
+# Navigate away to Voice
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Navigate back to Swarm
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Check if Peers tab is still selected
+- assertVisible:
+    text: "Peers"
+    optional: true

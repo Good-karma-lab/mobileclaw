@@ -1,0 +1,32 @@
+appId: com.guappa.app
+---
+# Voice: Complete voice interaction cycle
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Verify idle state
+- assertVisible: "Tap to speak"
+- assertVisible:
+    id: "plasma-orb"
+# Start listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Allow permission if prompted
+- tapOn:
+    text: "Allow"
+    optional: true
+# Wait briefly for listening state
+- extendedWaitUntil:
+    visible:
+      id: "voice-screen"
+    timeout: 5000
+# Stop listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Should return to idle or show transcript
+- assertVisible:
+    id: "voice-screen"

@@ -1,0 +1,27 @@
+appId: com.guappa.app
+---
+# Navigation: Verify active tab highlight changes when switching
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+# Tap Voice and verify it becomes active
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "voice-screen"
+# Tap Chat and verify it becomes active
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "chat-screen"
+# Tap Config and verify
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "config-screen"
+# Dock should still be visible throughout
+- assertVisible:
+    id: "floating-dock"

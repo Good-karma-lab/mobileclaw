@@ -1,0 +1,13 @@
+appId: com.guappa.app
+---
+# Navigation: Navigate to Chat screen via dock
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "chat-screen"
+- assertVisible:
+    id: "chat-input"

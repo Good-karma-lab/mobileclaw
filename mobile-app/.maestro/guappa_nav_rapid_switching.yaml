@@ -1,0 +1,34 @@
+appId: com.guappa.app
+---
+# Navigation: Rapidly switch between tabs to test stability
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+# Rapid switching sequence
+- tapOn:
+    id: "dock-tab-voice"
+- tapOn:
+    id: "dock-tab-chat"
+- tapOn:
+    id: "dock-tab-command"
+- tapOn:
+    id: "dock-tab-swarm"
+- tapOn:
+    id: "dock-tab-config"
+- tapOn:
+    id: "dock-tab-voice"
+- tapOn:
+    id: "dock-tab-chat"
+- tapOn:
+    id: "dock-tab-swarm"
+- tapOn:
+    id: "dock-tab-config"
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+# App should still be responsive — verify current screen
+- assertVisible:
+    id: "command-screen"
+# Dock should still be visible
+- assertVisible:
+    id: "floating-dock"

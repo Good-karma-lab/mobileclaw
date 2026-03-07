@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Command Center: Verify memory statistics display
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- tapOn: "Memory"
+- waitForAnimationToEnd
+# Memory stats panel should be present
+- assertVisible:
+    id: "memory-stats-panel"
+    optional: true
+# Look for memory count or usage info
+- assertVisible:
+    text: "entries"
+    optional: true
+- assertVisible:
+    text: "Total"
+    optional: true

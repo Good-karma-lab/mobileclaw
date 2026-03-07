@@ -1,0 +1,26 @@
+appId: com.guappa.app
+---
+# Command Center: Switch tabs, navigate away, come back — tab persists
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+# Switch to Triggers tab
+- tapOn: "Triggers"
+- waitForAnimationToEnd
+- assertVisible: "Triggers"
+# Navigate away to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Navigate back to Command Center
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+# Triggers tab should still be active (or reset to default)
+- assertVisible:
+    text: "Triggers"
+    optional: true

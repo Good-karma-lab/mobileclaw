@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# Voice: Verify orb animates when tapped
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+- assertVisible:
+    id: "plasma-orb"
+# Tap the orb to trigger animation
+- tapOn:
+    id: "plasma-orb"
+- waitForAnimationToEnd
+# Orb should still be visible after animation
+- assertVisible:
+    id: "plasma-orb"

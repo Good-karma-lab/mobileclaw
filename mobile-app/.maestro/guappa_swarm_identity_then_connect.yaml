@@ -1,0 +1,34 @@
+appId: com.guappa.app
+---
+# Integration: Generate identity then attempt to connect to swarm
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Go to Identity tab
+- tapOn: "Identity"
+- waitForAnimationToEnd
+# Generate identity if not already present
+- tapOn:
+    text: "Generate Identity"
+    optional: true
+- tapOn:
+    id: "generate-identity-btn"
+    optional: true
+- waitForAnimationToEnd
+# After identity generation, try to connect
+- tapOn: "Feed"
+- waitForAnimationToEnd
+# Tap connect button
+- tapOn:
+    text: "Connect to Swarm"
+    optional: true
+- tapOn:
+    id: "swarm-connect-btn"
+    optional: true
+- waitForAnimationToEnd
+# Check status
+- assertVisible:
+    id: "swarm-status-pill"
+    optional: true

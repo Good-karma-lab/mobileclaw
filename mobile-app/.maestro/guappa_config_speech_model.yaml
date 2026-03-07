@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Config: Configure "How GUAPPA Speaks" section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand speech section
+- tapOn: "How GUAPPA Speaks"
+- waitForAnimationToEnd
+# Look for TTS/STT settings
+- assertVisible:
+    text: "Speech"
+    optional: true
+- assertVisible:
+    text: "Voice"
+    optional: true
+# Collapse it
+- tapOn: "How GUAPPA Speaks"
+- waitForAnimationToEnd

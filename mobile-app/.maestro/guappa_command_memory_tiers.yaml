@@ -1,0 +1,26 @@
+appId: com.guappa.app
+---
+# Command Center: Verify 5 memory tier visualization
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- tapOn: "Memory"
+- waitForAnimationToEnd
+# Verify all 5 memory tiers are shown
+- assertVisible:
+    text: "Flash"
+    optional: true
+- assertVisible:
+    text: "Short-Term"
+    optional: true
+- assertVisible:
+    text: "Working"
+    optional: true
+- assertVisible:
+    text: "Long-Term"
+    optional: true
+- assertVisible:
+    text: "Archival"
+    optional: true

@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# Config: Configure "How GUAPPA Connects" section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand connections section
+- tapOn: "How GUAPPA Connects"
+- waitForAnimationToEnd
+# Look for channel/connection settings
+- assertVisible:
+    text: "Channels"
+    optional: true
+- assertVisible:
+    text: "Telegram"
+    optional: true
+- assertVisible:
+    text: "Discord"
+    optional: true
+# Collapse it
+- tapOn: "How GUAPPA Connects"
+- waitForAnimationToEnd

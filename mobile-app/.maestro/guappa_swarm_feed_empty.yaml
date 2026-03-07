@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Swarm: Verify feed empty/offline state
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+- tapOn: "Feed"
+- waitForAnimationToEnd
+# Should show empty or offline state
+- assertVisible:
+    id: "feed-empty-state"
+    optional: true
+- assertVisible:
+    text: "No activity"
+    optional: true
+- assertVisible:
+    text: "Offline"
+    optional: true

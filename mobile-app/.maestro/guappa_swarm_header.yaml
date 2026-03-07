@@ -1,0 +1,13 @@
+appId: com.guappa.app
+---
+# Swarm: Verify "World Wide Swarm" header
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+- assertVisible: "World Wide Swarm"
+# Tab bar should be present
+- assertVisible: "Feed"
+- assertVisible: "Peers"
+- assertVisible: "Identity"

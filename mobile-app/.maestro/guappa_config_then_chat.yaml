@@ -1,0 +1,27 @@
+appId: com.guappa.app
+---
+# Integration: Configure provider then send a chat message
+- launchApp
+# Go to Config first
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Expand thinking section
+- tapOn: "How GUAPPA Thinks"
+- waitForAnimationToEnd
+- assertVisible: "Temperature"
+# Collapse and go to chat
+- tapOn: "How GUAPPA Thinks"
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a message
+- tapOn:
+    id: "chat-input"
+- inputText: "Test after config"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Test after config"

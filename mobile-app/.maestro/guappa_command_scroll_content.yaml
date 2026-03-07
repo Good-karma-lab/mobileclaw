@@ -1,0 +1,26 @@
+appId: com.guappa.app
+---
+# Command Center: Scroll within each tab
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+# Scroll Tasks tab
+- tapOn: "Tasks"
+- scroll:
+    direction: DOWN
+- scroll:
+    direction: UP
+# Scroll Schedules tab
+- tapOn: "Schedules"
+- scroll:
+    direction: DOWN
+- scroll:
+    direction: UP
+# Scroll Memory tab
+- tapOn: "Memory"
+- scroll:
+    direction: DOWN
+- scroll:
+    direction: UP

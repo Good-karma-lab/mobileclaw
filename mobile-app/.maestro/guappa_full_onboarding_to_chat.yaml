@@ -1,0 +1,34 @@
+appId: com.guappa.app
+---
+# Integration: Complete onboarding then send a chat message
+- launchApp:
+    clearState: true
+# Step 1: Welcome
+- assertVisible: "GUAPPA"
+- assertVisible: "Get Started"
+- tapOn: "Get Started"
+# Step 2: Provider Setup
+- assertVisible: "Choose how GUAPPA thinks"
+- tapOn: "Skip"
+# Step 3: Model Download
+- assertVisible: "Download a model"
+- tapOn: "Skip for now"
+# Step 4: Permissions
+- assertVisible: "Permissions GUAPPA needs"
+- tapOn: "Continue"
+# Should reach main app
+- assertVisible:
+    id: "floating-dock"
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a message
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello after onboarding"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Hello after onboarding"

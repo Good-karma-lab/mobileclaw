@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# Voice: Tap mic button and verify state change
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+- assertVisible: "Tap to speak"
+# Tap the mic / orb area
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# State should change to listening or permission prompt
+- assertVisible:
+    text: "Listening"
+    optional: true

@@ -1,0 +1,15 @@
+appId: com.guappa.app
+---
+# Chat: Type and send a message
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello from Maestro test"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Hello from Maestro test"

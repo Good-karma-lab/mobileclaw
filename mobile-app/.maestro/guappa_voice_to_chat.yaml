@@ -1,0 +1,37 @@
+appId: com.guappa.app
+---
+# Integration: Use voice screen then switch to chat
+- launchApp
+# Go to Voice
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+- assertVisible: "Tap to speak"
+# Tap mic button
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Allow permission if prompted
+- tapOn:
+    text: "Allow"
+    optional: true
+# Stop listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+# Switch to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- assertVisible:
+    id: "chat-input"
+# Send a message in chat
+- tapOn:
+    id: "chat-input"
+- inputText: "Switched from voice"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- assertVisible: "Switched from voice"

@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# Chat: Verify streaming response bubble appears after sending a message
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "What is 2 + 2?"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Streaming bubble should appear with agent response
+- extendedWaitUntil:
+    visible:
+      id: "chat-bubble-agent"
+    timeout: 15000
+- assertVisible:
+    id: "chat-bubble-agent"

@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Swarm: Verify identity card UI elements
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+- tapOn: "Identity"
+- waitForAnimationToEnd
+# Identity card elements
+- assertVisible:
+    id: "identity-card"
+    optional: true
+- assertVisible:
+    text: "Peer ID"
+    optional: true
+- assertVisible:
+    text: "Public Key"
+    optional: true

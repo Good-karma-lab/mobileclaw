@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Chat: Verify accessibility labels are present
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- assertVisible:
+    id: "chat-input"
+- assertVisible:
+    id: "chat-send-btn"
+# Floating dock should have accessibility
+- assertVisible:
+    id: "floating-dock"
+# Dock tabs should be identifiable
+- assertVisible:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "dock-tab-voice"

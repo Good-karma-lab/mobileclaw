@@ -1,0 +1,22 @@
+appId: com.guappa.app
+---
+# Chat: Verify message bubble renders correctly
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "Bubble test"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# User bubble should be visible
+- assertVisible:
+    id: "chat-bubble-user"
+# Wait for agent response bubble
+- extendedWaitUntil:
+    visible:
+      id: "chat-bubble-agent"
+    timeout: 15000

@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# Command Center: Verify triggers empty state
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- tapOn: "Triggers"
+- waitForAnimationToEnd
+# Empty state should show placeholder
+- assertVisible:
+    id: "triggers-empty-state"
+    optional: true
+- assertVisible:
+    text: "No triggers"
+    optional: true

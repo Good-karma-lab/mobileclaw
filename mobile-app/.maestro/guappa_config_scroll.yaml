@@ -1,0 +1,30 @@
+appId: com.guappa.app
+---
+# Config: Scroll through all config sections
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Verify top sections visible
+- assertVisible: "How GUAPPA Thinks"
+# Scroll down through all sections
+- scroll:
+    direction: DOWN
+- scroll:
+    direction: DOWN
+- scroll:
+    direction: DOWN
+# Bottom sections should be reachable
+- scrollUntilVisible:
+    element: "Download Debug Info"
+    direction: DOWN
+- assertVisible: "Download Debug Info"
+# Scroll back to top
+- scroll:
+    direction: UP
+- scroll:
+    direction: UP
+- scroll:
+    direction: UP
+- assertVisible: "How GUAPPA Thinks"

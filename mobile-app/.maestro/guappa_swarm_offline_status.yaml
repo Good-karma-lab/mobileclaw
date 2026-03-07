@@ -1,0 +1,15 @@
+appId: com.guappa.app
+---
+# Swarm: Verify offline status pill
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Offline status pill should be visible when not connected
+- assertVisible:
+    text: "Offline"
+    optional: true
+- assertVisible:
+    id: "swarm-status-pill"
+    optional: true

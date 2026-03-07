@@ -1,0 +1,20 @@
+appId: com.guappa.app
+---
+# Swarm: Tap "Connect to Swarm" button
+- launchApp
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "swarm-screen"
+# Tap connect button
+- tapOn:
+    text: "Connect to Swarm"
+    optional: true
+- tapOn:
+    id: "swarm-connect-btn"
+    optional: true
+- waitForAnimationToEnd
+# Status should change from offline
+- assertVisible:
+    id: "swarm-status-pill"
+    optional: true

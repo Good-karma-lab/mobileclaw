@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# Config: Configure "Local Intelligence" section
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "config-screen"
+# Scroll to Local Intelligence
+- scrollUntilVisible:
+    element: "Local Intelligence"
+    direction: DOWN
+- tapOn: "Local Intelligence"
+- waitForAnimationToEnd
+# Look for local model settings
+- assertVisible:
+    text: "Model"
+    optional: true
+- assertVisible:
+    text: "Download"
+    optional: true
+# Collapse it
+- tapOn: "Local Intelligence"
+- waitForAnimationToEnd

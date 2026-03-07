@@ -1,0 +1,29 @@
+appId: com.guappa.app
+---
+# Chat: Scroll through chat history
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Send a few messages to build history
+- tapOn:
+    id: "chat-input"
+- inputText: "Message one"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Message two"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Scroll up to see older messages
+- scroll:
+    direction: UP
+- assertVisible: "Message one"
+# Scroll down to see newest
+- scroll:
+    direction: DOWN
+- assertVisible: "Message two"

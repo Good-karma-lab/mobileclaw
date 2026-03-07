@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# Chat: Type text then clear it
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+- tapOn:
+    id: "chat-input"
+- inputText: "text to be cleared"
+- assertVisible: "text to be cleared"
+# Clear the input
+- eraseText: 18
+# Input should be empty now; send button might change state
+- assertVisible:
+    id: "chat-input"

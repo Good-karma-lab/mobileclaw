@@ -1,0 +1,16 @@
+appId: com.guappa.app
+---
+# Voice: Verify transcript display area exists
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+# Transcript area should be present (may be empty initially)
+- assertVisible:
+    id: "voice-transcript-area"
+    optional: true
+# Status label area
+- assertVisible:
+    id: "voice-status-label"
+    optional: true

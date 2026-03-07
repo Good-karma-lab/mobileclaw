@@ -1,0 +1,33 @@
+appId: com.guappa.app
+---
+# Chat: Send 3 messages sequentially
+- launchApp
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-screen"
+# Message 1
+- tapOn:
+    id: "chat-input"
+- inputText: "First message"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Message 2
+- tapOn:
+    id: "chat-input"
+- inputText: "Second message"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# Message 3
+- tapOn:
+    id: "chat-input"
+- inputText: "Third message"
+- tapOn:
+    id: "chat-send-btn"
+- waitForAnimationToEnd
+# All three should be visible
+- assertVisible: "First message"
+- assertVisible: "Second message"
+- assertVisible: "Third message"

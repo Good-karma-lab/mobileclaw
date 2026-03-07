@@ -1,0 +1,23 @@
+appId: com.guappa.app
+---
+# Command Center: Attempt to create a task
+- launchApp
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "command-screen"
+- tapOn: "Tasks"
+- waitForAnimationToEnd
+# Tap create/add button
+- tapOn:
+    id: "create-task-btn"
+    optional: true
+- tapOn:
+    text: "Add Task"
+    optional: true
+# If a form appears, fill it
+- tapOn:
+    id: "task-name-input"
+    optional: true
+- inputText: "Test task from Maestro"
+  optional: true

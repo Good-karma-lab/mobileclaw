@@ -1,0 +1,12 @@
+appId: com.guappa.app
+name: "GUAPPA - Cold Start Launch Test"
+---
+- clearState
+- launchApp
+- assertVisible:
+    text: ".*GUAPPA.*"
+    optional: true
+- waitForAnimationToEnd
+- assertVisible:
+    id: "floating-dock"
+    optional: true

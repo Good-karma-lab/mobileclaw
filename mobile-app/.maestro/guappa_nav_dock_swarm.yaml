@@ -1,0 +1,12 @@
+appId: com.guappa.app
+---
+# Navigation: Navigate to Swarm screen via dock
+- launchApp
+- assertVisible:
+    id: "floating-dock"
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "swarm-screen"
+- assertVisible: "World Wide Swarm"
