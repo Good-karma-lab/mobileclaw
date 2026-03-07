@@ -1,0 +1,29 @@
+appId: com.guappa.app
+---
+# Onboarding flow test — verifies first-run wizard
+- launchApp:
+    clearState: true
+# Step 1: Welcome
+- assertVisible: "GUAPPA"
+- assertVisible: "Your AI companion"
+- assertVisible: "Get Started"
+- tapOn: "Get Started"
+
+# Step 2: Provider Setup
+- assertVisible: "Choose how GUAPPA thinks"
+- assertVisible: "Cloud AI"
+- assertVisible: "On-Device AI"
+- tapOn: "Skip"
+
+# Step 3: Model Download
+- assertVisible: "Download a model"
+- tapOn: "Skip for now"
+
+# Step 4: Permissions
+- assertVisible: "Permissions GUAPPA needs"
+- assertVisible: "Continue"
+- tapOn: "Continue"
+
+# Should reach main app
+- assertVisible:
+    id: "voice-screen"

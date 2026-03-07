@@ -1,0 +1,10 @@
+appId: com.guappa.app
+---
+# Voice screen test — verifies plasma orb and mic button
+- launchApp
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "voice-screen"
+- assertVisible: "GUAPPA"
+- assertVisible: "Tap to speak"

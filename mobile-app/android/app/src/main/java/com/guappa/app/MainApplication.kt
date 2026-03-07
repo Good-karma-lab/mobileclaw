@@ -17,6 +17,7 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
 import com.guappa.app.GuappaAgentPackage
+import com.guappa.app.config.ConfigBridgePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -29,6 +30,7 @@ class MainApplication : Application(), ReactApplication {
               add(GuappaAgentPackage())
               add(ModelDownloaderPackage())
               add(LocalLlmServerPackage())
+              add(ConfigBridgePackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

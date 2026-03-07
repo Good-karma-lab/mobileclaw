@@ -1,0 +1,26 @@
+appId: com.guappa.app
+---
+# Config screen test — verifies capability sections
+- launchApp
+- tapOn:
+    id: "dock-tab-config"
+
+# Verify all capability sections exist
+- assertVisible: "How GUAPPA Thinks"
+- assertVisible: "How GUAPPA Sees"
+- assertVisible: "How GUAPPA Speaks"
+- assertVisible: "What GUAPPA Can Do"
+- assertVisible: "What GUAPPA Remembers"
+- assertVisible: "Local Intelligence"
+- assertVisible: "Permissions"
+- assertVisible: "Download Debug Info"
+
+# Expand "How GUAPPA Thinks"
+- tapOn: "How GUAPPA Thinks"
+- assertVisible: "Temperature"
+
+# Scroll to bottom
+- scrollUntilVisible:
+    element: "Download Debug Info"
+    direction: DOWN
+- tapOn: "Download Debug Info"
