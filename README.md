@@ -1,96 +1,55 @@
-# Turn Your Old Android Phone Into a Personal Assistant
+# Guappa
 
-MobileClaw turns an old Android phone into an on-device control center for your daily actions.
+Guappa is a Kotlin-native Android AI organism with a React Native interface.
 
-MobileClaw is a lightweight autonomous AI agent with UI designed to run on Android devices:
-- a fast Rust-first core under the mobile UX layer
-- a small-footprint runtime model suitable for older/low-cost devices
-- modular architecture where providers/channels/tools/memory are swappable
-- broad provider and messaging ecosystem compatibility
-- secure-by-default design principles for tool and data handling
+It is being built as:
 
-MobileClaw uses ZeroClaw as its runtime foundation, adapted for Android-native assistant workflows.
-ZeroClaw is a lightweight, secure autonomous AI agent infrastructure designed as a high-performance alternative to OpenClaw.
-It is written in Rust and designed to run with a very low resource footprint.
-ZeroClaw upstream project: https://github.com/zeroclaw-labs/zeroclaw
+- a mobile-first autonomous AI runtime
+- a voice, chat, task, memory, and swarm experience in one product
+- an Android-native backend with modular providers, tools, memory, proactive flows, and WWSP connectivity
+- a compliant, testable, release-ready mobile app rather than a wrapper around a legacy daemon
 
-## What MobileClaw Core Inherits from ZeroClaw
+## Current direction
 
-- Performance: ZeroClaw reported cold start under 10ms, with binary size around 3.4MB
-- Low footprint: ZeroClaw reported runtime memory usage under 5MB in minimal setups
-- Architecture: trait-based subsystem with swappable providers, channels, tools, and memory via configuration
-- Interoperability: support for 22+ providers and messaging APIs (including OpenAI, Anthropic, OpenRouter, Telegram, Discord, Slack)
-- Security: preemptive protocol focus to reduce leak risk before incidents occur
+Guappa is migrating away from the old wrapped architecture. The active product direction is:
 
-Note: the numbers above describe the ZeroClaw core/runtime characteristics. 
-Full MobileClaw app behavior on a phone depends on Android, enabled capabilities, permissions, and active integrations.
+- Kotlin-native backend in `mobile-app/android/app/src/main/java/com/guappa/app/`
+- React Native UI in `mobile-app/src/`
+- World Wide Swarm integration through the dedicated `Swarm` surface
+- app-wide AI presence across Chat, Voice, Command, Config, and ambient visuals
 
+## Build the app
 
-## Watch the Demo
+Prerequisites:
 
-[![MobileClaw demo video](https://img.youtube.com/vi/-3fpcQAL6II/maxresdefault.jpg)](https://youtu.be/-3fpcQAL6II)
+- Node.js 20+
+- npm
+- JDK 17
+- Android Studio with Android SDK
+- a connected Android device or emulator
 
-[![MobileClaw demo video 2](https://img.youtube.com/vi/HtNMcQIDsZ8/maxresdefault.jpg)](https://youtu.be/HtNMcQIDsZ8)
+Install dependencies and run:
 
-[![MobileClaw demo video 3](https://img.youtube.com/vi/OGHg3Fzgg70/maxresdefault.jpg)](https://youtu.be/OGHg3Fzgg70)
+```bash
+cd mobile-app
+npm ci
+npx expo prebuild --platform android
+npm run android
+```
 
+To build a release APK locally:
 
-## What You Can Do Today
+```bash
+cd mobile-app/android
+./gradlew assembleRelease
+```
 
-With the right permissions and toggles enabled, MobileClaw Agent can:
+## Validation
 
-- read and browse files from device storage
-- read latest SMS and call log
-- start call flow and SMS flow from chat
-- get current location (if location fix is available)
-- read contacts and calendar events
-- post and inspect active notifications
-- access device/network/sensor status
-- open apps, open URLs, and open system settings
-- launch camera/audio/document workflows
-- expose Bluetooth/NFC related actions
-- provide hardware/device information and memory stats
+- Android helper scripts live under `scripts/android/`
+- mobile UI flows live under `mobile-app/.maestro/`
+- active execution plans live under `docs/plans/`
 
-It also supports optional advanced flows:
+## Status
 
-- Accessibility-based UI automation controls (tap/swipe/click/back/home/recents)
-- in-app browser session tools (open/navigate/read page state/fetch page text)
-
-## Important Reality Check
-
-MobileClaw is powerful, but Android security still applies:
-
-- many features require runtime permissions
-- some capabilities require OS-level switches (for example Accessibility service)
-- some actions open system UI/apps where Android expects user confirmation
-
-Anyway, use it with caution!!
-
-## Install APK from GitHub Releases
-
-### 1) Download
-
-1. Open this repository's **Releases** page on GitHub.
-2. Open the latest stable release.
-3. Download the `mobileclaw-<version>.apk` asset.
-4. (Optional) download `SHA256SUMS` and verify checksum before install.
-
-### 2) Install on Android
-
-1. Open the downloaded APK on your phone.
-2. If prompted, allow install from this source (browser/files app).
-3. Continue and finish installation.
-
-### 3) First launch setup
-
-1. Open **MobileClaw**.
-2. Go to **Settings** tab.
-3. Setup LLM provider.
-4. Setup Deepgram key for Voice mode (optional).
-5. Go to the **Device** tab.
-6. Enable the capabilities you need and grant requested permissions. 
-7. If using UI automation, enable Accessibility service from in-app guidance.
-
-## Notes
-- This README focuses on user outcomes and running the app quickly.
-- For deeper engineering internals, see docs and module sources in the repo.
+The repository is still in migration. If you see legacy references outside the current Guappa mobile stack, they are surfaces being removed.

@@ -13,4 +13,5 @@ export type ToolExecutionEvent = {
 export type AgentTurnResult = {
   assistantText: string;
   toolEvents: ToolExecutionEvent[];
+  sessionId?: string;
 };

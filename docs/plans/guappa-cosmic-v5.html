@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>GUAPPA — Cosmic Neural Swarm</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#020206;overflow:hidden;touch-action:none;font-family:-apple-system,system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  canvas{display:block}
+  #hud{position:fixed;top:0;left:0;right:0;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:10}
+  .hud-label{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(200,205,220,0.3);font-weight:500}
+  .hud-status{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1px;color:rgba(180,195,215,0.35);font-family:'SF Mono',Menlo,monospace}
+  .hud-dot{width:5px;height:5px;border-radius:50%;background:#8ECAB0;box-shadow:0 0 8px rgba(142,202,176,0.5);animation:hudP 4s ease-in-out infinite}
+  @keyframes hudP{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  #state-display{position:fixed;bottom:115px;left:0;right:0;text-align:center;pointer-events:none;z-index:10}
+  #state-label{font-size:18px;font-weight:500;letter-spacing:.8px;color:rgba(225,230,240,0.85);transition:all 1.5s}
+  #state-sub{font-size:12px;color:rgba(180,190,210,0.4);margin-top:5px;transition:all 1.5s}
+  #transcript{font-size:13px;color:rgba(200,215,230,0.45);margin-top:14px;font-style:italic;max-width:280px;margin-left:auto;margin-right:auto;opacity:0;transition:opacity 1.2s;line-height:1.5}
+  #transcript.visible{opacity:1}
+  #controls{position:fixed;bottom:8px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:20;padding:0 6px}
+  .cr{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+  .cb{padding:5px 9px;border-radius:10px;background:rgba(255,255,255,0.03);border:.5px solid rgba(255,255,255,0.06);color:rgba(200,210,225,0.5);font-size:9.5px;font-weight:500;cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:all .4s;letter-spacing:.3px;white-space:nowrap}
+  .cb:active,.cb.active{background:rgba(255,255,255,0.08);color:rgba(225,230,240,0.9);border-color:rgba(255,255,255,0.15)}
+  #ebar{position:fixed;top:46px;left:6px;right:6px;display:flex;gap:2px;z-index:10;pointer-events:auto;flex-wrap:wrap;justify-content:center}
+  .eb{padding:3px 7px;border-radius:8px;background:rgba(255,255,255,0.025);border:.5px solid rgba(255,255,255,0.05);color:rgba(200,210,225,0.35);font-size:8px;cursor:pointer;transition:all .5s;letter-spacing:.2px}
+  .eb.active{background:rgba(255,255,255,0.06);color:rgba(225,230,240,0.8);border-color:rgba(255,255,255,0.12)}
+  #vc{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:auto}
+  #vc label{font-size:7px;color:rgba(200,210,225,0.25);letter-spacing:1px;text-transform:uppercase;writing-mode:vertical-rl}
+  #vs{-webkit-appearance:none;width:90px;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;outline:none;transform:rotate(-90deg);transform-origin:center}
+  #vs::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,0.12);border:.5px solid rgba(255,255,255,0.18);cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><div class="hud-label">guappa</div><div class="hud-status"><div class="hud-dot"></div><span>neural swarm active</span></div></div>
+
+<div id="ebar">
+  <button class="eb active" onclick="setE('neutral')">Neutral</button>
+  <button class="eb" onclick="setE('curious')">🔍Curious</button>
+  <button class="eb" onclick="setE('happy')">😊Happy</button>
+  <button class="eb" onclick="setE('love')">💕Love</button>
+  <button class="eb" onclick="setE('focused')">🎯Focus</button>
+  <button class="eb" onclick="setE('alert')">⚠️Alert</button>
+  <button class="eb" onclick="setE('calm')">🍃Calm</button>
+  <button class="eb" onclick="setE('sad')">😢Sad</button>
+  <button class="eb" onclick="setE('excited')">🤩Excite</button>
+  <button class="eb" onclick="setE('mysterious')">🔮Mystic</button>
+  <button class="eb" onclick="setE('grateful')">🙏Grateful</button>
+  <button class="eb" onclick="setE('proud')">🏆Proud</button>
+  <button class="eb" onclick="setE('playful')">😜Playful</button>
+  <button class="eb" onclick="setE('anxious')">😰Anxious</button>
+  <button class="eb" onclick="setE('inspired')">💡Inspired</button>
+  <button class="eb" onclick="setE('nostalgic')">🌅Nostalgic</button>
+  <button class="eb" onclick="setE('angry')">😠Angry</button>
+  <button class="eb" onclick="setE('surprised')">😲Surprise</button>
+  <button class="eb" onclick="setE('confused')">🤔Confused</button>
+  <button class="eb" onclick="setE('sleepy')">😴Sleepy</button>
+</div>
+
+<div id="vc"><label>Volume</label><input type="range" id="vs" min="0" max="100" value="40"></div>
+
+<div id="state-display">
+  <div id="state-label">Present</div>
+  <div id="state-sub">The swarm is aware</div>
+  <div id="transcript"></div>
+</div>
+
+<div id="controls">
+  <div class="cr" id="stateRow">
+    <button class="cb active" onclick="setS('idle')">Idle</button>
+    <button class="cb" onclick="setS('listening')">Listen</button>
+    <button class="cb" onclick="setS('processing')">Think</button>
+    <button class="cb" onclick="setS('speaking')">Speak</button>
+  </div>
+  <div class="cr">
+    <button class="cb" onclick="fS('heart')">❤️</button>
+    <button class="cb" onclick="fS('star')">⭐</button>
+    <button class="cb" onclick="fS('brain')">🧠</button>
+    <button class="cb" onclick="fS('eye')">👁</button>
+    <button class="cb" onclick="fS('infinity')">♾️</button>
+    <button class="cb" onclick="fS('dna')">🧬</button>
+    <button class="cb" onclick="fS('atom')">⚛️</button>
+    <button class="cb" onclick="fS('spiral')">🌀</button>
+    <button class="cb" onclick="fS('lightning')">⚡</button>
+    <button class="cb" onclick="fS('diamond')">💎</button>
+    <button class="cb" onclick="fS('crown')">👑</button>
+    <button class="cb" onclick="fS('moon')">🌙</button>
+    <button class="cb" onclick="fS('fire')">🔥</button>
+    <button class="cb" onclick="fS('music')">🎵</button>
+    <button class="cb" onclick="fS('tree')">🌳</button>
+    <button class="cb" onclick="fS('wave')">👋</button>
+    <button class="cb" onclick="fS('check')">✅</button>
+  </div>
+  <div class="cr">
+    <button class="cb" onclick="fS('face_happy')">😊</button>
+    <button class="cb" onclick="fS('face_sad')">😢</button>
+    <button class="cb" onclick="fS('face_love')">😍</button>
+    <button class="cb" onclick="fS('face_angry')">😠</button>
+    <button class="cb" onclick="fS('face_surprise')">😲</button>
+    <button class="cb" onclick="fS('face_think')">🤔</button>
+    <button class="cb" onclick="fS('face_wink')">😉</button>
+    <button class="cb" onclick="fS('face_cool')">😎</button>
+    <button class="cb" onclick="fS('face_cry')">😭</button>
+    <button class="cb" onclick="fS('face_laugh')">😂</button>
+    <button class="cb" onclick="fS('face_sleep')">😴</button>
+    <button class="cb" onclick="fS('face_scared')">😱</button>
+  </div>
+  <div class="cr">
+    <button class="cb" onclick="fT('HELLO')">HELLO</button>
+    <button class="cb" onclick="fT('GUAPPA')">GUAPPA</button>
+    <button class="cb" onclick="fT('AI')">AI</button>
+    <button class="cb" onclick="fT('YES')">YES</button>
+    <button class="cb" onclick="fT('NO')">NO</button>
+    <button class="cb" onclick="fT('LOVE')">LOVE</button>
+    <button class="cb" onclick="fS('scatter')">Reset</button>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+let W,H,cx,cy;
+let nebCanvas=null;
+function resize(){W=canvas.width=Math.max(1,innerWidth);H=canvas.height=Math.max(1,innerHeight);cx=W/2;cy=H/2;if(W>1&&H>1)buildNeb()}
+resize();
+
+const NC=420,CONN=52,FSPD=1.6;
+
+// ─── Volume ─────────────────────────────────────────────────
+let voiceVol=.4, smoothVol=.4, simMicPh=0;
+document.getElementById('vs').addEventListener('input',e=>{voiceVol=e.target.value/100});
+function getVol(){
+  simMicPh+=.016;
+  const b1=Math.max(0,Math.sin(simMicPh*2.1))*.5;
+  const b2=Math.max(0,Math.sin(simMicPh*.7+1.2))*.3;
+  const m=Math.sin(simMicPh*13.7)*.08+Math.sin(simMicPh*7.3)*.06;
+  return Math.min(1,voiceVol*(b1+b2+m+.2));
+}
+
+// ─── 20 Emotions ────────────────────────────────────────────
+const EMO={
+  neutral:   {h:220,s:12,l:76,nebH:230},
+  curious:   {h:200,s:45,l:72,nebH:210},
+  happy:     {h:42, s:50,l:78,nebH:40},
+  love:      {h:338,s:55,l:74,nebH:340},
+  focused:   {h:265,s:48,l:70,nebH:270},
+  alert:     {h:15, s:58,l:70,nebH:15},
+  calm:      {h:170,s:32,l:73,nebH:170},
+  sad:       {h:225,s:28,l:56,nebH:230},
+  excited:   {h:30, s:65,l:74,nebH:25},
+  mysterious:{h:280,s:45,l:65,nebH:285},
+  grateful:  {h:50, s:35,l:75,nebH:48},
+  proud:     {h:40, s:55,l:72,nebH:38},
+  playful:   {h:310,s:50,l:75,nebH:305},
+  anxious:   {h:190,s:30,l:60,nebH:195},
+  inspired:  {h:55, s:60,l:80,nebH:50},
+  nostalgic: {h:25, s:35,l:68,nebH:30},
+  angry:     {h:5,  s:65,l:58,nebH:5},
+  surprised: {h:48, s:60,l:78,nebH:45},
+  confused:  {h:240,s:25,l:62,nebH:245},
+  sleepy:    {h:250,s:15,l:50,nebH:255},
+};
+let targetEmo='neutral';
+let emo={h:220,s:12,l:76,nebH:230};
+
+// ─── States — with 3D rotation profiles ─────────────────────
+const ST={
+  idle:{
+    speed:.25,connA:.05,fireR:.005,grav:0,spread:1,
+    label:'Present',sub:'The swarm is aware',
+    pAmp:.1,pFreq:.5,bAmp:.025,cGlow:.03,
+    waveActive:0,thinkRings:0,thinkConns:0,
+    // 3D: gentle slow orbit like breathing
+    rotXamp:.08,rotXfreq:.07,rotYamp:.12,rotYfreq:.05,rotZamp:.03,rotZfreq:.03
+  },
+  listening:{
+    speed:.45,connA:.14,fireR:.03,grav:.001,spread:.5,
+    label:'Listening',sub:'Converging on your voice',
+    pAmp:.22,pFreq:1.2,bAmp:.05,cGlow:.06,
+    waveActive:1,thinkRings:0,thinkConns:0,
+    // 3D: tilts toward user, slight nodding
+    rotXamp:.15,rotXfreq:.2,rotYamp:.06,rotYfreq:.12,rotZamp:.04,rotZfreq:.15
+  },
+  processing:{
+    speed:.55,connA:.28,fireR:.06,grav:.0003,spread:.72,
+    label:'Reasoning',sub:'Thoughts cascading through neural space',
+    pAmp:.16,pFreq:.5,bAmp:.035,cGlow:.09,
+    waveActive:0,thinkRings:5,thinkConns:1,
+    // 3D: slow deliberate rotation, examining all angles
+    rotXamp:.1,rotXfreq:.04,rotYamp:.2,rotYfreq:.06,rotZamp:.06,rotZfreq:.025
+  },
+  speaking:{
+    speed:.35,connA:.12,fireR:.018,grav:-.0004,spread:1.15,
+    label:'Expressing',sub:'Thought radiating into words',
+    pAmp:.13,pFreq:.7,bAmp:.03,cGlow:.05,
+    waveActive:1,thinkRings:0,thinkConns:0,
+    // 3D: expressive, rhythmic gentle swaying
+    rotXamp:.06,rotXfreq:.1,rotYamp:.1,rotYfreq:.15,rotZamp:.05,rotZfreq:.08
+  },
+};
+let curSt='idle';
+let sb={...ST.idle};
+const BL=.007,EBL=.005;
+
+// ─── 3D Camera State ────────────────────────────────────────
+let camRX=0,camRY=0,camRZ=0;
+let tRX=0,tRY=0; // user input target
+let autoRX=0,autoRY=0,autoRZ=0; // state-driven auto rotation
+const persp=600;
+
+if(window.DeviceOrientationEvent)addEventListener('deviceorientation',e=>{
+  if(e.gamma!=null)tRY=(e.gamma/90)*.4;
+  if(e.beta!=null)tRX=((e.beta-45)/90)*.3;
+});
+canvas.addEventListener('mousemove',e=>{tRY=((e.clientX/W)-.5)*.5;tRX=((e.clientY/H)-.5)*.35});
+canvas.addEventListener('touchmove',e=>{const t=e.touches[0];tRY=((t.clientX/W)-.5)*.5;tRX=((t.clientY/H)-.5)*.35;e.preventDefault()},{passive:false});
+
+// ─── Cosmic Dust ────────────────────────────────────────────
+const dust=Array.from({length:200},()=>({x:Math.random()*2-1,y:Math.random()*2-1,z:Math.random()*2-1,sz:.2+Math.random()*.7,al:.02+Math.random()*.06,sp:.00005+Math.random()*.00015,ph:Math.random()*Math.PI*2}));
+
+// ─── Harmonic Waves ─────────────────────────────────────────
+const WN=80,MAX_HW=6,hWaves=[];let hwT=0;
+const HARM=[{f:3,w:1,ps:.5},{f:5,w:.6,ps:-.8},{f:8,w:.35,ps:1.2},{f:13,w:.2,ps:-1.7},{f:21,w:.12,ps:2.3}];
+function spawnHW(){const ns=[];for(let i=0;i<WN;i++)ns.push({a:(i/WN)*Math.PI*2,en:.5+Math.random()*.5});hWaves.push({ns,r:5,maxR:Math.min(W,H)*.5,born:T,hp:HARM.map(()=>Math.random()*Math.PI*2),bA:8+Math.random()*6});if(hWaves.length>MAX_HW)hWaves.shift()}
+
+// ─── Data Flow Particles (for thinking) ─────────────────────
+const MAX_FLOWS=120;
+const dataFlows=[];
+
+// ─── Face & Shape Definitions ───────────────────────────────
+function sP(shape,Nc){
+const P=[];const rj=(v=.06)=>(Math.random()-.5)*v;
+const pu=(x,y,z)=>P.push({x,y,z:z!=null?z:(Math.random()-.5)*.18});
+// Helper: circle outline
+const circ=(ox,oy,rx,ry,n,jit=.02)=>{for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2;pu(ox+Math.cos(a)*rx+rj(jit),oy+Math.sin(a)*ry+rj(jit))}};
+// Helper: arc
+const arc=(ox,oy,rx,ry,a1,a2,n,jit=.02)=>{for(let i=0;i<n;i++){const t=i/(n-1);const a=a1+(a2-a1)*t;pu(ox+Math.cos(a)*rx+rj(jit),oy+Math.sin(a)*ry+rj(jit))}};
+// Helper: dot cluster
+const dot=(ox,oy,r,n)=>{for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2;const d=Math.random()*r;pu(ox+Math.cos(a)*d,oy+Math.sin(a)*d)}};
+// Helper: line
+const line=(x1,y1,x2,y2,n,jit=.02)=>{for(let i=0;i<n;i++){const t=i/(n-1);pu(x1+(x2-x1)*t+rj(jit),y1+(y2-y1)*t+rj(jit))}};
+
+const half=Math.floor(Nc/2);
+const third=Math.floor(Nc/3);
+const quarter=Math.floor(Nc/4);
+
+switch(shape){
+// ─── FACES ──────────────────────────────────────────────────
+case 'face_happy':
+  circ(0,0,.75,.75,half);          // outline
+  dot(-.25,-.18,.07,quarter);      // left eye
+  dot(.25,-.18,.07,quarter);       // right eye
+  arc(0,.08,.35,.25,0.2,Math.PI-.2,Nc-half-quarter*2); // smile
+  break;
+case 'face_sad':
+  circ(0,0,.75,.75,half);
+  dot(-.25,-.15,.07,Math.floor(Nc*.12));
+  dot(.25,-.15,.07,Math.floor(Nc*.12));
+  arc(0,.38,.3,.2,Math.PI+.3,Math.PI*2-.3,Math.floor(Nc*.16)); // frown
+  // tears
+  line(-.2,.0,-.25,.25,Math.floor(Nc*.05));
+  line(.2,.0,.25,.25,Math.floor(Nc*.05));
+  break;
+case 'face_love':
+  circ(0,0,.75,.75,third);
+  // heart eyes
+  for(let eye=-1;eye<=1;eye+=2){
+    const ox=eye*.25,oy=-.18;
+    for(let i=0;i<Math.floor(Nc*.15);i++){
+      const t=(i/Math.floor(Nc*.15))*Math.PI*2;
+      const hx=16*Math.pow(Math.sin(t),3)/18*.12;
+      const hy=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/18*.1;
+      pu(ox+hx+rj(.01),oy+hy+rj(.01));
+    }
+  }
+  arc(0,.08,.32,.22,.2,Math.PI-.2,Nc-third-Math.floor(Nc*.3)); // smile
+  break;
+case 'face_angry':
+  circ(0,0,.75,.75,half);
+  dot(-.22,-.12,.08,Math.floor(Nc*.1));
+  dot(.22,-.12,.08,Math.floor(Nc*.1));
+  // angry brows \\ //
+  line(-.38,-.32,-.12,-.22,Math.floor(Nc*.06));
+  line(.38,-.32,.12,-.22,Math.floor(Nc*.06));
+  // mouth
+  arc(0,.28,.25,.12,Math.PI+.4,Math.PI*2-.4,Nc-half-Math.floor(Nc*.32));
+  break;
+case 'face_surprise':
+  circ(0,0,.75,.75,third);
+  circ(-.25,-.18,.1,.12,Math.floor(Nc*.1));  // left eye O
+  circ(.25,-.18,.1,.12,Math.floor(Nc*.1));   // right eye O
+  circ(0,.2,.12,.18,Math.floor(Nc*.1));      // mouth O
+  // raised brows
+  arc(-.25,-.38,.15,.06,Math.PI+.3,Math.PI*2-.3,Math.floor(Nc*.05));
+  arc(.25,-.38,.15,.06,Math.PI+.3,Math.PI*2-.3,Nc-third-Math.floor(Nc*.35));
+  break;
+case 'face_think':
+  circ(0,0,.75,.75,third);
+  dot(-.25,-.15,.06,Math.floor(Nc*.08));  // left eye
+  // right eye looking up
+  dot(.22,-.22,.06,Math.floor(Nc*.08));
+  // raised right brow
+  arc(.22,-.38,.18,.06,Math.PI+.2,Math.PI*2-.2,Math.floor(Nc*.06));
+  // hand on chin
+  arc(-.3,.35,.15,.2,.5,2.5,Math.floor(Nc*.1));
+  // small mouth
+  line(-.05,.18,.12,.18,Math.floor(Nc*.04));
+  // fill remaining
+  for(let i=P.length;i<Nc;i++)pu((Math.random()-.5)*.15+.3,(Math.random()-.5)*.15+.35);
+  break;
+case 'face_wink':
+  circ(0,0,.75,.75,half);
+  dot(-.25,-.18,.07,Math.floor(Nc*.1));     // left eye open
+  line(.18,-.18,.32,-.18,Math.floor(Nc*.06)); // right eye wink —
+  arc(0,.08,.32,.22,.2,Math.PI-.2,Math.floor(Nc*.14)); // smile
+  // tongue
+  arc(.1,.22,.08,.06,0,Math.PI,Nc-half-Math.floor(Nc*.3));
+  break;
+case 'face_cool':
+  circ(0,0,.75,.75,third);
+  // sunglasses
+  circ(-.22,-.16,.13,.09,Math.floor(Nc*.1));
+  circ(.22,-.16,.13,.09,Math.floor(Nc*.1));
+  line(-.09,-.16,.09,-.16,Math.floor(Nc*.04)); // bridge
+  line(-.35,-.16,-.45,-.22,Math.floor(Nc*.03)); // left arm
+  line(.35,-.16,.45,-.22,Math.floor(Nc*.03));   // right arm
+  // smirk
+  arc(.05,.15,.28,.15,.1,Math.PI*.7,Nc-third-Math.floor(Nc*.3));
+  break;
+case 'face_cry':
+  circ(0,0,.75,.75,third);
+  // squinting eyes
+  arc(-.25,-.15,.1,.04,0.3,Math.PI-.3,Math.floor(Nc*.05));
+  arc(.25,-.15,.1,.04,0.3,Math.PI-.3,Math.floor(Nc*.05));
+  // wide open mouth
+  circ(0,.2,.2,.25,Math.floor(Nc*.12));
+  // tears streaming
+  for(let s=-1;s<=1;s+=2){
+    for(let i=0;i<Math.floor(Nc*.08);i++){
+      const t=i/Math.floor(Nc*.08);
+      pu(s*.32+Math.sin(t*4)*.04+rj(.01),-.05+t*.55+rj(.01));
+    }
+  }
+  for(let i=P.length;i<Nc;i++)pu(rj(.1),rj(.1));
+  break;
+case 'face_laugh':
+  circ(0,0,.75,.75,third);
+  // happy squint eyes ^_^
+  arc(-.25,-.15,.1,.06,Math.PI+.4,Math.PI*2-.4,Math.floor(Nc*.06));
+  arc(.25,-.15,.1,.06,Math.PI+.4,Math.PI*2-.4,Math.floor(Nc*.06));
+  // wide open laughing mouth
+  circ(0,.15,.25,.2,Math.floor(Nc*.12));
+  dot(0,.15,.15,Math.floor(Nc*.08)); // mouth fill
+  // tear of joy
+  line(.38,-.08,.42,.15,Math.floor(Nc*.03));
+  for(let i=P.length;i<Nc;i++)pu(rj(.1),rj(.1));
+  break;
+case 'face_sleep':
+  circ(0,0,.75,.75,third);
+  // closed eyes ——
+  line(-.35,-.15,-.15,-.15,Math.floor(Nc*.05));
+  line(.15,-.15,.35,-.15,Math.floor(Nc*.05));
+  // small O mouth
+  circ(0,.15,.06,.08,Math.floor(Nc*.06));
+  // ZZZ
+  for(let z=0;z<3;z++){
+    const ox=.35+z*.12,oy=-.35-z*.15,s=.06+z*.03;
+    line(ox-s,oy-s,ox+s,oy-s,Math.floor(Nc*.02));
+    line(ox+s,oy-s,ox-s,oy+s,Math.floor(Nc*.02));
+    line(ox-s,oy+s,ox+s,oy+s,Math.floor(Nc*.02));
+  }
+  for(let i=P.length;i<Nc;i++)pu(rj(.08),rj(.08));
+  break;
+case 'face_scared':
+  circ(0,0,.75,.75,third);
+  // wide eyes
+  circ(-.25,-.15,.12,.15,Math.floor(Nc*.08));
+  dot(-.25,-.15,.04,Math.floor(Nc*.04));
+  circ(.25,-.15,.12,.15,Math.floor(Nc*.08));
+  dot(.25,-.15,.04,Math.floor(Nc*.04));
+  // wavy mouth
+  for(let i=0;i<Math.floor(Nc*.1);i++){
+    const t=i/Math.floor(Nc*.1);
+    pu(-.2+t*.4+rj(.01),.22+Math.sin(t*Math.PI*4)*.06+rj(.01));
+  }
+  // hair standing
+  for(let i=0;i<5;i++){
+    const a=-Math.PI*.7+i*(Math.PI*.4/4);
+    line(Math.cos(a)*.7,Math.sin(a)*.7,Math.cos(a)*.9,Math.sin(a)*.9,Math.floor(Nc*.02));
+  }
+  for(let i=P.length;i<Nc;i++)pu(rj(.1),rj(.1));
+  break;
+
+// ─── SHAPES ─────────────────────────────────────────────────
+case 'heart':for(let i=0;i<Nc;i++){const t=(i/Nc)*Math.PI*2;pu(16*Math.pow(Math.sin(t),3)/18+rj(),-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/18+rj())}break;
+case 'star':for(let i=0;i<Nc;i++){const a=(i/Nc)*Math.PI*2;const r=.35+.5*(.5+.5*Math.cos((i/Nc)*Math.PI*10));pu(Math.cos(a)*r+rj(),Math.sin(a)*r+rj())}break;
+case 'brain':for(let i=0;i<Nc;i++){if(i<Nc*.55){const t=(i/(Nc*.55))*Math.PI*2;const l=.6+.2*Math.sin(t*3)+.1*Math.cos(t*5);pu(Math.cos(t)*l+rj(.04),Math.sin(t)*l*.85+rj(.04),(Math.random()-.5)*.4)}else{const r=Math.random()*.5;const a=Math.random()*Math.PI*2;pu(Math.cos(a)*r+rj(.03),Math.sin(a)*r*.85+rj(.03),(Math.random()-.5)*.4)}}break;
+case 'eye':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.45){const a=(t/.45)*Math.PI*2;pu(Math.cos(a)*.8*(.7+.3*Math.abs(Math.cos(a)))+rj(.03),Math.sin(a)*.4+rj(.03))}else if(t<.7){const a=((t-.45)/.25)*Math.PI*2;pu(Math.cos(a)*.25+rj(.02),Math.sin(a)*.25+rj(.02))}else if(t<.85){const a=((t-.7)/.15)*Math.PI*2;pu(Math.cos(a)*.1+rj(.01),Math.sin(a)*.1+rj(.01))}else pu(rj(.04),rj(.04))}break;
+case 'infinity':for(let i=0;i<Nc;i++){const t=(i/Nc)*Math.PI*2;const s=Math.sin(t),c=Math.cos(t);const r=.7/(1+s*s*.5);pu(r*c+rj(.03),r*s*c*.6+rj(.03))}break;
+case 'dna':for(let i=0;i<Nc;i++){const t=(i/Nc)*6*Math.PI;const y=(i/Nc)*2-1;const side=i%3===0?1:i%3===1?-1:0;pu(Math.sin(t)*.3*(side||1)+rj(.02),y*.8+rj(.02),Math.cos(t)*.3*(side||1))}break;
+case 'atom':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.1){const a=(t/.1)*Math.PI*2;pu(Math.cos(a)*.08+rj(.02),Math.sin(a)*.08+rj(.02))}else{const o=Math.floor((t-.1)/.3);const ot=((t-.1)%.3)/.3*Math.PI*2;const tilt=o*Math.PI/3;pu(Math.cos(ot)*.7+rj(.02),Math.sin(ot)*.7*Math.cos(tilt)+rj(.02),Math.sin(ot)*.7*Math.sin(tilt))}}break;
+case 'spiral':for(let i=0;i<Nc;i++){const t=i/Nc;const a=t*Math.PI*8;const r=t*.8;pu(Math.cos(a)*r+rj(.02),Math.sin(a)*r+rj(.02),(t-.5)*.4)}break;
+case 'lightning':for(let i=0;i<Nc;i++){const t=i/Nc;const segs=[{a:.1,b:-.8,c:-.15,d:-.1},{a:-.15,b:-.1,c:.2,d:-.05},{a:.2,b:-.05,c:-.1,d:.8}];const s=segs[Math.min(2,Math.floor(t*3))];const st=(t*3)%1;pu(s.a+(s.c-s.a)*st+rj(.08),s.b+(s.d-s.b)*st+rj(.05))}break;
+case 'diamond':for(let i=0;i<Nc;i++){const t=i/Nc;let x,y;if(t<.25){x=(t/.25)*.6;y=-.8+(t/.25)*.8}else if(t<.5){const p=(t-.25)/.25;x=.6-p*.6;y=p*.8}else if(t<.75){const p=(t-.5)/.25;x=-p*.6;y=.8-p*.8}else{const p=(t-.75)/.25;x=-.6+p*.6;y=-p*.8}pu(x+rj(.04),y+rj(.04))}break;
+case 'crown':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.3)pu(t/.3*1.4-.7+rj(.02),.2+rj(.02));else if(t<.38)pu(-.7+rj(.02),.2-(t-.3)/.08*.6+rj(.02));else{const seg=Math.floor((t-.38)/.124);const sp2=((t-.38)%.124)/.124;const bx=-.7+seg*.35;pu(bx+sp2*.35+rj(.02),-.4+Math.abs(sp2-.5)*2*.35+rj(.02))}}break;
+case 'moon':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.65){const a=(t/.65)*Math.PI*2;pu(Math.cos(a)*.7+rj(.03),Math.sin(a)*.7+rj(.03))}else{const a=((t-.65)/.35)*Math.PI*2;pu(.2+Math.cos(a)*.55+rj(.03),Math.sin(a)*.55+rj(.03))}}break;
+case 'fire':for(let i=0;i<Nc;i++){const t=i/Nc;const f=Math.sin(t*20)*.08;if(t<.6){const w=.4*(1-t/.6);pu((Math.random()-.5)*w*2+f,t*1.6-.8+rj(.03))}else{const p=(t-.6)/.4;const w=.3*(1-p);pu((Math.random()-.5)*w*2+f,-.8+p*-.5+Math.sin(p*4)*.1+rj(.02))}}break;
+case 'music':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.5){const a=(t/.5)*Math.PI*2;pu(Math.cos(a)*.2-.1+rj(.02),Math.sin(a)*.2+.3+rj(.02))}else if(t<.55)pu(-.1+.2+rj(.02),.3-(t-.5)/.05*1.3+rj(.02));else if(t<.8){const a=((t-.55)/.25)*Math.PI*2;pu(Math.cos(a)*.15+.25+rj(.02),Math.sin(a)*.15+.2+rj(.02))}else pu(.25+.15+rj(.02),.2-(t-.8)/.2*1.2+rj(.02))}break;
+case 'tree':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.2)pu((Math.random()-.5)*.1,.3+t/.2*.5+rj(.02));else{const lt=(t-.2)/.8;const la=Math.floor(lt*3);const lp=(lt*3)%1;pu((Math.random()-.5)*(.8-.2*la)*(1-lp*.3)+rj(.02),.3-la*.4-lp*.35+rj(.02))}}break;
+case 'wave':for(let i=0;i<Nc;i++){const t=i/Nc;if(t<.4){const a=(t/.4)*Math.PI*2;pu(Math.cos(a)*.35+rj(.03),Math.sin(a)*.4+.2+rj(.03))}else{const fi=Math.floor((t-.4)/.12);const ft=((t-.4)%.12)/.12;pu(-.3+fi*.15+Math.sin(ft*Math.PI)*.04+rj(.02),-.2-ft*.5+rj(.02))}}break;
+case 'check':for(let i=0;i<Nc;i++){const t=i/Nc;let x,y;if(t<.4){x=-.3+(t/.4)*.35;y=.1+(t/.4)*.35}else{const p=(t-.4)/.6;x=.05+p*.65;y=.45-p*.9}pu(x+rj(.06),y+rj(.06))}break;
+default:for(let i=0;i<Nc;i++){const a=Math.random()*Math.PI*2;const r=.15+Math.random()*.65;pu(Math.cos(a)*r,Math.sin(a)*r,(Math.random()-.5)*.5)}}
+return P}
+
+// Pixel font
+const FN={A:['01110','10001','11111','10001','10001'],B:['11110','10001','11110','10001','11110'],C:['01110','10000','10000','10000','01110'],D:['11100','10010','10010','10010','11100'],E:['11111','10000','11110','10000','11111'],F:['11111','10000','11110','10000','10000'],G:['01110','10000','10011','10001','01110'],H:['10001','10001','11111','10001','10001'],I:['01110','00100','00100','00100','01110'],J:['00111','00010','00010','10010','01100'],K:['10010','10100','11000','10100','10010'],L:['10000','10000','10000','10000','11111'],M:['10001','11011','10101','10001','10001'],N:['10001','11001','10101','10011','10001'],O:['01110','10001','10001','10001','01110'],P:['11110','10001','11110','10000','10000'],Q:['01110','10001','10101','01110','00010'],R:['11110','10001','11110','10010','10001'],S:['01111','10000','01110','00001','11110'],T:['11111','00100','00100','00100','00100'],U:['10001','10001','10001','10001','01110'],V:['10001','10001','01010','01010','00100'],W:['10001','10001','10101','10101','01010'],X:['10001','01010','00100','01010','10001'],Y:['10001','01010','00100','00100','00100'],Z:['11111','00010','00100','01000','11111'],' ':['000','000','000','000','000']};
+function tP(text,Nc){const ch=text.toUpperCase().split(''),px=[];ch.forEach((c,ci)=>{(FN[c]||FN[' ']).forEach((r,ry)=>r.split('').forEach((p,rx)=>{if(p==='1')px.push({x:ci*6+rx,y:ry})}))});if(!px.length)return sP('scatter',Nc);const tw=ch.length*6,th=5,pts=[];for(let i=0;i<Nc;i++){const p=px[i%px.length];pts.push({x:(p.x/tw-.5)*1.6+(Math.random()-.5)*(1.2/tw),y:(p.y/th-.5)*.9+(Math.random()-.5)*(1.2/th),z:(Math.random()-.5)*.12})}return pts}
+
+// ─── Nodes ──────────────────────────────────────────────────
+const nodes=[];const spread=Math.min(W,H)*.36;const iP=sP('scatter',NC);
+for(let i=0;i<NC;i++){const p=iP[i];nodes.push({x:cx+p.x*spread,y:cy+p.y*spread,z:p.z*spread*.5,tx:cx+p.x*spread,ty:cy+p.y*spread,tz:p.z*spread*.5,vx:0,vy:0,vz:0,sz:1+Math.random()*2.8,br:.35+Math.random()*.55,ph:Math.random()*Math.PI*2,dFX:.04+Math.random()*.06,dFY:.03+Math.random()*.05,dAX:1+Math.random()*3,dAY:1+Math.random()*3,en:.12+Math.random()*.12,tE:.12,conns:[]})}
+function buildC(){for(let i=0;i<NC;i++){nodes[i].conns=[];const ds=[];for(let j=0;j<NC;j++){if(j===i)continue;const dx=nodes[j].x-nodes[i].x,dy=nodes[j].y-nodes[i].y,dz=nodes[j].z-nodes[i].z;ds.push({j,d:Math.sqrt(dx*dx+dy*dy+dz*dz)})}ds.sort((a,b)=>a.d-b.d);nodes[i].conns=ds.slice(0,2+Math.floor(Math.random()*2)).map(d=>d.j)}}
+buildC();
+const fires=[];
+
+// ─── Nebula ─────────────────────────────────────────────────
+function buildNeb(){if(W<1||H<1)return;nebCanvas=document.createElement('canvas');nebCanvas.width=W;nebCanvas.height=H;const nc=nebCanvas.getContext('2d');const bg=nc.createRadialGradient(cx,cy*.8,0,cx,cy,Math.max(W,H)*.9);bg.addColorStop(0,'#0a0a14');bg.addColorStop(.4,'#070710');bg.addColorStop(.7,'#050508');bg.addColorStop(1,'#020204');nc.fillStyle=bg;nc.fillRect(0,0,W,H);const cl=(x,y,r,a,h)=>{const g=nc.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`hsla(${h},18%,18%,${a})`);g.addColorStop(.5,`hsla(${h},12%,10%,${a*.35})`);g.addColorStop(1,'transparent');nc.fillStyle=g;nc.fillRect(0,0,W,H)};cl(W*.15,H*.3,W*.35,.06,230);cl(W*.85,H*.2,W*.28,.04,260);cl(cx,cy,Math.min(W,H)*.45,.04,220)}
+
+const stars=Array.from({length:250},()=>({x:Math.random(),y:Math.random(),r:.2+Math.random()*.8,a:.06+Math.random()*.3,tw:Math.random()*Math.PI*2,ts:.0002+Math.random()*.0008,h:200+Math.random()*60}));
+
+// ─── API ────────────────────────────────────────────────────
+window.setS=function(s){curSt=s;document.querySelectorAll('#stateRow .cb').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active');document.getElementById('state-label').textContent=ST[s].label;document.getElementById('state-sub').textContent=ST[s].sub;const tr=document.getElementById('transcript');if(s==='listening'){tr.textContent='"How does the swarm coordinate decisions?"';tr.classList.add('visible')}else tr.classList.remove('visible')};
+window.setE=function(e){targetEmo=e;document.querySelectorAll('.eb').forEach(b=>b.classList.remove('active'));if(event&&event.target)event.target.classList.add('active')};
+window.fS=function(s){const pts=sP(s,NC);for(let i=0;i<NC;i++){nodes[i].tx=cx+pts[i].x*spread;nodes[i].ty=cy+pts[i].y*spread;nodes[i].tz=pts[i].z*spread*.5}};
+window.fT=function(t){const pts=tP(t,NC);for(let i=0;i<NC;i++){nodes[i].tx=cx+pts[i].x*spread;nodes[i].ty=cy+pts[i].y*spread;nodes[i].tz=pts[i].z*spread*.5}};
+
+// ─── 3D Projection with full XYZ rotation ──────────────────
+function proj(x,y,z){
+  let dx=x-cx,dy=y-cy,dz=z;
+  // Rotate Z
+  let c=Math.cos(camRZ),s=Math.sin(camRZ);
+  let rx=dx*c-dy*s, ry=dx*s+dy*c; dx=rx;dy=ry;
+  // Rotate Y
+  c=Math.cos(camRY);s=Math.sin(camRY);
+  rx=dx*c-dz*s;let rz=dx*s+dz*c; dx=rx;dz=rz;
+  // Rotate X
+  c=Math.cos(camRX);s=Math.sin(camRX);
+  ry=dy*c-dz*s;rz=dy*s+dz*c; dy=ry;dz=rz;
+  const sc=persp/(persp+dz);
+  return{sx:cx+dx*sc,sy:cy+dy*sc,sc,dz};
+}
+
+// ─── Main Loop ──────────────────────────────────────────────
+let T=0,gP=0;
+
+function draw(){
+  requestAnimationFrame(draw);
+  T+=.016;
+
+  // Blend state
+  const ts=ST[curSt];
+  for(const k of Object.keys(sb))sb[k]+=(ts[k]-sb[k])*BL;
+
+  // Blend emotion
+  const te=EMO[targetEmo];
+  emo.h+=(te.h-emo.h)*EBL;emo.s+=(te.s-emo.s)*EBL;emo.l+=(te.l-emo.l)*EBL;emo.nebH+=(te.nebH-emo.nebH)*EBL;
+
+  gP=Math.sin(T*sb.pFreq)*sb.pAmp;
+
+  const rawV=(curSt==='speaking'||curSt==='listening')?getVol():0;
+  smoothVol+=(rawV-smoothVol)*.06;
+
+  // ── 3D Auto-rotation — organic, state-driven ──
+  autoRX=Math.sin(T*sb.rotXfreq)*sb.rotXamp;
+  autoRY=Math.sin(T*sb.rotYfreq+.7)*sb.rotYamp;
+  autoRZ=Math.sin(T*sb.rotZfreq+1.4)*sb.rotZamp;
+
+  // Combine user input + auto rotation smoothly
+  camRX+=(tRX+autoRX-camRX)*.015;
+  camRY+=(tRY+autoRY-camRY)*.015;
+  camRZ+=(autoRZ-camRZ)*.01;
+
+  // Update nodes
+  for(let i=0;i<NC;i++){
+    const n=nodes[i];
+    const dX=Math.sin(T*n.dFX+n.ph)*n.dAX*(1+gP*.5);
+    const dY=Math.cos(T*n.dFY+n.ph*1.3)*n.dAY*(1+gP*.5);
+    const bS=1+Math.sin(T*sb.pFreq*.4)*sb.bAmp;
+    const btx=cx+(n.tx-cx)*bS,bty=cy+(n.ty-cy)*bS;
+    const sk=.012;
+    n.vx=(n.vx+(btx+dX-n.x)*sk+(cx-n.x)*sb.grav)*.92;
+    n.vy=(n.vy+(bty+dY-n.y)*sk+(cy-n.y)*sb.grav)*.92;
+    n.vz=(n.vz+(n.tz-n.z)*sk)*.92;
+    n.x+=n.vx*sb.speed;n.y+=n.vy*sb.speed;n.z+=n.vz*sb.speed;
+    n.tE=.1+sb.pAmp*.3+Math.sin(T+n.ph)*.04*sb.pAmp;
+    n.en+=(n.tE-n.en)*.02;
+  }
+
+  // Fires
+  if(Math.random()<sb.fireR){const src=Math.floor(Math.random()*NC);const c=nodes[src].conns;if(c.length)fires.push({from:src,to:c[Math.floor(Math.random()*c.length)],pr:0})}
+  for(let i=fires.length-1;i>=0;i--){
+    fires[i].pr+=.014*FSPD*sb.speed;
+    if(fires[i].pr>=1){
+      nodes[fires[i].to].en=Math.min(1,nodes[fires[i].to].en+.25);
+      if(curSt==='processing'&&Math.random()<.55){const nx=nodes[fires[i].to].conns;if(nx.length)fires.push({from:fires[i].to,to:nx[Math.floor(Math.random()*nx.length)],pr:0})}
+      fires.splice(i,1);
+    }
+  }
+
+  // ── Data flow particles (thinking) ──
+  if(sb.thinkConns>.3){
+    // Spawn flows between random connected nodes
+    if(Math.random()<.15&&dataFlows.length<MAX_FLOWS){
+      const src=Math.floor(Math.random()*NC);
+      const c=nodes[src].conns;
+      if(c.length){
+        // Create a chain of 2-4 hops
+        let chain=[src];let cur=src;
+        const hops=2+Math.floor(Math.random()*3);
+        for(let h=0;h<hops;h++){
+          const nc2=nodes[cur].conns;
+          if(nc2.length){cur=nc2[Math.floor(Math.random()*nc2.length)];chain.push(cur)}
+        }
+        if(chain.length>1)dataFlows.push({chain,pr:0,speed:.003+Math.random()*.004,sz:1+Math.random()*1.5});
+      }
+    }
+  }
+  for(let i=dataFlows.length-1;i>=0;i--){
+    dataFlows[i].pr+=dataFlows[i].speed*(sb.speed+.1);
+    if(dataFlows[i].pr>=1){dataFlows.splice(i,1)}
+  }
+
+  // Harmonic waves
+  hwT+=.016;
+  const wI=1.2-smoothVol*.6;
+  if(sb.waveActive>.3&&hwT>wI){hwT=0;spawnHW()}
+
+  // ── DRAW ──
+  ctx.clearRect(0,0,W,H);
+  if(nebCanvas&&nebCanvas.width>0)ctx.drawImage(nebCanvas,0,0);
+  else{ctx.fillStyle='#020206';ctx.fillRect(0,0,W,H)}
+
+  ctx.fillStyle=`hsla(${emo.nebH},${emo.s*.4}%,${7+gP*2}%,${.1+Math.abs(gP)*.05})`;
+  ctx.fillRect(0,0,W,H);
+
+  for(const s of stars){ctx.fillStyle=`hsla(${emo.h*.2+s.h*.8},${10+emo.s*.2}%,88%,${s.a*(.5+.5*Math.sin(T*2*s.ts+s.tw))})`;ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);ctx.fill()}
+
+  for(const d of dust){d.ph+=d.sp;const dp=proj(cx+(d.x+Math.sin(d.ph)*.08)*spread*1.5,cy+(d.y+Math.cos(d.ph*.7)*.08)*spread*1.5,d.z*spread);if(dp.sc<.05)continue;ctx.fillStyle=`hsla(${emo.h},${emo.s*.4}%,${emo.l}%,${d.al*dp.sc*(1+gP*.3)})`;ctx.beginPath();ctx.arc(dp.sx,dp.sy,d.sz*dp.sc,0,Math.PI*2);ctx.fill()}
+
+  const projected=nodes.map((n,i)=>({...proj(n.x,n.y,n.z),idx:i}));
+  projected.sort((a,b)=>b.dz-a.dz);
+  const eh=emo.h,es=emo.s,el=emo.l;
+
+  // Central glow
+  const glP=1+gP*.2;const gR=Math.min(W,H)*.4*(.85+.15*Math.sin(T*.3))*glP;
+  const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,gR);
+  cg.addColorStop(0,`hsla(${eh},${es}%,${el}%,${(.025+sb.cGlow)*glP})`);cg.addColorStop(.35,`hsla(${eh},${es*.7}%,${el*.7}%,${(.012+sb.cGlow*.4)*glP})`);cg.addColorStop(1,'transparent');
+  ctx.fillStyle=cg;ctx.beginPath();ctx.arc(cx,cy,gR,0,Math.PI*2);ctx.fill();
+
+  // ── Harmonic Waves ──
+  for(let wi=hWaves.length-1;wi>=0;wi--){
+    const w=hWaves[wi];w.r+=(0.3+smoothVol*.5)*1.8;
+    if(w.r>w.maxR){hWaves.splice(wi,1);continue}
+    const progress=w.r/w.maxR;
+    const fade=progress<.04?progress/.04:Math.pow(1-progress,2);
+    const bA=fade*(.02+smoothVol*.06)*sb.waveActive;
+    if(bA<.001)continue;
+    const dS=Math.pow(smoothVol,2.5)*w.bA*(1+progress*2);
+    for(let h=0;h<HARM.length;h++)w.hp[h]+=HARM[h].ps*.016;
+    const wP=[];
+    for(let i=0;i<w.ns.length;i++){
+      let disp=0;for(let h=0;h<HARM.length;h++)disp+=Math.sin(w.ns[i].a*HARM[h].f+w.hp[h])*HARM[h].w;
+      disp*=dS;const r=w.r+disp;wP.push({x:cx+Math.cos(w.ns[i].a)*r,y:cy+Math.sin(w.ns[i].a)*r,en:w.ns[i].en});
+      w.ns[i].en+=(0.3+smoothVol*.7-w.ns[i].en)*.05;
+    }
+    ctx.beginPath();
+    for(let i=0;i<wP.length;i++){const c2=wP[i],n2=wP[(i+1)%wP.length];if(i===0)ctx.moveTo(c2.x,c2.y);ctx.quadraticCurveTo(c2.x,c2.y,(c2.x+n2.x)/2,(c2.y+n2.y)/2)}
+    ctx.closePath();
+    ctx.strokeStyle=`hsla(${eh},${es*.6}%,${Math.min(95,el+15)}%,${bA})`;ctx.lineWidth=1.2+smoothVol*1.5;ctx.stroke();
+    ctx.fillStyle=`hsla(${eh},${es*.4}%,${el}%,${bA*.08})`;ctx.fill();
+    for(let i=0;i<wP.length;i+=2){const wp=wP[i];const nA=bA*(.3+wp.en*.7);if(nA<.003)continue;const nR=(.8+wp.en*1.5)*(1+smoothVol*.5);ctx.beginPath();ctx.arc(wp.x,wp.y,nR,0,Math.PI*2);ctx.fillStyle=`hsla(${eh},${es*.3}%,${Math.min(96,el+20)}%,${nA})`;ctx.fill()}
+  }
+
+  // ── Thinking: orbiting + geometry ──
+  if(sb.thinkRings>.5){
+    ctx.save();ctx.translate(cx,cy);
+    const tA=sb.thinkRings/5;
+    for(let r=0;r<Math.round(sb.thinkRings);r++){
+      const angle=T*.12+r*Math.PI*2/5;const oR=60+r*22;const wo=Math.sin(T*.2+r)*5;
+      ctx.save();ctx.rotate(angle);
+      const ox=oR+wo,oy=Math.sin(T*.15+r*1.1)*15;
+      const pg=ctx.createRadialGradient(ox,oy,0,ox,oy,18);
+      pg.addColorStop(0,`hsla(${eh},${es*.6}%,${Math.min(95,el+10)}%,${.06*tA})`);pg.addColorStop(1,'transparent');
+      ctx.fillStyle=pg;ctx.beginPath();ctx.arc(ox,oy,18,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha=.012*tA;ctx.rotate(T*.04);
+    for(let s=0;s<2;s++){const sr=70+s*40+gP*8;ctx.beginPath();for(let i=0;i<=6;i++){const a=(i/6)*Math.PI*2+s*.5;ctx.lineTo(Math.cos(a)*sr,Math.sin(a)*sr)}ctx.closePath();ctx.strokeStyle=`hsla(${eh},${es}%,${el}%,1)`;ctx.lineWidth=.5;ctx.stroke()}
+    ctx.globalAlpha=1;ctx.restore();
+  }
+
+  // ── Connections (extra dense in thinking) ──
+  const connDist=CONN*(1+sb.thinkConns*1.5);
+  const drawnE=new Set();
+  for(const p of projected){
+    const n=nodes[p.idx];if(p.sc<.1)continue;
+
+    // During thinking: connect to more neighbors dynamically
+    const checkConns=sb.thinkConns>.3?[...n.conns]:n.conns;
+    // Add extra temporary connections when thinking
+    if(sb.thinkConns>.3&&Math.random()<.02){
+      for(const p2 of projected){
+        if(p2.idx===p.idx)continue;
+        const dx=p.sx-p2.sx,dy=p.sy-p2.sy;
+        if(Math.sqrt(dx*dx+dy*dy)<connDist*1.8&&!checkConns.includes(p2.idx)){
+          checkConns.push(p2.idx);break;
+        }
+      }
+    }
+
+    for(const j of checkConns){
+      const key=p.idx<j?`${p.idx}-${j}`:`${j}-${p.idx}`;
+      if(drawnE.has(key))continue;drawnE.add(key);
+      const m=nodes[j];const mp=proj(m.x,m.y,m.z);
+      const dx=p.sx-mp.sx,dy=p.sy-mp.sy;const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>connDist*2.8)continue;
+      const str=Math.max(0,1-dist/(connDist*2.8));
+      const avgE=(n.en+m.en)/2;
+      const a=str*sb.connA*(.25+avgE*.75)*Math.min(p.sc,mp.sc)*(1+gP*.15);
+      if(a<.002)continue;
+      const tv=(T*.5+p.idx*.08)%1;
+      const g=ctx.createLinearGradient(p.sx,p.sy,mp.sx,mp.sy);
+      g.addColorStop(0,`hsla(${eh},${es}%,${el}%,${a*.5})`);
+      g.addColorStop(Math.max(0,tv-.12),`hsla(${eh},${es}%,${el}%,${a*.2})`);
+      g.addColorStop(tv,`hsla(${eh},${es*.4}%,${Math.min(96,el+18)}%,${a*1.8})`);
+      g.addColorStop(Math.min(1,tv+.12),`hsla(${eh},${es}%,${el}%,${a*.2})`);
+      g.addColorStop(1,`hsla(${eh},${es}%,${el}%,${a*.5})`);
+      ctx.beginPath();const mx2=(p.sx+mp.sx)/2+Math.sin(T*.6+p.idx)*2,my2=(p.sy+mp.sy)/2+Math.cos(T*.6+j)*2;
+      ctx.moveTo(p.sx,p.sy);ctx.quadraticCurveTo(mx2,my2,mp.sx,mp.sy);
+      ctx.strokeStyle=g;ctx.lineWidth=(.25+str*.7)*Math.min(p.sc,mp.sc);ctx.stroke();
+    }
+  }
+
+  // ── Data Flow Light Streams (thinking) ──
+  for(const df of dataFlows){
+    const chain=df.chain;const totalSegs=chain.length-1;
+    if(totalSegs<1)continue;
+    const globalPos=df.pr*totalSegs;
+    const segIdx=Math.min(totalSegs-1,Math.floor(globalPos));
+    const segT=globalPos-segIdx;
+    const a=nodes[chain[segIdx]],b=nodes[chain[segIdx+1]];
+    const ap=proj(a.x,a.y,a.z),bp=proj(b.x,b.y,b.z);
+    const px=ap.sx+(bp.sx-ap.sx)*segT,py=ap.sy+(bp.sy-ap.sy)*segT;
+    const sc=(ap.sc+bp.sc)/2;
+    const pa=Math.sin(df.pr*Math.PI)*.7;
+
+    // Bright glow
+    const gr=ctx.createRadialGradient(px,py,0,px,py,10*sc);
+    gr.addColorStop(0,`hsla(${eh},${es*.4}%,${Math.min(98,el+22)}%,${pa*.4})`);
+    gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.fillRect(px-10*sc,py-10*sc,20*sc,20*sc);
+
+    // Core particle
+    ctx.beginPath();ctx.arc(px,py,(1.2+pa*1.2)*sc*df.sz,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${eh},${es*.2}%,${Math.min(98,el+25)}%,${pa})`;ctx.fill();
+
+    // Trail
+    const trailLen=.08;
+    const prevPos=Math.max(0,globalPos-trailLen);
+    const prevSeg=Math.min(totalSegs-1,Math.floor(prevPos));
+    const prevT2=prevPos-prevSeg;
+    const pa2=nodes[chain[prevSeg]],pb2=nodes[chain[Math.min(chain.length-1,prevSeg+1)]];
+    const pp2=proj(pa2.x,pa2.y,pa2.z),pp3=proj(pb2.x,pb2.y,pb2.z);
+    const tx=pp2.sx+(pp3.sx-pp2.sx)*prevT2,ty=pp2.sy+(pp3.sy-pp2.sy)*prevT2;
+    ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(px,py);
+    ctx.strokeStyle=`hsla(${eh},${es*.3}%,${Math.min(98,el+20)}%,${pa*.25})`;ctx.lineWidth=sc*.8;ctx.stroke();
+  }
+
+  // Synaptic fires
+  for(const f of fires){
+    const a=nodes[f.from],b=nodes[f.to];
+    const ap=proj(a.x,a.y,a.z),bp=proj(b.x,b.y,b.z);
+    const px=ap.sx+(bp.sx-ap.sx)*f.pr,py=ap.sy+(bp.sy-ap.sy)*f.pr;
+    const pa=Math.sin(f.pr*Math.PI)*.65;const sc=(ap.sc+bp.sc)/2;
+    const gr=ctx.createRadialGradient(px,py,0,px,py,8*sc);
+    gr.addColorStop(0,`hsla(${eh},${es*.5}%,${Math.min(96,el+16)}%,${pa*.3})`);gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.fillRect(px-8*sc,py-8*sc,16*sc,16*sc);
+    ctx.beginPath();ctx.arc(px,py,(1+pa*.8)*sc,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${eh},${es*.3}%,${Math.min(96,el+20)}%,${pa})`;ctx.fill();
+  }
+
+  // Neurons
+  for(const p of projected){
+    const n=nodes[p.idx];const s=n.sz*p.sc;
+    const a=n.br*(.25+n.en*.7)*Math.min(1,p.sc*1.4);
+    if(a<.008||s<.2)continue;
+    const breathe=1+Math.sin(T*.5+n.ph)*.04+gP*.04;const r=s*breathe;
+    const gs=r*(2+n.en*4);
+    const g1=ctx.createRadialGradient(p.sx,p.sy,0,p.sx,p.sy,gs);
+    g1.addColorStop(0,`hsla(${eh},${es}%,${el}%,${a*.11*(1+gP*.3)})`);g1.addColorStop(.5,`hsla(${eh},${es*.6}%,${el*.8}%,${a*.025})`);g1.addColorStop(1,'transparent');
+    ctx.fillStyle=g1;ctx.beginPath();ctx.arc(p.sx,p.sy,gs,0,Math.PI*2);ctx.fill();
+    const g2=ctx.createRadialGradient(p.sx-r*.25,p.sy-r*.25,0,p.sx,p.sy,r);
+    g2.addColorStop(0,`hsla(${eh},${es*.25}%,97%,${a*.7})`);g2.addColorStop(.35,`hsla(${eh},${es}%,${el}%,${a})`);g2.addColorStop(1,`hsla(${eh},${es*.7}%,${el*.55}%,${a*.12})`);
+    ctx.fillStyle=g2;ctx.beginPath();ctx.arc(p.sx,p.sy,r,0,Math.PI*2);ctx.fill();
+    if(r>1.4){ctx.beginPath();ctx.ellipse(p.sx-r*.2,p.sy-r*.22,r*.25,r*.12,-.4,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${.04+n.en*.05})`;ctx.fill()}
+    n.en*=.998;
+  }
+
+  // Vignette
+  const vig=ctx.createRadialGradient(cx,cy,Math.min(W,H)*.22,cx,cy,Math.max(W,H)*.72);
+  vig.addColorStop(0,'transparent');vig.addColorStop(1,'rgba(2,2,6,0.68)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+}
+
+requestAnimationFrame(draw);
+addEventListener('resize',resize);
+fS('scatter');
+</script>
+</body>
+</html>

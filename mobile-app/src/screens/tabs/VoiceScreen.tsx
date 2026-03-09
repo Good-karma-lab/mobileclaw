@@ -1,75 +1,126 @@
+/**
+ * VoiceScreen — fullscreen neural swarm, the primary AI interaction mode.
+ *
+ * The entire screen is a living neural swarm visualization (SwarmCanvas).
+ * State transitions (idle → listening → processing → speaking) happen
+ * automatically via the voice pipeline with real STT, VAD, and TTS.
+ *
+ * Chrome UI (brand text, connection indicator) fades in on tap and
+ * auto-hides after 3 seconds to keep the experience immersive.
+ */
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withRepeat,
-  withSequence,
   FadeIn,
   FadeOut,
-  Easing,
 } from "react-native-reanimated";
 
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
-import { springs } from "../../theme/animations";
-import { PlasmaOrb } from "../../components/plasma/PlasmaOrb";
-
-type VoiceState = "idle" | "listening" | "thinking" | "speaking";
-
-const STATE_LABELS: Record<VoiceState, string> = {
-  idle: "Tap to speak",
-  listening: "Listening...",
-  thinking: "Thinking...",
-  speaking: "Speaking...",
-};
+import { SwarmCanvas } from "../../swarm/SwarmCanvas";
+import { swarmStore } from "../../swarm/SwarmController";
+import { swarmDirector } from "../../swarm/SwarmDirector";
+import { voiceAmplitude } from "../../swarm/audio/VoiceAmplitude";
+import { useVAD } from "../../hooks/useVAD";
+import { useTTS } from "../../hooks/useTTS";
+import { useWakeWord } from "../../hooks/useWakeWord";
+import { sendMessage } from "../../native/guappaAgent";
+import type { SwarmState } from "../../swarm/neurons/NeuronSystem";
 
 const AUTO_HIDE_DELAY = 3000;
 
 export function VoiceScreen() {
   const insets = useSafeAreaInsets();
-  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [voiceState, setVoiceState] = useState<SwarmState>("idle");
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
   const [chromeVisible, setChromeVisible] = useState(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
   const autoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transcriptRef = useRef("");
 
-  // -- Reanimated shared values --
   const chromeOpacity = useSharedValue(0);
-  const glowScale = useSharedValue(1);
-  const glowOpacity = useSharedValue(0.05);
 
-  // Breathing radial glow animation
-  useEffect(() => {
-    glowScale.value = withRepeat(
-      withSequence(
-        withTiming(1.15, {
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-        }),
-        withTiming(1.0, {
-          duration: 3000,
-          easing: Easing.inOut(Easing.sin),
-        })
-      ),
-      -1,
-      true
-    );
-  }, [glowScale]);
+  // Use refs for callbacks that need to reference each other
+  const processTranscriptRef = useRef<(text: string) => void>(() => {});
+  const startListeningRef = useRef<() => void>(() => {});
 
-  // Update glow intensity based on voice state
+  // VAD: auto-detect silence to stop recording
+  const vad = useVAD({
+    onSpeechEnd: useCallback(() => {
+      if (swarmStore.state.state === "listening" && transcriptRef.current.length > 0) {
+        processTranscriptRef.current(transcriptRef.current);
+      }
+    }, []),
+  });
+
+  // TTS: speak agent responses
+  const tts = useTTS({
+    updateSwarmState: true,
+    onDone: useCallback(() => {
+      setTimeout(() => {
+        swarmStore.setFormation(null);
+        swarmStore.setDisplayText(null);
+      }, 3000);
+    }, []),
+  });
+
+  // Wake word: "Hey GUAPPA" hands-free activation
+  useWakeWord({
+    enabled: wakeWordEnabled && voiceState === "idle",
+    onWakeWord: useCallback(() => {
+      startListeningRef.current();
+    }, []),
+  });
+
+  // Process final transcript through agent
+  const processTranscript = useCallback(async (text: string) => {
+    swarmStore.setState("processing");
+    voiceAmplitude.stop();
+    vad.reset();
+
+    swarmDirector.analyzeTranscript(text);
+
+    try {
+      const agentResponse = await sendMessage(text);
+      setResponse(agentResponse);
+      swarmDirector.analyzeAgentResponse(agentResponse);
+      tts.speak(agentResponse);
+    } catch {
+      setResponse("Sorry, I couldn't process that.");
+      swarmStore.setState("idle");
+    }
+  }, [tts, vad]);
+
+  // Start listening mode
+  const startListening = useCallback(() => {
+    swarmStore.setState("listening");
+    setTranscript("");
+    setResponse("");
+    transcriptRef.current = "";
+    voiceAmplitude.start();
+    vad.reset();
+  }, [vad]);
+
+  // Keep refs in sync
   useEffect(() => {
-    const glowLevels: Record<VoiceState, number> = {
-      idle: 0.05,
-      listening: 0.1,
-      thinking: 0.08,
-      speaking: 0.12,
-    };
-    glowOpacity.value = withTiming(glowLevels[voiceState], { duration: 600 });
-  }, [voiceState, glowOpacity]);
+    processTranscriptRef.current = processTranscript;
+  }, [processTranscript]);
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
+
+  // Sync local state with SwarmController
+  useEffect(() => {
+    const unsub = swarmStore.subscribe((state) => {
+      setVoiceState(state.state);
+    });
+    return unsub;
+  }, []);
 
   // Chrome show/hide
   const showChrome = useCallback(() => {
@@ -86,169 +137,134 @@ export function VoiceScreen() {
     }, AUTO_HIDE_DELAY);
   }, [chromeOpacity]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
-      if (autoHideTimer.current) {
-        clearTimeout(autoHideTimer.current);
-      }
+      if (autoHideTimer.current) clearTimeout(autoHideTimer.current);
     };
   }, []);
 
-  const handleOrbPress = useCallback(() => {
-    // Also show chrome on tap
+  const handleTap = useCallback(() => {
     showChrome();
 
     if (voiceState === "idle") {
-      setVoiceState("listening");
-      setTranscript("");
-      setResponse("");
-      // STT will be wired in M4
-      // For now, simulate after 2s
-      setTimeout(() => {
-        setTranscript("Hello, GUAPPA");
-        setVoiceState("thinking");
-        setTimeout(() => {
-          setResponse("Hello! How can I help you today?");
-          setVoiceState("speaking");
-          setTimeout(() => setVoiceState("idle"), 3000);
-        }, 1500);
-      }, 2000);
+      startListening();
     } else if (voiceState === "listening") {
-      setVoiceState("thinking");
+      if (transcriptRef.current.length > 0) {
+        processTranscript(transcriptRef.current);
+      } else {
+        swarmStore.setState("idle");
+        voiceAmplitude.stop();
+      }
     } else if (voiceState === "speaking") {
-      setVoiceState("idle");
+      tts.stop();
+      swarmStore.setState("idle");
     }
-  }, [voiceState, showChrome]);
+  }, [voiceState, showChrome, startListening, processTranscript, tts]);
 
-  const handleBackgroundTap = useCallback(() => {
-    showChrome();
-  }, [showChrome]);
-
-  // Connection status
+  // Connection status color
   const connectionColor =
-    voiceState === "idle"
+    voiceState === "idle" || voiceState === "listening" || voiceState === "speaking"
       ? colors.semantic.success
-      : voiceState === "listening" || voiceState === "speaking"
-        ? colors.semantic.success
-        : colors.accent.amber;
+      : colors.accent.amber;
 
-  // -- Animated styles --
+  const stateLabel = {
+    idle: "Tap to speak",
+    listening: "Listening...",
+    processing: "Thinking...",
+    speaking: "Speaking...",
+  }[voiceState];
+
   const chromeAnimatedStyle = useAnimatedStyle(() => ({
     opacity: chromeOpacity.value,
   }));
 
-  const glowAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glowScale.value }],
-    opacity: glowOpacity.value,
-  }));
-
   return (
-    <LinearGradient
-      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-      style={styles.container}
-      testID="voice-screen"
-    >
-      <Pressable style={styles.fill} onPress={handleBackgroundTap}>
-        {/* Status bar chrome — fades in on tap, auto-hides after 3s */}
-        {chromeVisible && (
-          <Animated.View
-            style={[
-              styles.statusBar,
-              { paddingTop: insets.top + 8 },
-              chromeAnimatedStyle,
-            ]}
-            pointerEvents="none"
+    <View style={styles.container} testID="voice-screen">
+      {/* Neural Swarm Canvas — fills entire screen */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleTap}>
+        <SwarmCanvas />
+      </Pressable>
+
+      {/* Status bar chrome — fades in on tap, auto-hides after 3s */}
+      {chromeVisible && (
+        <Animated.View
+          style={[
+            styles.statusBar,
+            { paddingTop: insets.top + 8 },
+            chromeAnimatedStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <Animated.Text
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(300)}
+            style={styles.brandText}
           >
+            GUAPPA
+          </Animated.Text>
+          <View style={styles.connectionIndicator}>
+            <View
+              style={[
+                styles.connectionDot,
+                { backgroundColor: connectionColor },
+              ]}
+            />
             <Animated.Text
               entering={FadeIn.duration(300)}
               exiting={FadeOut.duration(300)}
-              style={styles.brandText}
+              style={styles.connectionText}
             >
-              GUAPPA
+              Ready
             </Animated.Text>
-            <View style={styles.connectionIndicator}>
-              <View
-                style={[
-                  styles.connectionDot,
-                  { backgroundColor: connectionColor },
-                ]}
-              />
-              <Animated.Text
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(300)}
-                style={styles.connectionText}
-              >
-                Ready
-              </Animated.Text>
-            </View>
-          </Animated.View>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Transcript + state label overlay at bottom */}
+      <View
+        style={[
+          styles.transcriptArea,
+          { paddingBottom: insets.bottom + 80 },
+        ]}
+        pointerEvents="none"
+      >
+        <Animated.Text
+          key={voiceState}
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(200)}
+          style={styles.stateLabel}
+        >
+          {stateLabel}
+        </Animated.Text>
+
+        {transcript !== "" && (
+          <Animated.Text
+            entering={FadeIn.duration(400)}
+            exiting={FadeOut.duration(300)}
+            style={styles.transcriptText}
+          >
+            {transcript}
+          </Animated.Text>
         )}
 
-        {/* Orb area with breathing glow */}
-        <View style={styles.orbContainer}>
-          {/* Breathing radial glow behind the orb */}
-          <Animated.View style={[styles.radialGlow, glowAnimatedStyle]} />
-
-          <Pressable onPress={handleOrbPress}>
-            <PlasmaOrb
-              size={300}
-              state={voiceState}
-              audioLevel={voiceState === "listening" ? 0.5 : 0}
-            />
-          </Pressable>
-        </View>
-
-        {/* State label + transcript area */}
-        <View
-          style={[
-            styles.transcriptArea,
-            { paddingBottom: insets.bottom + 80 },
-          ]}
-        >
-          {/* State label with cross-fade */}
+        {response !== "" && (
           <Animated.Text
-            key={voiceState}
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(200)}
-            style={styles.stateLabel}
+            entering={FadeIn.duration(400)}
+            exiting={FadeOut.duration(300)}
+            style={styles.responseText}
           >
-            {STATE_LABELS[voiceState]}
+            {response}
           </Animated.Text>
-
-          {/* Transcript text */}
-          {transcript !== "" && (
-            <Animated.Text
-              entering={FadeIn.duration(400)}
-              exiting={FadeOut.duration(300)}
-              style={styles.transcriptText}
-            >
-              {transcript}
-            </Animated.Text>
-          )}
-
-          {/* Response text */}
-          {response !== "" && (
-            <Animated.Text
-              entering={FadeIn.duration(400)}
-              exiting={FadeOut.duration(300)}
-              style={styles.responseText}
-            >
-              {response}
-            </Animated.Text>
-          )}
-        </View>
-      </Pressable>
-    </LinearGradient>
+        )}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: {
-    flex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: "#020206",
   },
   statusBar: {
     position: "absolute",
@@ -285,21 +301,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.mono.fontFamily,
     opacity: 0.6,
   },
-  orbContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radialGlow: {
-    position: "absolute",
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: colors.accent.cyan,
-  },
   transcriptArea: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 16,
     alignItems: "center",
     minHeight: 120,
   },

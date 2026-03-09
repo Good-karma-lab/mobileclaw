@@ -33,11 +33,11 @@ done
 
 "$ADB_BIN" -s "$SERIAL" install -r "$APK_PATH"
 
-"$ADB_BIN" -s "$SERIAL" shell am start -n com.mobileclaw.app/com.mobileclaw.app.MainActivity
+"$ADB_BIN" -s "$SERIAL" shell am start -n com.guappa.app/com.guappa.app.MainActivity
 sleep 3
 
 # Emulator inbound SMS simulation.
-"$ADB_BIN" -s "$SERIAL" emu sms send +15551230001 "ZeroClaw E2E inbound SMS"
+"$ADB_BIN" -s "$SERIAL" emu sms send +15551230001 "Guappa E2E inbound SMS"
 
 cd "$ROOT_DIR/mobile-app/android"
 if [ -x "./gradlew" ]; then

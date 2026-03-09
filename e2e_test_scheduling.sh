@@ -1,11 +1,11 @@
 #!/bin/bash
-set -e
-EMULATOR="emulator-5554"
-BOT_TOKEN="8353127948:AAH5Dyuc1ydsTDzwbydobbRYndoqpXXUPEc"
+set -euo pipefail
+EMULATOR="${EMULATOR:-emulator-5554}"
+BOT_TOKEN="${BOT_TOKEN:?set BOT_TOKEN to a Telegram bot token before running this script}"
 
 echo "=== Step 1: Schedule a task via chat ==="
 cat > /tmp/maestro_schedule.yaml << 'EOF'
-appId: com.mobileclaw.app
+appId: com.guappa.app
 ---
 - launchApp:
     clearState: false
@@ -16,7 +16,7 @@ appId: com.mobileclaw.app
     timeout: 20000
 - tapOn:
     id: chat-input
-- inputText: "In 3 minutes, send me a Telegram message saying: ZeroClaw schedule test passed"
+- inputText: "In 3 minutes, send me a Telegram message saying: Guappa schedule test passed"
 - tapOn:
     id: chat-send-or-voice
 - waitForAnimationToEnd:

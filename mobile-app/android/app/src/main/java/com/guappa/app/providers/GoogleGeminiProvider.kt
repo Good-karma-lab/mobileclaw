@@ -26,7 +26,7 @@ class GoogleGeminiProvider(
     private val baseUrl: String = "https://generativelanguage.googleapis.com"
 ) : Provider {
 
-    override val id: String = "google-gemini"
+    override val id: String = "gemini"
     override val name: String = "Google Gemini"
 
     override val capabilities: Set<CapabilityType> = setOf(

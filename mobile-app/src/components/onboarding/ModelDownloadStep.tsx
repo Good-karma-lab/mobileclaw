@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -6,6 +6,8 @@ import { GlassCard, GlassButton } from "../glass";
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
+import { checkModelExists, downloadModel } from "../../native/modelDownloader";
+import { DEFAULT_AGENT_CONFIG, loadAgentConfig, saveAgentConfig } from "../../state/guappa";
 
 type Props = {
   onNext: () => void;
@@ -23,35 +25,71 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { exists, path } = await checkModelExists(DEFAULT_AGENT_CONFIG.model);
+        if (cancelled || !exists) {
+          return;
+        }
+
+        const config = await loadAgentConfig();
+        await saveAgentConfig({
+          ...config,
+          provider: "local",
+          model: DEFAULT_AGENT_CONFIG.model,
+          localModelPath: path,
+        });
+
+        setProgress(100);
+        setDone(true);
+      } catch {
+        // Ignore status probe failures and let manual download handle the rest.
+      }
+    })();
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      cancelled = true;
+      mountedRef.current = false;
     };
   }, []);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     setDownloading(true);
     setProgress(0);
+    setError(null);
 
-    // Fake download progress: 0 -> 100 over ~3 seconds
-    const interval = 50;
-    const steps = 3000 / interval;
-    let step = 0;
-
-    timerRef.current = setInterval(() => {
-      step += 1;
-      const pct = Math.min(Math.round((step / steps) * 100), 100);
-      setProgress(pct);
-
-      if (pct >= 100) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = null;
-        setDownloading(false);
+    try {
+      const modelPath = await downloadModel(DEFAULT_AGENT_CONFIG.model, setProgress);
+      if (!mountedRef.current) {
+        return;
+      }
+      const config = await loadAgentConfig();
+      await saveAgentConfig({
+        ...config,
+        provider: "local",
+        model: DEFAULT_AGENT_CONFIG.model,
+        localModelPath: modelPath,
+      });
+      if (mountedRef.current) {
         setDone(true);
       }
-    }, interval);
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : String(err));
+        setProgress(0);
+      }
+    } finally {
+      if (mountedRef.current) {
+        setDownloading(false);
+      }
+    }
   }, []);
 
   return (
@@ -85,6 +123,7 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
             </Text>
           </View>
         )}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </GlassCard>
 
       <View style={styles.actions}>
@@ -106,7 +145,7 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
       </View>
 
       {!done && (
-        <Pressable onPress={onSkip} style={styles.skipButton}>
+        <Pressable onPress={onSkip} style={styles.skipButton} disabled={downloading}>
           <Text style={styles.skipText}>Skip for now</Text>
           <Text style={styles.warningText}>
             GUAPPA needs a model to chat
@@ -178,6 +217,12 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: "right",
     marginTop: spacing.xs,
+  },
+  errorText: {
+    fontFamily: typography.body.fontFamily,
+    fontSize: 12,
+    color: colors.semantic.error,
+    marginTop: spacing.sm,
   },
   actions: {
     marginTop: spacing.lg,

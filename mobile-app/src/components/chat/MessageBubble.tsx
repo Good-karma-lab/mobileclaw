@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, StyleSheet, Linking } from "react-native";
+import { View, StyleSheet, Linking, Text } from "react-native";
 import Animated, {
   FadeIn,
   SlideInLeft,
@@ -20,6 +20,7 @@ export type Message = {
   role: MessageRole;
   content: string;
   timestamp: number;
+  isStreaming?: boolean;
 };
 
 type Props = {
@@ -124,16 +125,20 @@ export function MessageBubble({ message, index, animate = true }: Props) {
         style={styles.blurFill}
       />
       <View style={styles.bubbleContent}>
-        <Markdown
-          markdownit={MARKDOWN_PARSER}
-          style={markdownStyles}
-          onLinkPress={(url) => {
-            void Linking.openURL(url);
-            return false;
-          }}
-        >
-          {message.content}
-        </Markdown>
+        {message.isStreaming && !isUser ? (
+          <Text style={styles.streamingText}>{message.content || "..."}</Text>
+        ) : (
+          <Markdown
+            markdownit={MARKDOWN_PARSER}
+            style={markdownStyles}
+            onLinkPress={(url) => {
+              void Linking.openURL(url);
+              return false;
+            }}
+          >
+            {message.content}
+          </Markdown>
+        )}
       </View>
     </View>
   );
@@ -168,6 +173,12 @@ const styles = StyleSheet.create({
   bubbleContent: {
     paddingVertical: 12,
     paddingHorizontal: 16,
+  },
+  streamingText: {
+    color: colors.text.primary,
+    fontFamily: typography.body.fontFamily,
+    fontSize: 15,
+    lineHeight: 22,
   },
   userBubble: {
     alignSelf: "flex-end",

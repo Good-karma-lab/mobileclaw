@@ -21,10 +21,15 @@ import { typography } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import { MessageBubble, type Message } from "../../components/chat/MessageBubble";
 import { ChatInputBar } from "../../components/chat/ChatInputBar";
-import { runAgentTurn } from "../../runtime/session";
+import { runAgentTurnStream } from "../../runtime/session";
 
 const STORAGE_KEY = "guappa:chat:messages:v1";
 const DEBOUNCE_MS = 300;
+
+type ChatStoragePayload = {
+  sessionId: string | null;
+  messages: Message[];
+};
 
 function ThinkingIndicator() {
   const dot1 = useSharedValue(0.3);
@@ -204,11 +209,13 @@ const emptyStyles = StyleSheet.create({
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionRef = useRef<string | null>(null);
 
   // Load messages from AsyncStorage on mount
   useEffect(() => {
@@ -218,9 +225,13 @@ export function ChatScreen() {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (cancelled) return;
         if (raw) {
-          const parsed = JSON.parse(raw) as Message[];
+          const parsed = JSON.parse(raw) as Message[] | ChatStoragePayload;
           if (Array.isArray(parsed)) {
-            setMessages(parsed);
+            setMessages(parsed.map((message) => ({ ...message, isStreaming: false })));
+          } else if (parsed && Array.isArray(parsed.messages)) {
+            setMessages(parsed.messages.map((message) => ({ ...message, isStreaming: false })));
+            setSessionId(parsed.sessionId || null);
+            sessionRef.current = parsed.sessionId || null;
           }
         }
       } catch {
@@ -234,12 +245,16 @@ export function ChatScreen() {
   }, []);
 
   // Save messages with debounce
-  const saveMessages = useCallback((msgs: Message[]) => {
+  const saveMessages = useCallback((msgs: Message[], nextSessionId?: string | null) => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
     saveTimerRef.current = setTimeout(() => {
-      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+      const payload: ChatStoragePayload = {
+        sessionId: nextSessionId ?? sessionRef.current,
+        messages: msgs.map((message) => ({ ...message, isStreaming: false })),
+      };
+      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     }, DEBOUNCE_MS);
   }, []);
 
@@ -256,17 +271,26 @@ export function ChatScreen() {
     const trimmed = draft.trim();
     if (!trimmed || isThinking) return;
 
+    const now = Date.now();
     const userMessage: Message = {
-      id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `m_${now}_${Math.random().toString(36).slice(2, 8)}`,
       role: "user",
       content: trimmed,
-      timestamp: Date.now(),
+      timestamp: now,
+    };
+    const assistantMessageId = `m_${now + 1}_${Math.random().toString(36).slice(2, 8)}`;
+    const assistantPlaceholder: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: now + 1,
+      isStreaming: true,
     };
 
     setDraft("");
     setMessages((prev) => {
-      const next = [...prev, userMessage];
-      saveMessages(next);
+      const next = [...prev, userMessage, assistantPlaceholder];
+      saveMessages(next, sessionRef.current);
       return next;
     });
 
@@ -277,30 +301,67 @@ export function ChatScreen() {
     // Call real agent backend
     setIsThinking(true);
     try {
-      const { assistantText } = await runAgentTurn(trimmed);
-      const agentMessage: Message = {
-        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: "assistant",
-        content: assistantText,
-        timestamp: Date.now(),
-      };
+      const { assistantText, sessionId: resolvedSessionId } = await runAgentTurnStream({
+        userPrompt: trimmed,
+        sessionId: sessionRef.current || undefined,
+        onSession: (nextSessionId) => {
+          sessionRef.current = nextSessionId;
+          setSessionId(nextSessionId);
+        },
+        onDelta: (partialText) => {
+          setMessages((prev) => {
+            const next = prev.map((message) =>
+              message.id === assistantMessageId
+                ? { ...message, content: partialText, isStreaming: true }
+                : message,
+            );
+            saveMessages(next, sessionRef.current);
+            return next;
+          });
+        },
+      });
+
+      if (resolvedSessionId) {
+        sessionRef.current = resolvedSessionId;
+        setSessionId(resolvedSessionId);
+      }
+
       setMessages((prev) => {
-        const next = [...prev, agentMessage];
-        saveMessages(next);
+        const next = prev.map((message) =>
+          message.id === assistantMessageId
+            ? { ...message, content: assistantText, isStreaming: false }
+            : message,
+        );
+        saveMessages(next, resolvedSessionId ?? sessionRef.current);
         return next;
       });
     } catch (e: any) {
-      const errorMessage: Message = {
-        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: "assistant",
-        content: `Error: ${e?.message || "Unknown error"}`,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => {
+        const next = prev.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: `Error: ${e?.message || "Unknown error"}`,
+                isStreaming: false,
+              }
+            : message,
+        );
+        saveMessages(next, sessionRef.current);
+        return next;
+      });
     } finally {
       setIsThinking(false);
     }
   }, [draft, saveMessages, isThinking]);
+
+  const showThinkingIndicator = useMemo(() => {
+    if (!isThinking) {
+      return false;
+    }
+
+    const lastAssistantMessage = [...messages].reverse().find((message) => message.role === "assistant");
+    return !lastAssistantMessage || !lastAssistantMessage.content;
+  }, [isThinking, messages]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
@@ -366,7 +427,7 @@ export function ChatScreen() {
             messages.length === 0 && styles.listContentEmpty,
           ]}
           ListEmptyComponent={emptyComponent}
-          ListFooterComponent={isThinking ? <ThinkingIndicator /> : null}
+          ListFooterComponent={showThinkingIndicator ? <ThinkingIndicator /> : null}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => {
@@ -379,7 +440,7 @@ export function ChatScreen() {
 
         {/* Input bar */}
         <View
-          style={[styles.inputContainer, { paddingBottom: insets.bottom + spacing.md }]}
+          style={[styles.inputContainer, { paddingBottom: insets.bottom + 80 }]}
         >
           <ChatInputBar
             value={draft}

@@ -1,6 +1,7 @@
 package com.guappa.app.agent
 
 import android.content.Context
+import com.guappa.app.config.GuappaConfigStore
 import com.guappa.app.providers.ChatMessage
 import com.guappa.app.providers.ChatResponse
 import com.guappa.app.providers.ProviderRouter
@@ -16,7 +17,9 @@ class GuappaOrchestrator(
     private val messageBus: MessageBus,
     private val config: GuappaConfig,
     private var providerRouter: ProviderRouter? = null,
-    private var context: Context? = null
+    private var context: Context? = null,
+    private var selectedModel: String? = null,
+    private var selectedTemperature: Double = 0.7
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sessions = mutableMapOf<String, GuappaSession>()
@@ -29,14 +32,30 @@ class GuappaOrchestrator(
     val toolRegistry = ToolRegistry()
     val toolEngine = ToolEngine(toolRegistry)
 
+    // Phase 1 subsystems
+    private var persona: GuappaPersona = GuappaPersona()
+    private var planner: GuappaPlanner = GuappaPlanner(providerRouter, messageBus)
+    val taskManager: TaskManager = TaskManager(messageBus)
+
     companion object {
         private const val MAX_REACT_ITERATIONS = 5
-        private const val SYSTEM_PROMPT = "You are Guappa, a helpful AI assistant running on an Android device. You have access to device tools to help the user. Use tools when appropriate to fulfill user requests."
+        private const val STREAM_CHUNK_SIZE = 36
     }
 
-    fun configure(router: ProviderRouter, ctx: Context) {
+    fun configure(
+        router: ProviderRouter,
+        ctx: Context,
+        model: String? = null,
+        temperature: Double = 0.7,
+        configStore: GuappaConfigStore? = null
+    ) {
         this.providerRouter = router
         this.context = ctx
+        this.selectedModel = model?.takeIf { it.isNotBlank() }
+        this.selectedTemperature = temperature
+        this.persona = GuappaPersona(configStore)
+        this.planner = GuappaPlanner(router, messageBus)
+        toolRegistry.registerCoreTools()
     }
 
     fun start() {
@@ -52,6 +71,7 @@ class GuappaOrchestrator(
 
     fun stop() {
         _isRunning.value = false
+        taskManager.shutdown()
         scope.cancel()
     }
 
@@ -66,16 +86,31 @@ class GuappaOrchestrator(
         return session
     }
 
+    fun resolveSessionId(requestedSessionId: String?): String {
+        val normalizedSessionId = requestedSessionId?.takeIf { it.isNotBlank() } ?: return getOrCreateDefaultSession().id
+        val existing = sessions[normalizedSessionId]
+        return if (existing != null && existing.state.value != SessionState.CLOSED) {
+            normalizedSessionId
+        } else {
+            getOrCreateDefaultSession().id
+        }
+    }
+
     private suspend fun handleMessage(message: BusMessage) {
         when (message) {
             is BusMessage.UserMessage -> {
                 val session = if (message.sessionId.isNotEmpty()) {
-                    sessions[message.sessionId] ?: getOrCreateDefaultSession()
+                    sessions[resolveSessionId(message.sessionId)] ?: getOrCreateDefaultSession()
                 } else {
                     getOrCreateDefaultSession()
                 }
                 session.addMessage(Message(role = "user", content = message.text))
-                runReActLoop(session)
+
+                if (planner.isComplexRequest(message.text)) {
+                    handleComplexRequest(message.text, session)
+                } else {
+                    runReActLoop(session)
+                }
             }
             is BusMessage.ToolResult -> {
                 val session = sessions[message.sessionId] ?: return
@@ -93,14 +128,35 @@ class GuappaOrchestrator(
         }
     }
 
+    private suspend fun handleComplexRequest(userRequest: String, session: GuappaSession) {
+        val steps = planner.decompose(userRequest)
+        if (steps.size <= 1) {
+            // Planner decided it's not actually multi-step
+            runReActLoop(session)
+            return
+        }
+
+        // Execute multi-step plan via TaskManager for long-running awareness
+        taskManager.submitTask(
+            title = "Plan: ${userRequest.take(60)}",
+            action = {
+                planner.executePlan(steps, session) { planSession, _ ->
+                    runReActLoop(planSession)
+                }
+                "Plan completed: ${steps.count { it.status == PlanStepStatus.DONE }}/${steps.size} steps done"
+            }
+        )
+    }
+
     private suspend fun runReActLoop(session: GuappaSession) {
         val router = providerRouter ?: return
         val ctx = context ?: return
 
+        val systemPrompt = persona.getSystemPrompt()
         val toolSchemas = toolRegistry.getToolSchemas(ctx)
 
         for (iteration in 0 until MAX_REACT_ITERATIONS) {
-            val chatMessages = session.getContextMessages(SYSTEM_PROMPT).map { msg ->
+            val chatMessages = session.getContextMessages(systemPrompt).map { msg ->
                 ChatMessage(
                     role = msg.role,
                     content = msg.content,
@@ -112,7 +168,9 @@ class GuappaOrchestrator(
                 router.chat(
                     messages = chatMessages,
                     capability = CapabilityType.TOOL_USE,
-                    tools = if (toolSchemas.isNotEmpty()) toolSchemas else null
+                    tools = if (toolSchemas.isNotEmpty()) toolSchemas else null,
+                    model = selectedModel,
+                    temperature = selectedTemperature,
                 )
             } catch (e: Exception) {
                 messageBus.publish(BusMessage.AgentMessage(
@@ -131,6 +189,18 @@ class GuappaOrchestrator(
                     role = "assistant",
                     content = response.content ?: ""
                 ))
+
+                for (toolCall in toolCalls) {
+                    messageBus.publish(BusMessage.SystemEvent(
+                        type = "tool_call_started",
+                        data = mapOf(
+                            "tool" to toolCall.function.name,
+                            "call_id" to toolCall.id,
+                            "session_id" to session.id,
+                            "iteration" to iteration
+                        )
+                    ))
+                }
 
                 val results = toolEngine.executeToolCalls(toolCalls, ctx)
 
@@ -163,14 +233,11 @@ class GuappaOrchestrator(
             }
 
             // No tool calls: we have a final text response
-            val responseText = response.content ?: ""
-            if (responseText.isNotEmpty()) {
+            val rawText = response.content ?: ""
+            if (rawText.isNotEmpty()) {
+                val responseText = persona.adaptResponse(rawText)
                 session.addMessage(Message(role = "assistant", content = responseText))
-                messageBus.publish(BusMessage.AgentMessage(
-                    text = responseText,
-                    sessionId = session.id,
-                    isComplete = true
-                ))
+                publishStreamedResponse(session.id, responseText)
             }
             return
         }
@@ -181,5 +248,44 @@ class GuappaOrchestrator(
             sessionId = session.id,
             isComplete = true
         ))
+    }
+
+    private suspend fun publishStreamedResponse(sessionId: String, responseText: String) {
+        for (chunk in chunkResponse(responseText)) {
+            messageBus.publish(BusMessage.AgentMessage(
+                text = chunk,
+                sessionId = sessionId,
+                isStreaming = true,
+                isComplete = false
+            ))
+            delay(24)
+        }
+
+        messageBus.publish(BusMessage.AgentMessage(
+            text = responseText,
+            sessionId = sessionId,
+            isComplete = true
+        ))
+    }
+
+    private fun chunkResponse(text: String): List<String> {
+        if (text.length <= STREAM_CHUNK_SIZE) {
+            return listOf(text)
+        }
+
+        val chunks = mutableListOf<String>()
+        var start = 0
+        while (start < text.length) {
+            var end = minOf(start + STREAM_CHUNK_SIZE, text.length)
+            if (end < text.length) {
+                val boundary = text.lastIndexOf(' ', end)
+                if (boundary > start) {
+                    end = boundary + 1
+                }
+            }
+            chunks.add(text.substring(start, end))
+            start = end
+        }
+        return chunks.filter { it.isNotEmpty() }
     }
 }

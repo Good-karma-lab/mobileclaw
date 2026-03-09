@@ -1,4 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
+
+import {
+  getSecureString,
+  removeSecureString,
+  setSecureString,
+} from "../native/guappaConfig";
 
 export type ProviderId =
   | "local" | "ollama" | "openrouter" | "openai" | "anthropic" | "gemini" | "copilot"
@@ -56,6 +63,35 @@ export type SecurityConfig = {
   alwaysOnRuntime: boolean;
 };
 
+export type ChannelConfig = {
+  enabled: boolean;
+  status: "connected" | "error" | "disabled";
+  fields: Record<string, string>;
+};
+
+export type ChannelsConfig = Record<string, ChannelConfig>;
+
+export type ProactiveConfig = {
+  enabled: boolean;
+  quietHoursStart: string; // "HH:MM"
+  quietHoursEnd: string;
+  morningBriefingEnabled: boolean;
+  morningBriefingTime: string;
+  eveningSummaryEnabled: boolean;
+  eveningSummaryTime: string;
+  notificationCooldownMin: number;
+  triggerBatteryLow: boolean;
+  triggerCalendarEvents: boolean;
+  triggerMissedCalls: boolean;
+  triggerIncomingSms: boolean;
+};
+
+export type MemoryConfig = {
+  autoSummarization: boolean;
+  contextBudgetTokens: number;
+  retentionDays: number; // 7, 30, 90, -1 for forever
+};
+
 export type DaemonConfig = {
   enabled: boolean;
   alwaysOn: boolean;
@@ -76,6 +112,11 @@ const INTEGRATIONS_KEY = "guappa:integrations-config:v2";
 const SECURITY_KEY = "guappa:security-config:v1";
 const DEVICE_TOOLS_KEY = "guappa:device-tools:v2";
 const DAEMON_KEY = "guappa:daemon-config:v1";
+const CHANNELS_KEY = "guappa:channels-config:v1";
+const PROACTIVE_KEY = "guappa:proactive-config:v1";
+const MEMORY_KEY = "guappa:memory-config:v1";
+const SECURE_AGENT_KEY = "agent_config_json";
+const SECURE_INTEGRATIONS_KEY = "integrations_config_json";
 
 export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   provider: "local",
@@ -133,6 +174,44 @@ export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
   cronEnabled: true,
   heartbeatEnabled: false,
   heartbeatIntervalMin: 30,
+};
+
+const DEFAULT_CHANNEL: ChannelConfig = {
+  enabled: false,
+  status: "disabled",
+  fields: {},
+};
+
+export const DEFAULT_CHANNELS_CONFIG: ChannelsConfig = {
+  telegram: { ...DEFAULT_CHANNEL, fields: { botToken: "", chatId: "" } },
+  discord: { ...DEFAULT_CHANNEL, fields: { webhookUrl: "" } },
+  slack: { ...DEFAULT_CHANNEL, fields: { webhookUrl: "" } },
+  email: { ...DEFAULT_CHANNEL, fields: { recipientAddress: "" } },
+  whatsapp: { ...DEFAULT_CHANNEL, fields: { phoneNumberId: "", accessToken: "", recipient: "" } },
+  signal: { ...DEFAULT_CHANNEL, fields: { apiUrl: "", senderNumber: "", recipient: "" } },
+  matrix: { ...DEFAULT_CHANNEL, fields: { homeserverUrl: "", accessToken: "", roomId: "" } },
+  sms: { ...DEFAULT_CHANNEL, fields: { recipientPhone: "" } },
+};
+
+export const DEFAULT_PROACTIVE_CONFIG: ProactiveConfig = {
+  enabled: false,
+  quietHoursStart: "22:00",
+  quietHoursEnd: "07:00",
+  morningBriefingEnabled: false,
+  morningBriefingTime: "08:00",
+  eveningSummaryEnabled: false,
+  eveningSummaryTime: "21:00",
+  notificationCooldownMin: 15,
+  triggerBatteryLow: false,
+  triggerCalendarEvents: false,
+  triggerMissedCalls: false,
+  triggerIncomingSms: false,
+};
+
+export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
+  autoSummarization: true,
+  contextBudgetTokens: 8192,
+  retentionDays: 30,
 };
 
 export const DEFAULT_DEVICE_TOOLS: MobileToolCapability[] = [
@@ -197,20 +276,70 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+function mergeJson<T>(raw: string | null, fallback: T): T {
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    return { ...fallback, ...(JSON.parse(raw) as object) } as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function readMaybeSecureJson<T>(
+  storageKey: string,
+  secureKey: string | null,
+  fallback: T,
+): Promise<T> {
+  if (Platform.OS === "android" && secureKey) {
+    const secureRaw = await getSecureString(secureKey);
+    if (secureRaw) {
+      return mergeJson(secureRaw, fallback);
+    }
+
+    const legacyRaw = await AsyncStorage.getItem(storageKey);
+    if (legacyRaw) {
+      await setSecureString(secureKey, legacyRaw);
+      await AsyncStorage.removeItem(storageKey);
+      return mergeJson(legacyRaw, fallback);
+    }
+
+    return fallback;
+  }
+
+  return readJson(storageKey, fallback);
+}
+
+async function writeMaybeSecureJson<T>(
+  storageKey: string,
+  secureKey: string | null,
+  value: T,
+): Promise<void> {
+  const raw = JSON.stringify(value);
+  if (Platform.OS === "android" && secureKey) {
+    await setSecureString(secureKey, raw);
+    await AsyncStorage.removeItem(storageKey);
+    return;
+  }
+
+  await AsyncStorage.setItem(storageKey, raw);
+}
+
 export async function loadAgentConfig(): Promise<AgentRuntimeConfig> {
-  return readJson(AGENT_KEY, DEFAULT_AGENT_CONFIG);
+  return readMaybeSecureJson(AGENT_KEY, SECURE_AGENT_KEY, DEFAULT_AGENT_CONFIG);
 }
 
 export async function saveAgentConfig(config: AgentRuntimeConfig): Promise<void> {
-  await AsyncStorage.setItem(AGENT_KEY, JSON.stringify(config));
+  await writeMaybeSecureJson(AGENT_KEY, SECURE_AGENT_KEY, config);
 }
 
 export async function loadIntegrationsConfig(): Promise<IntegrationsConfig> {
-  return readJson(INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS);
+  return readMaybeSecureJson(INTEGRATIONS_KEY, SECURE_INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS);
 }
 
 export async function saveIntegrationsConfig(config: IntegrationsConfig): Promise<void> {
-  await AsyncStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(config));
+  await writeMaybeSecureJson(INTEGRATIONS_KEY, SECURE_INTEGRATIONS_KEY, config);
 }
 
 export async function loadSecurityConfig(): Promise<SecurityConfig> {
@@ -250,4 +379,55 @@ export async function loadDeviceToolsConfig(): Promise<MobileToolCapability[]> {
 
 export async function saveDeviceToolsConfig(tools: MobileToolCapability[]): Promise<void> {
   await AsyncStorage.setItem(DEVICE_TOOLS_KEY, JSON.stringify(tools));
+}
+
+export async function loadChannelsConfig(): Promise<ChannelsConfig> {
+  const raw = await AsyncStorage.getItem(CHANNELS_KEY);
+  if (!raw) return DEFAULT_CHANNELS_CONFIG;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, Partial<ChannelConfig>>;
+    const result: ChannelsConfig = { ...DEFAULT_CHANNELS_CONFIG };
+    for (const key of Object.keys(result)) {
+      if (parsed[key]) {
+        result[key] = {
+          ...result[key],
+          ...parsed[key],
+          fields: { ...result[key].fields, ...(parsed[key].fields ?? {}) },
+        };
+      }
+    }
+    return result;
+  } catch {
+    return DEFAULT_CHANNELS_CONFIG;
+  }
+}
+
+export async function saveChannelsConfig(config: ChannelsConfig): Promise<void> {
+  await AsyncStorage.setItem(CHANNELS_KEY, JSON.stringify(config));
+}
+
+export async function loadProactiveConfig(): Promise<ProactiveConfig> {
+  return readJson(PROACTIVE_KEY, DEFAULT_PROACTIVE_CONFIG);
+}
+
+export async function saveProactiveConfig(config: ProactiveConfig): Promise<void> {
+  await AsyncStorage.setItem(PROACTIVE_KEY, JSON.stringify(config));
+}
+
+export async function loadMemoryConfig(): Promise<MemoryConfig> {
+  return readJson(MEMORY_KEY, DEFAULT_MEMORY_CONFIG);
+}
+
+export async function saveMemoryConfig(config: MemoryConfig): Promise<void> {
+  await AsyncStorage.setItem(MEMORY_KEY, JSON.stringify(config));
+}
+
+export async function clearSecureConfigCache(): Promise<void> {
+  if (Platform.OS !== "android") {
+    return;
+  }
+  await Promise.all([
+    removeSecureString(SECURE_AGENT_KEY),
+    removeSecureString(SECURE_INTEGRATIONS_KEY),
+  ]);
 }

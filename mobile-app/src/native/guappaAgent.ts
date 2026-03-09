@@ -5,9 +5,10 @@
  * Calls go directly to the Kotlin NativeModule.
  */
 
-import { NativeModules, Platform } from "react-native";
+import { NativeEventEmitter, NativeModules, Platform, type EmitterSubscription } from "react-native";
 
 const { GuappaAgent } = NativeModules;
+const agentEventEmitter = GuappaAgent ? new NativeEventEmitter(GuappaAgent) : null;
 
 if (!GuappaAgent) {
   console.warn(
@@ -30,6 +31,18 @@ export interface AgentStartConfig {
   localModelPath?: string;
   thinkingMode?: boolean;
 }
+
+export type AgentEvent = {
+  type: "agent_chunk" | "agent_complete" | "tool_event" | "system_event";
+  sessionId: string;
+  text?: string;
+  eventType?: string;
+  tool?: string;
+  detail?: string;
+  success?: boolean;
+  isStreaming?: boolean;
+  isComplete?: boolean;
+};
 
 export async function startAgent(config: AgentStartConfig = {}): Promise<boolean> {
   if (Platform.OS !== "android") {
@@ -65,6 +78,13 @@ export async function sendMessage(
   return GuappaAgent.sendMessage(text, sessionId ?? null);
 }
 
+export async function sendMessageStream(text: string, sessionId?: string): Promise<string> {
+  if (!GuappaAgent) {
+    throw new Error("GuappaAgent native module not available");
+  }
+  return GuappaAgent.sendMessageStream(text, sessionId ?? null);
+}
+
 export async function stopAgent(): Promise<boolean> {
   if (!GuappaAgent) {
     throw new Error("GuappaAgent native module not available");
@@ -86,4 +106,19 @@ export async function collectDebugInfo(): Promise<string> {
     throw new Error("GuappaAgent native module not available");
   }
   return GuappaAgent.collectDebugInfo();
+}
+
+export function subscribeToAgentEvents(listener: (event: AgentEvent) => void): () => void {
+  if (!agentEventEmitter) {
+    return () => {};
+  }
+
+  const subscription: EmitterSubscription = agentEventEmitter.addListener(
+    "guappa_agent_event",
+    (event: AgentEvent) => listener(event),
+  );
+
+  return () => {
+    subscription.remove();
+  };
 }

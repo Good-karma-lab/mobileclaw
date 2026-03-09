@@ -51,6 +51,15 @@ class ProviderRouter {
         }
     }
 
+    suspend fun healthCheck(providerId: String): Boolean {
+        val provider = providers[providerId] ?: return false
+        return try {
+            provider.healthCheck()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun chat(
         messages: List<ChatMessage>,
         capability: CapabilityType = CapabilityType.TEXT_CHAT,

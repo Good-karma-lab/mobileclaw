@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 import { configureAndroidRuntimeBridge, getAndroidRuntimeBridgeStatus } from "../native/androidAgentBridge";
-import { isDaemonRunning, restartDaemon, startDaemon, waitForDaemonReady } from "../native/guappaAgent";
+import { isAgentRunning, startAgent, stopAgent } from "../native/guappaAgent";
 import { addActivity } from "../state/activity";
 import {
   loadAgentConfig,
@@ -101,7 +101,7 @@ function signature(
 }
 
 function deriveComponents(integrations: IntegrationsConfig, security: SecurityConfig) {
-  const components = ["daemon:guappa_agent"];
+  const components = ["agent:guappa_agent"];
   const missing: string[] = [];
 
   if (integrations.telegramEnabled) {
@@ -135,7 +135,7 @@ function deriveComponents(integrations: IntegrationsConfig, security: SecurityCo
   return { components, missing };
 }
 
-async function buildDaemonConfig(runtime: AgentRuntimeConfig, integrations: IntegrationsConfig) {
+async function buildAgentConfig(runtime: AgentRuntimeConfig, integrations: IntegrationsConfig) {
   const config = {
     apiKey: effectiveRuntimeApiKey(runtime),
     provider: runtime.provider,
@@ -191,8 +191,17 @@ async function fetchHealthSnapshot(): Promise<{ ok: boolean; detail?: string }> 
   const bridge = await getAndroidRuntimeBridgeStatus();
   if (!bridge) return { ok: false, detail: "native_runtime_bridge_unavailable" };
   if (!bridge.runtimeReady) return { ok: false, detail: "runtime_not_configured" };
-  if (!bridge.daemonUp) return { ok: false, detail: "daemon_down" };
+  if (!bridge.daemonUp) return { ok: false, detail: "agent_down" };
   return { ok: true };
+}
+
+async function waitForAgentReady(timeoutMs: number): Promise<void> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await isAgentRunning()) return;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error("agent_start_timeout");
 }
 
 export async function getRuntimeSupervisorState(): Promise<RuntimeSupervisorState> {
@@ -253,32 +262,32 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     runtimeBraveApiKey: runtime.braveApiKey,
   });
 
-  let daemonApplyError: string | null = null;
-  let daemonRestarted = false;
+  let agentApplyError: string | null = null;
+  let agentRestarted = false;
 
   if (Platform.OS === "android") {
-    const running = await isDaemonRunning();
-    // Always start daemon if not running; restart if config changed
+    const running = await isAgentRunning();
     if (changed || !running) {
       try {
-        const daemonConfig = await buildDaemonConfig(runtime, integrations);
+        const agentConfig = await buildAgentConfig(runtime, integrations);
         if (running) {
-          await restartDaemon(daemonConfig);
+          await stopAgent();
         } else {
-          await startDaemon(daemonConfig);
+          await stopAgent().catch(() => undefined);
         }
-        await waitForDaemonReady(25000, 750);
-        daemonRestarted = true;
+        await startAgent(agentConfig);
+        await waitForAgentReady(25_000);
+        agentRestarted = true;
       } catch (error) {
-        daemonApplyError = error instanceof Error ? error.message : "daemon_restart_failed";
+        agentApplyError = error instanceof Error ? error.message : "agent_restart_failed";
       }
     }
   }
 
   const health = await fetchHealthSnapshot();
-  if (daemonApplyError) {
+  if (agentApplyError) {
     health.ok = false;
-    health.detail = daemonApplyError;
+    health.detail = agentApplyError;
   }
 
   const status: RuntimeSupervisorState["status"] =
@@ -300,7 +309,7 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     missingConfig: missing,
     lastError: health.ok ? null : health.detail || "health check failed",
     lastTransitionMs: Date.now(),
-    restartCount: previous.restartCount + (daemonRestarted ? 1 : 0),
+    restartCount: previous.restartCount + (agentRestarted ? 1 : 0),
     configHash: hash,
   };
 
@@ -316,7 +325,7 @@ export async function applyRuntimeSupervisorConfig(reason: string): Promise<Runt
     ];
     if (missing.length) detailParts.push(`missing=${missing.join(", ")}`);
     if (!health.ok && health.detail) detailParts.push(`health=${health.detail}`);
-    if (daemonRestarted) detailParts.push("daemon=restarted");
+    if (agentRestarted) detailParts.push("agent=restarted");
 
     await addActivity({
       kind: "action",

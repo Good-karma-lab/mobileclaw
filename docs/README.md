@@ -1,90 +1,40 @@
-# ZeroClaw Documentation Hub
+# GUAPPA Documentation
 
-This page is the primary entry point for the documentation system.
+GUAPPA is an autonomous AI assistant for Android. She can control your device, answer questions, manage your schedule, communicate through messaging platforms, and collaborate with other AI agents in the global swarm network.
 
-Last refreshed: **February 21, 2026**.
+## Getting Started
 
-Localized hubs: [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Русский](README.ru.md) · [Français](README.fr.md) · [Tiếng Việt](i18n/vi/README.md).
+| Guide | Description |
+|-------|-------------|
+| [Installation](getting-started/installation.md) | Prerequisites, install from Play Store or build from source, first launch |
+| [Quick Start](getting-started/quick-start.md) | Set up a provider, send your first message, try voice interaction |
 
-## Start Here
+## Guides
 
-| I want to… | Read this |
-|---|---|
-| Install and run ZeroClaw quickly | [README.md (Quick Start)](../README.md#quick-start) |
-| Bootstrap in one command | [one-click-bootstrap.md](one-click-bootstrap.md) |
-| Update or uninstall on macOS | [getting-started/macos-update-uninstall.md](getting-started/macos-update-uninstall.md) |
-| Find commands by task | [commands-reference.md](commands-reference.md) |
-| Check config defaults and keys quickly | [config-reference.md](config-reference.md) |
-| Configure custom providers/endpoints | [custom-providers.md](custom-providers.md) |
-| Configure Z.AI / GLM provider | [zai-glm-setup.md](zai-glm-setup.md) |
-| Use LangGraph integration patterns | [langgraph-integration.md](langgraph-integration.md) |
-| Operate runtime (day-2 runbook) | [operations-runbook.md](operations-runbook.md) |
-| Troubleshoot install/runtime/channel issues | [troubleshooting.md](troubleshooting.md) |
-| Run Matrix encrypted-room setup and diagnostics | [matrix-e2ee-guide.md](matrix-e2ee-guide.md) |
-| Browse docs by category | [SUMMARY.md](SUMMARY.md) |
-| See project PR/issue docs snapshot | [project-triage-snapshot-2026-02-18.md](project-triage-snapshot-2026-02-18.md) |
+| Guide | Description |
+|-------|-------------|
+| [Providers](guides/providers.md) | Set up OpenAI, Anthropic, Google Gemini, local models, and 17 other providers |
+| [Voice](guides/voice.md) | Wake word, tap-to-speak, STT/TTS engines, VAD, audio routing |
+| [Channels](guides/channels.md) | Connect Telegram, Discord, Slack, WhatsApp, Signal, Matrix, Email, SMS |
+| [Tools](guides/tools.md) | All 65+ tools: device control, app management, web, AI, automation, system |
+| [Memory](guides/memory.md) | 5-tier memory system, auto-summarization, context management, export |
+| [World Wide Swarm](guides/swarm.md) | Decentralized agent network, tasks, reputation, holon deliberation |
+| [Troubleshooting](guides/troubleshooting.md) | Common issues with providers, voice, notifications, battery, channels |
 
-## Quick Decision Tree (10 seconds)
+## Reference
 
-- Need first-time setup or install? → [getting-started/README.md](getting-started/README.md)
-- Need exact CLI/config keys? → [reference/README.md](reference/README.md)
-- Need production/service operations? → [operations/README.md](operations/README.md)
-- Seeing failures or regressions? → [troubleshooting.md](troubleshooting.md)
-- Working on security hardening or roadmap? → [security/README.md](security/README.md)
-- Working with boards/peripherals? → [hardware/README.md](hardware/README.md)
-- Contributing/reviewing/CI workflow? → [contributing/README.md](contributing/README.md)
-- Want the full map? → [SUMMARY.md](SUMMARY.md)
+| Document | Description |
+|----------|-------------|
+| [Configuration](reference/config.md) | All configurable settings: provider, voice, memory, agent, channels, swarm |
 
-## Collections (Recommended)
+## Architecture & Plans
 
-- Getting started: [getting-started/README.md](getting-started/README.md)
-- Reference catalogs: [reference/README.md](reference/README.md)
-- Operations & deployment: [operations/README.md](operations/README.md)
-- Security docs: [security/README.md](security/README.md)
-- Hardware/peripherals: [hardware/README.md](hardware/README.md)
-- Contributing/CI: [contributing/README.md](contributing/README.md)
-- Project snapshots: [project/README.md](project/README.md)
+Internal design documents and implementation plans are in [plans/](plans/).
 
-## By Audience
+## Quick Links
 
-### Users / Operators
-
-- [commands-reference.md](commands-reference.md) — command lookup by workflow
-- [providers-reference.md](providers-reference.md) — provider IDs, aliases, credential env vars
-- [channels-reference.md](channels-reference.md) — channel capabilities and setup paths
-- [matrix-e2ee-guide.md](matrix-e2ee-guide.md) — Matrix encrypted-room (E2EE) setup and no-response diagnostics
-- [config-reference.md](config-reference.md) — high-signal config keys and secure defaults
-- [custom-providers.md](custom-providers.md) — custom provider/base URL integration templates
-- [zai-glm-setup.md](zai-glm-setup.md) — Z.AI/GLM setup and endpoint matrix
-- [langgraph-integration.md](langgraph-integration.md) — fallback integration for model/tool-calling edge cases
-- [operations-runbook.md](operations-runbook.md) — day-2 runtime operations and rollback flow
-- [troubleshooting.md](troubleshooting.md) — common failure signatures and recovery steps
-
-### Contributors / Maintainers
-
-- [../CONTRIBUTING.md](../CONTRIBUTING.md)
-- [pr-workflow.md](pr-workflow.md)
-- [reviewer-playbook.md](reviewer-playbook.md)
-- [ci-map.md](ci-map.md)
-- [actions-source-policy.md](actions-source-policy.md)
-
-### Security / Reliability
-
-> Note: this area includes proposal/roadmap docs. For current behavior, start with [config-reference.md](config-reference.md), [operations-runbook.md](operations-runbook.md), and [troubleshooting.md](troubleshooting.md).
-
-- [security/README.md](security/README.md)
-- [agnostic-security.md](agnostic-security.md)
-- [frictionless-security.md](frictionless-security.md)
-- [sandboxing.md](sandboxing.md)
-- [audit-logging.md](audit-logging.md)
-- [resource-limits.md](resource-limits.md)
-- [security-roadmap.md](security-roadmap.md)
-
-## System Navigation & Governance
-
-- Unified TOC: [SUMMARY.md](SUMMARY.md)
-- Docs structure map (language/part/function): [structure/README.md](structure/README.md)
-- Documentation inventory/classification: [docs-inventory.md](docs-inventory.md)
-- i18n docs index: [i18n/README.md](i18n/README.md)
-- i18n coverage map: [i18n-coverage.md](i18n-coverage.md)
-- Project triage snapshot: [project-triage-snapshot-2026-02-18.md](project-triage-snapshot-2026-02-18.md)
+- **Having trouble?** Start with [Troubleshooting](guides/troubleshooting.md).
+- **Setting up an AI provider?** See [Providers Guide](guides/providers.md).
+- **Want voice interaction?** See [Voice Guide](guides/voice.md).
+- **Connecting messengers?** See [Channels Guide](guides/channels.md).
+- **Looking for a specific setting?** See [Configuration Reference](reference/config.md).

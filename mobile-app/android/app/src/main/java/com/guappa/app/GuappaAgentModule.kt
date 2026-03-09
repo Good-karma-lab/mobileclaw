@@ -4,9 +4,13 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.guappa.app.agent.*
+import com.guappa.app.config.SecurePrefs
 import com.guappa.app.providers.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.merge
+import org.json.JSONObject
 
 /**
  * React Native bridge module for the pure Kotlin Guappa agent.
@@ -19,6 +23,7 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
     private val TAG = "GuappaAgentModule"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var eventRelayJob: Job? = null
 
     override fun getName(): String = "GuappaAgent"
 
@@ -34,25 +39,25 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
                 reactContext.startService(intent)
             }
 
-            // Give service a moment to initialize, then configure
             scope.launch {
-                delay(200)
-                val orchestrator = GuappaAgentService.orchestrator
-                if (orchestrator != null) {
-                    val router = ProviderRouter()
+                val orchestrator = waitForOrchestrator()
+                    ?: throw IllegalStateException("GuappaAgentService did not initialize in time")
 
-                    val provider = config.getString("provider") ?: "openai"
-                    val apiKey = config.getString("apiKey") ?: ""
-                    val apiUrl = config.getString("apiUrl") ?: ""
-                    val model = config.getString("model") ?: ""
+                val provider = config.getString("provider") ?: "openai"
+                val apiKey = config.getString("apiKey") ?: ""
+                val apiUrl = config.getString("apiUrl") ?: ""
+                val model = config.getString("model") ?: ""
 
-                    if (apiKey.isNotEmpty()) {
-                        registerProvider(router, provider, apiKey, apiUrl, model)
-                    }
+                val router = ProviderFactory.createRouter(provider, apiKey, apiUrl)
 
-                    orchestrator.configure(router, reactContext)
-                    Log.i(TAG, "Orchestrator configured with provider=$provider model=$model")
-                }
+                orchestrator.configure(
+                    router = router,
+                    ctx = reactContext,
+                    model = model,
+                    temperature = config.getDouble("temperature")
+                )
+                ensureEventRelay()
+                Log.i(TAG, "Orchestrator configured with provider=$provider model=$model")
                 promise.resolve(true)
             }
         } catch (e: Exception) {
@@ -78,11 +83,18 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
         scope.launch {
             try {
+                ensureEventRelay()
                 val responseDeferred = CompletableDeferred<String>()
+                val effectiveSessionId = orchestrator.resolveSessionId(sessionId)
 
                 val collectJob = launch {
                     bus.messages.collect { msg ->
-                        if (msg is BusMessage.AgentMessage && msg.isComplete) {
+                        if (
+                            msg is BusMessage.AgentMessage &&
+                            msg.isComplete &&
+                            msg.sessionId == effectiveSessionId &&
+                            !responseDeferred.isCompleted
+                        ) {
                             responseDeferred.complete(msg.text)
                             cancel()
                         }
@@ -91,7 +103,7 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
                 bus.publish(BusMessage.UserMessage(
                     text = text,
-                    sessionId = sessionId ?: ""
+                    sessionId = effectiveSessionId
                 ))
 
                 val response = withTimeout(120_000) {
@@ -109,6 +121,42 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
+    fun sendMessageStream(text: String, sessionId: String?, promise: Promise) {
+        val orchestrator = GuappaAgentService.orchestrator
+        if (orchestrator == null) {
+            promise.reject("AGENT_NOT_RUNNING", "Agent not started. Call startAgent first.")
+            return
+        }
+
+        val bus = GuappaAgentService.messageBus
+        if (bus == null) {
+            promise.reject("AGENT_NOT_RUNNING", "Message bus not available")
+            return
+        }
+
+        scope.launch {
+            try {
+                ensureEventRelay()
+                val effectiveSessionId = orchestrator.resolveSessionId(sessionId)
+                bus.publish(BusMessage.UserMessage(text = text, sessionId = effectiveSessionId))
+                promise.resolve(effectiveSessionId)
+            } catch (e: Exception) {
+                promise.reject("SEND_FAILED", "Failed to send message: ${e.message}", e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun addListener(eventName: String) {
+        ensureEventRelay()
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int) {
+        // Required for React Native event emitters.
+    }
+
+    @ReactMethod
     fun isAgentRunning(promise: Promise) {
         promise.resolve(GuappaAgentService.isRunning())
     }
@@ -116,6 +164,8 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun stopAgent(promise: Promise) {
         try {
+            eventRelayJob?.cancel()
+            eventRelayJob = null
             val intent = Intent(reactContext, GuappaAgentService::class.java)
             reactContext.stopService(intent)
             promise.resolve(true)
@@ -154,11 +204,13 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
                 zos.write(deviceInfo.toByteArray())
                 zos.closeEntry()
 
-                val prefs = context.getSharedPreferences("guappa_config", android.content.Context.MODE_PRIVATE)
+                val prefs = SecurePrefs.config(context)
                 val configSnapshot = buildString {
                     appendLine("=== Config Snapshot (Redacted) ===")
                     for ((key, value) in prefs.all) {
                         val safeValue = when {
+                            key == SecurePrefs.AGENT_CONFIG_JSON_KEY ||
+                                key == SecurePrefs.INTEGRATIONS_CONFIG_JSON_KEY -> "***REDACTED***"
                             key.contains("key", ignoreCase = true) ||
                             key.contains("token", ignoreCase = true) ||
                             key.contains("secret", ignoreCase = true) ||
@@ -193,29 +245,64 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    private fun registerProvider(
-        router: ProviderRouter,
-        providerName: String,
-        apiKey: String,
-        apiUrl: String,
-        model: String
-    ) {
-        val provider: Provider = when (providerName) {
-            "anthropic" -> AnthropicProvider(apiKey)
-            "gemini" -> GoogleGeminiProvider(apiKey)
-            else -> OpenAICompatibleProvider(
-                id = providerName,
-                name = providerName,
-                apiKey = apiKey,
-                baseUrl = apiUrl.ifEmpty { "https://openrouter.ai/api/v1" }
-            )
+    private suspend fun waitForOrchestrator(timeoutMs: Long = 5_000L): GuappaOrchestrator? {
+        val startedAt = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startedAt < timeoutMs) {
+            GuappaAgentService.orchestrator?.let { return it }
+            delay(100)
         }
-        router.registerProvider(provider)
+        return GuappaAgentService.orchestrator
     }
 
     override fun getConstants(): MutableMap<String, Any> {
         return mutableMapOf(
             "AGENT_MODE" to "kotlin"
         )
+    }
+
+    private fun ensureEventRelay() {
+        if (eventRelayJob?.isActive == true) {
+            return
+        }
+
+        val bus = GuappaAgentService.messageBus ?: return
+        eventRelayJob = scope.launch {
+            merge(bus.messages, bus.urgentMessages).collect { message ->
+                when (message) {
+                    is BusMessage.AgentMessage -> emitAgentEvent(message)
+                    is BusMessage.SystemEvent -> emitSystemEvent(message)
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun emitAgentEvent(message: BusMessage.AgentMessage) {
+        val payload = Arguments.createMap().apply {
+            putString("type", if (message.isComplete) "agent_complete" else "agent_chunk")
+            putString("sessionId", message.sessionId)
+            putString("text", message.text)
+            putBoolean("isStreaming", message.isStreaming)
+            putBoolean("isComplete", message.isComplete)
+        }
+        sendEvent("guappa_agent_event", payload)
+    }
+
+    private fun emitSystemEvent(message: BusMessage.SystemEvent) {
+        val payload = Arguments.createMap().apply {
+            putString("type", if (message.type == "tool_executed") "tool_event" else "system_event")
+            putString("eventType", message.type)
+            putString("sessionId", message.data["session_id"]?.toString() ?: "")
+            putString("tool", message.data["tool"]?.toString() ?: "")
+            putString("detail", JSONObject(message.data).toString())
+            putBoolean("success", message.data["success"] as? Boolean ?: false)
+        }
+        sendEvent("guappa_agent_event", payload)
+    }
+
+    private fun sendEvent(eventName: String, payload: WritableMap) {
+        reactContext
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+            .emit(eventName, payload)
     }
 }

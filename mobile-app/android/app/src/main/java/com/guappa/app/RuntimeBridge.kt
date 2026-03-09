@@ -44,6 +44,7 @@ import android.provider.CallLog
 import android.provider.Telephony
 import android.telephony.SmsManager
 import androidx.core.app.NotificationCompat
+import com.guappa.app.config.SecurePrefs
 
 object RuntimeBridge {
     const val PREFS = "guappa-runtime-bridge"
@@ -99,8 +100,10 @@ object RuntimeBridge {
     @Volatile
     private var actionBridgeServer: AndroidActionBridgeServer? = null
 
+    private fun prefs(context: Context) = SecurePrefs.runtime(context)
+
     fun configure(context: Context, config: JSONObject) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val telegramEnabled = config.optBoolean("telegramEnabled", false)
         val telegramBotToken = config.optString("telegramBotToken", "").trim()
         val telegramChatId = config.optString("telegramChatId", "").trim()
@@ -196,7 +199,7 @@ object RuntimeBridge {
     }
 
     fun enqueueHookEvent(context: Context, kind: String, detail: String, eventData: JSONObject? = null) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         if (kind == "incoming_call" && !prefs.getBoolean(INCOMING_CALL_HOOKS, true)) return
         if (kind == "incoming_sms" && !prefs.getBoolean(INCOMING_SMS_HOOKS, true)) return
 
@@ -216,7 +219,7 @@ object RuntimeBridge {
     }
 
     fun recordPhotoCaptured(context: Context, photoPath: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(LAST_CAPTURE_URI, photoPath)
             .putLong(LAST_CAPTURE_TS, System.currentTimeMillis())
@@ -235,7 +238,7 @@ object RuntimeBridge {
     }
 
     fun bridgeStatus(context: Context): JSONObject {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val runtimeReady = prefs.getString(RUNTIME_API_KEY, "")?.isNotBlank() == true &&
             prefs.getString(RUNTIME_MODEL, "")?.isNotBlank() == true
         val daemonUp = isLocalGatewayHealthy()
@@ -280,7 +283,7 @@ object RuntimeBridge {
     }
 
     private fun loadQueue(context: Context): JSONArray {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(QUEUE_KEY, "[]") ?: "[]"
+        val raw = prefs(context).getString(QUEUE_KEY, "[]") ?: "[]"
         return try {
             JSONArray(raw)
         } catch (_: Throwable) {
@@ -289,7 +292,7 @@ object RuntimeBridge {
     }
 
     private fun saveQueue(context: Context, queue: JSONArray) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs(context)
             .edit()
             .putString(QUEUE_KEY, queue.toString())
             .apply()
@@ -316,7 +319,7 @@ object RuntimeBridge {
     }
 
     private fun writeRuntimeConfig(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val provider = prefs.getString(RUNTIME_PROVIDER, "openrouter")?.trim().orEmpty()
         val model = prefs.getString(RUNTIME_MODEL, "")?.trim().orEmpty()
         val apiUrl = prefs.getString(RUNTIME_API_URL, "")?.trim().orEmpty()
@@ -422,7 +425,7 @@ object RuntimeBridge {
         writeRuntimeConfig(context)
         if (isLocalGatewayHealthy()) return
 
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val ready = prefs.getString(RUNTIME_API_KEY, "")?.isNotBlank() == true &&
             prefs.getString(RUNTIME_MODEL, "")?.isNotBlank() == true
         if (!ready) {
@@ -561,7 +564,7 @@ object RuntimeBridge {
     }
 
     fun isAlwaysOnEnabled(context: Context): Boolean {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ALWAYS_ON_MODE, false)
+        return prefs(context).getBoolean(ALWAYS_ON_MODE, false)
     }
 
     fun ensureNotificationChannel(context: Context) {
@@ -578,7 +581,7 @@ object RuntimeBridge {
 
 
     private fun flushQueue(context: Context): TickResult {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         if (!isLocalGatewayHealthy()) {
             return TickResult(0, 0, "assistant is offline")
         }
@@ -648,7 +651,7 @@ object RuntimeBridge {
     }
 
     private fun observeTelegramInbound(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = prefs(context)
         val enabled = prefs.getBoolean(TELEGRAM_ENABLED, false)
         val botToken = prefs.getString(TELEGRAM_BOT_TOKEN, "")?.trim().orEmpty()
         if (!enabled || botToken.isBlank()) return

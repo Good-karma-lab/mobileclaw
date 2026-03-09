@@ -444,7 +444,7 @@ export function SettingsScreen() {
                 <Text variant="label">Whisper Model</Text>
                 <Text variant="bodyMedium">{form.whisperModel || "whisper-base"}</Text>
               </View>
-              <Ionicons name="chevron-down" size={20} color={theme.colors.text.muted} />
+              <Ionicons name="chevron-down" size={20} color={theme.colors.base.textMuted} />
             </Pressable>
             <Text variant="muted">
               {whisperModelStatus === "checking" ? "Checking..." :

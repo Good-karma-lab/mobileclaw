@@ -1,5 +1,13 @@
-import React, { useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,25 +17,315 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withSpring,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
-import { CollapsibleSection } from "../../components/glass";
+import {
+  CollapsibleSection,
+  GlassProgressBar,
+  GlassToggle,
+  GlassButton,
+} from "../../components/glass";
+import {
+  getActiveTasks,
+  getMemoryStats,
+  getSessionHistory,
+  type MemoryTask,
+  type MemoryStats as NativeMemoryStats,
+  type MemorySession,
+} from "../../native/guappaMemory";
+import { getTriggers, type ProactiveTrigger } from "../../native/guappaProactive";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-function StatusPill() {
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type TaskStatus = "running" | "pending" | "done" | "failed";
+
+interface ActiveTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  progress: number; // 0-1
+  elapsedMs: number;
+  detail?: string;
+}
+
+interface ScheduledJob {
+  id: string;
+  name: string;
+  cronExpression: string;
+  cronReadable: string;
+  nextRunIso: string;
+  enabled: boolean;
+}
+
+interface Trigger {
+  id: string;
+  name: string;
+  type: "event" | "condition" | "schedule" | "webhook";
+  enabled: boolean;
+  lastFiredIso?: string;
+}
+
+interface MemoryStats {
+  workingTokens: number;
+  maxTokens: number;
+  shortTermFacts: number;
+  longTermFacts: number;
+  episodicMemories: number;
+}
+
+interface SessionSummary {
+  id: string;
+  title: string;
+  dateIso: string;
+  messageCount: number;
+  summaryPreview: string;
+}
+
+// ─── Mock Data ──────────────────────────────────────────────────────────────
+
+const MOCK_TASKS: ActiveTask[] = [
+  {
+    id: "t1",
+    title: "Summarizing conversation history",
+    status: "running",
+    progress: 0.65,
+    elapsedMs: 12400,
+    detail: "Processing 48 messages...",
+  },
+  {
+    id: "t2",
+    title: "Web search: latest React Native updates",
+    status: "pending",
+    progress: 0,
+    elapsedMs: 0,
+  },
+  {
+    id: "t3",
+    title: "Calendar sync",
+    status: "done",
+    progress: 1,
+    elapsedMs: 3200,
+  },
+  {
+    id: "t4",
+    title: "Failed to fetch weather data",
+    status: "failed",
+    progress: 0.3,
+    elapsedMs: 8100,
+    detail: "Network timeout after 8s",
+  },
+];
+
+const MOCK_JOBS: ScheduledJob[] = [
+  {
+    id: "j1",
+    name: "Morning Briefing",
+    cronExpression: "0 8 * * *",
+    cronReadable: "Every day at 8:00 AM",
+    nextRunIso: new Date(Date.now() + 3600_000 * 14).toISOString(),
+    enabled: true,
+  },
+  {
+    id: "j2",
+    name: "Weekly Report",
+    cronExpression: "0 17 * * 5",
+    cronReadable: "Every Friday at 5:00 PM",
+    nextRunIso: new Date(Date.now() + 3600_000 * 72).toISOString(),
+    enabled: true,
+  },
+  {
+    id: "j3",
+    name: "Evening Summary",
+    cronExpression: "0 21 * * *",
+    cronReadable: "Every day at 9:00 PM",
+    nextRunIso: new Date(Date.now() + 3600_000 * 6).toISOString(),
+    enabled: false,
+  },
+];
+
+const MOCK_TRIGGERS: Trigger[] = [
+  {
+    id: "tr1",
+    name: "Missed Call Logger",
+    type: "event",
+    enabled: true,
+    lastFiredIso: new Date(Date.now() - 3600_000 * 2).toISOString(),
+  },
+  {
+    id: "tr2",
+    name: "Low Battery Alert",
+    type: "condition",
+    enabled: true,
+    lastFiredIso: new Date(Date.now() - 3600_000 * 24).toISOString(),
+  },
+  {
+    id: "tr3",
+    name: "New Email Digest",
+    type: "event",
+    enabled: false,
+  },
+  {
+    id: "tr4",
+    name: "Calendar Reminder",
+    type: "schedule",
+    enabled: true,
+    lastFiredIso: new Date(Date.now() - 3600_000 * 1).toISOString(),
+  },
+];
+
+const MOCK_MEMORY: MemoryStats = {
+  workingTokens: 3200,
+  maxTokens: 8192,
+  shortTermFacts: 14,
+  longTermFacts: 42,
+  episodicMemories: 7,
+};
+
+const MOCK_SESSIONS: SessionSummary[] = [
+  {
+    id: "s1",
+    title: "Project Planning Discussion",
+    dateIso: new Date(Date.now() - 3600_000 * 2).toISOString(),
+    messageCount: 34,
+    summaryPreview:
+      "Discussed Q2 roadmap priorities, agreed on three key features for the next sprint. Explored migration strategy for the database layer.",
+  },
+  {
+    id: "s2",
+    title: "Code Review Assistance",
+    dateIso: new Date(Date.now() - 3600_000 * 26).toISOString(),
+    messageCount: 18,
+    summaryPreview:
+      "Reviewed pull request for authentication module. Identified two security concerns and suggested refactoring the token refresh logic.",
+  },
+  {
+    id: "s3",
+    title: "Research: Vector Databases",
+    dateIso: new Date(Date.now() - 3600_000 * 72).toISOString(),
+    messageCount: 22,
+    summaryPreview:
+      "Compared Pinecone, Weaviate, and ChromaDB for local embedding storage. Concluded that SQLite with BLOB storage fits the mobile constraint best.",
+  },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatElapsed(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSec = seconds % 60;
+  return `${minutes}m ${remainingSec}s`;
+}
+
+function formatRelativeTime(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const absDiff = Math.abs(diff);
+  const future = diff < 0;
+
+  if (absDiff < 60_000) return future ? "in <1m" : "<1m ago";
+  if (absDiff < 3600_000) {
+    const mins = Math.floor(absDiff / 60_000);
+    return future ? `in ${mins}m` : `${mins}m ago`;
+  }
+  if (absDiff < 86400_000) {
+    const hrs = Math.floor(absDiff / 3600_000);
+    return future ? `in ${hrs}h` : `${hrs}h ago`;
+  }
+  const days = Math.floor(absDiff / 86400_000);
+  return future ? `in ${days}d` : `${days}d ago`;
+}
+
+function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffDays = Math.floor(
+    (now.getTime() - date.getTime()) / 86400_000
+  );
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// ─── Status Badge Colors ────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<
+  TaskStatus,
+  { color: string; label: string; icon: keyof typeof Ionicons.glyphMap }
+> = {
+  running: {
+    color: colors.accent.cyan,
+    label: "Running",
+    icon: "play-circle",
+  },
+  pending: {
+    color: colors.semantic.warning,
+    label: "Pending",
+    icon: "time-outline",
+  },
+  done: {
+    color: colors.semantic.success,
+    label: "Done",
+    icon: "checkmark-circle",
+  },
+  failed: {
+    color: colors.semantic.error,
+    label: "Failed",
+    icon: "close-circle",
+  },
+};
+
+const TRIGGER_TYPE_CONFIG: Record<
+  Trigger["type"],
+  { color: string; icon: keyof typeof Ionicons.glyphMap }
+> = {
+  event: { color: colors.accent.cyan, icon: "flash-outline" },
+  condition: { color: colors.semantic.warning, icon: "git-branch-outline" },
+  schedule: { color: colors.accent.violet, icon: "calendar-outline" },
+  webhook: { color: colors.accent.rose, icon: "globe-outline" },
+};
+
+// ─── Animated Components ────────────────────────────────────────────────────
+
+function StatusPill({ status }: { status: "idle" | "active" | "error" }) {
   const dotOpacity = useSharedValue(0.3);
 
+  const dotColor =
+    status === "active"
+      ? colors.accent.cyan
+      : status === "error"
+        ? colors.semantic.error
+        : colors.text.tertiary;
+
+  const label =
+    status === "active"
+      ? "Active"
+      : status === "error"
+        ? "Error"
+        : "Idle";
+
   useEffect(() => {
-    dotOpacity.value = withRepeat(
-      withSpring(1, { damping: 4, stiffness: 40 }),
-      -1,
-      true
-    );
-  }, [dotOpacity]);
+    if (status === "active") {
+      dotOpacity.value = withRepeat(
+        withSpring(1, { damping: 4, stiffness: 40 }),
+        -1,
+        true
+      );
+    } else {
+      dotOpacity.value = withTiming(1, { duration: 300 });
+    }
+  }, [dotOpacity, status]);
 
   const dotStyle = useAnimatedStyle(() => ({
     opacity: dotOpacity.value,
@@ -35,8 +333,10 @@ function StatusPill() {
 
   return (
     <BlurView intensity={25} tint="dark" style={styles.statusPill}>
-      <AnimatedView style={[styles.statusDot, dotStyle]} />
-      <Text style={styles.statusLabel}>Idle</Text>
+      <AnimatedView
+        style={[styles.statusDot, { backgroundColor: dotColor }, dotStyle]}
+      />
+      <Text style={[styles.statusLabel, { color: dotColor }]}>{label}</Text>
     </BlurView>
   );
 }
@@ -67,95 +367,636 @@ function AnimatedEmptyIcon({
   );
 }
 
-function ActiveTasksContent() {
+function PulsingDot({ color }: { color: string }) {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <AnimatedView
+      style={[
+        styles.pulsingDot,
+        { backgroundColor: color },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+// ─── Section: Empty State ───────────────────────────────────────────────────
+
+function EmptyState({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <View style={styles.sectionContent}>
-      <AnimatedEmptyIcon icon="list-outline" />
-      <Text style={styles.emptyTitle}>No active tasks</Text>
-      <Text style={styles.emptySubtitle}>
-        Ask GUAPPA to do something and tasks will appear here
+      <AnimatedEmptyIcon icon={icon} />
+      <Text style={styles.emptyTitle}>{title}</Text>
+      <Text style={styles.emptySubtitle}>{subtitle}</Text>
+    </View>
+  );
+}
+
+// ─── Section: Active Tasks ──────────────────────────────────────────────────
+
+function TaskStatusBadge({ status }: { status: TaskStatus }) {
+  const config = STATUS_CONFIG[status];
+  return (
+    <View style={[styles.badge, { borderColor: `${config.color}40` }]}>
+      {status === "running" ? (
+        <PulsingDot color={config.color} />
+      ) : (
+        <Ionicons name={config.icon} size={12} color={config.color} />
+      )}
+      <Text style={[styles.badgeLabel, { color: config.color }]}>
+        {config.label}
       </Text>
     </View>
   );
 }
 
-function ScheduledContent() {
+function TaskCard({ task }: { task: ActiveTask }) {
+  const config = STATUS_CONFIG[task.status];
   return (
-    <View style={styles.sectionContent}>
-      <AnimatedEmptyIcon icon="calendar-outline" />
-      <Text style={styles.emptyTitle}>No schedules</Text>
-      <Text style={styles.emptySubtitle}>
-        Create recurring actions like "Every morning, check my calendar"
-      </Text>
-      <View style={styles.nextInRow}>
-        <Text style={styles.nextInLabel}>Next in</Text>
-        <Text style={styles.nextInValue}>{"\u2014"}</Text>
-      </View>
-    </View>
-  );
-}
-
-function TriggersContent() {
-  return (
-    <View style={styles.sectionContent}>
-      <AnimatedEmptyIcon icon="flash-outline" />
-      <Text style={styles.emptyTitle}>No triggers</Text>
-      <Text style={styles.emptySubtitle}>
-        Set up event-based actions like "When I get a call, log it"
-      </Text>
-      <View style={styles.triggersInfoPill}>
-        <Ionicons
-          name="information-circle-outline"
-          size={14}
-          color={colors.text.secondary}
-        />
-        <Text style={styles.triggersInfoText}>
-          4 built-in triggers available
+    <View style={styles.taskCard}>
+      <View style={styles.taskHeader}>
+        <Text style={styles.taskTitle} numberOfLines={1}>
+          {task.title}
         </Text>
+        <TaskStatusBadge status={task.status} />
+      </View>
+      {task.detail && (
+        <Text style={styles.taskDetail} numberOfLines={1}>
+          {task.detail}
+        </Text>
+      )}
+      <View style={styles.taskFooter}>
+        <GlassProgressBar
+          progress={task.progress}
+          color={config.color}
+          height={4}
+        />
+        <View style={styles.taskMeta}>
+          <View style={styles.taskMetaItem}>
+            <Ionicons
+              name="time-outline"
+              size={12}
+              color={colors.text.tertiary}
+            />
+            <Text style={styles.taskMetaText}>
+              {formatElapsed(task.elapsedMs)}
+            </Text>
+          </View>
+          <Text style={styles.taskProgress}>
+            {Math.round(task.progress * 100)}%
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
 
-const MEMORY_TIERS = [
-  { name: "Working", color: colors.accent.cyan, pct: 15, size: "1.2 KB" },
-  { name: "Short-term", color: colors.accent.lime, pct: 5, size: "0.3 KB" },
-  { name: "Long-term", color: "#8B5CF6", pct: 0, size: "0 KB" },
-  { name: "Episodic", color: "#F59E0B", pct: 0, size: "0 KB" },
-  { name: "Semantic", color: "#EC4899", pct: 0, size: "0 KB" },
-] as const;
+function ActiveTasksContent({ tasks }: { tasks: ActiveTask[] }) {
+  if (tasks.length === 0) {
+    return (
+      <EmptyState
+        icon="list-outline"
+        title="No active tasks"
+        subtitle="Ask GUAPPA to do something and tasks will appear here"
+      />
+    );
+  }
 
-function MemoryContent() {
   return (
-    <View style={styles.memoryPanel}>
-      {MEMORY_TIERS.map((tier) => (
-        <View key={tier.name} style={styles.memoryTier}>
-          <View style={styles.memoryTierHeader}>
-            <View
-              style={[styles.memoryDot, { backgroundColor: tier.color }]}
-            />
-            <Text style={styles.memoryTierName}>{tier.name}</Text>
-          </View>
-          <View style={styles.memoryBar}>
-            <View
-              style={[
-                styles.memoryFill,
-                {
-                  width: `${tier.pct}%`,
-                  backgroundColor: tier.color,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.memorySize}>{tier.size}</Text>
-        </View>
+    <View style={styles.taskList}>
+      {tasks.map((task) => (
+        <TaskCard key={task.id} task={task} />
       ))}
     </View>
   );
 }
 
+// ─── Section: Scheduled Jobs ────────────────────────────────────────────────
+
+function JobCard({
+  job,
+  onToggle,
+}: {
+  job: ScheduledJob;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <View style={styles.jobCard}>
+      <View style={styles.jobContent}>
+        <View style={styles.jobHeader}>
+          <Ionicons
+            name="calendar-outline"
+            size={16}
+            color={job.enabled ? colors.accent.cyan : colors.text.tertiary}
+          />
+          <Text
+            style={[
+              styles.jobName,
+              !job.enabled && styles.jobNameDisabled,
+            ]}
+            numberOfLines={1}
+          >
+            {job.name}
+          </Text>
+        </View>
+        <Text style={styles.jobSchedule}>{job.cronReadable}</Text>
+        <View style={styles.jobNextRun}>
+          <Ionicons
+            name="arrow-forward-outline"
+            size={11}
+            color={colors.text.tertiary}
+          />
+          <Text style={styles.jobNextRunText}>
+            Next: {formatRelativeTime(job.nextRunIso)}
+          </Text>
+        </View>
+      </View>
+      <GlassToggle
+        value={job.enabled}
+        onValueChange={() => onToggle(job.id)}
+      />
+    </View>
+  );
+}
+
+function ScheduledJobsContent({
+  jobs,
+  onToggleJob,
+}: {
+  jobs: ScheduledJob[];
+  onToggleJob: (id: string) => void;
+}) {
+  if (jobs.length === 0) {
+    return (
+      <EmptyState
+        icon="calendar-outline"
+        title="No scheduled jobs"
+        subtitle='Create recurring actions like "Every morning, check my calendar"'
+      />
+    );
+  }
+
+  return (
+    <View style={styles.jobList}>
+      {jobs.map((job) => (
+        <JobCard key={job.id} job={job} onToggle={onToggleJob} />
+      ))}
+    </View>
+  );
+}
+
+// ─── Section: Triggers ──────────────────────────────────────────────────────
+
+function TriggerTypeBadge({ type }: { type: Trigger["type"] }) {
+  const config = TRIGGER_TYPE_CONFIG[type];
+  return (
+    <View style={[styles.badge, { borderColor: `${config.color}40` }]}>
+      <Ionicons name={config.icon} size={12} color={config.color} />
+      <Text style={[styles.badgeLabel, { color: config.color }]}>
+        {type.charAt(0).toUpperCase() + type.slice(1)}
+      </Text>
+    </View>
+  );
+}
+
+function TriggerCard({
+  trigger,
+  onToggle,
+}: {
+  trigger: Trigger;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <View style={styles.triggerCard}>
+      <View style={styles.triggerContent}>
+        <View style={styles.triggerHeader}>
+          <Text
+            style={[
+              styles.triggerName,
+              !trigger.enabled && styles.triggerNameDisabled,
+            ]}
+            numberOfLines={1}
+          >
+            {trigger.name}
+          </Text>
+          <TriggerTypeBadge type={trigger.type} />
+        </View>
+        {trigger.lastFiredIso && (
+          <View style={styles.triggerLastFired}>
+            <Ionicons
+              name="time-outline"
+              size={11}
+              color={colors.text.tertiary}
+            />
+            <Text style={styles.triggerLastFiredText}>
+              Last fired: {formatRelativeTime(trigger.lastFiredIso)}
+            </Text>
+          </View>
+        )}
+        {!trigger.lastFiredIso && (
+          <Text style={styles.triggerNeverFired}>Never fired</Text>
+        )}
+      </View>
+      <GlassToggle
+        value={trigger.enabled}
+        onValueChange={() => onToggle(trigger.id)}
+      />
+    </View>
+  );
+}
+
+function TriggersContent({
+  triggers,
+  onToggleTrigger,
+}: {
+  triggers: Trigger[];
+  onToggleTrigger: (id: string) => void;
+}) {
+  if (triggers.length === 0) {
+    return (
+      <EmptyState
+        icon="flash-outline"
+        title="No triggers configured"
+        subtitle='Set up event-based actions like "When I get a call, log it"'
+      />
+    );
+  }
+
+  return (
+    <View style={styles.triggerList}>
+      {triggers.map((trigger) => (
+        <TriggerCard
+          key={trigger.id}
+          trigger={trigger}
+          onToggle={onToggleTrigger}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Section: Memory Stats ──────────────────────────────────────────────────
+
+function MemoryStatRow({
+  label,
+  value,
+  color,
+  icon,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View style={styles.memStatRow}>
+      <View style={styles.memStatLeft}>
+        <View style={[styles.memStatDot, { backgroundColor: color }]} />
+        <Ionicons name={icon} size={14} color={color} style={styles.memStatIcon} />
+        <Text style={styles.memStatLabel}>{label}</Text>
+      </View>
+      <Text style={[styles.memStatValue, { color }]}>{value}</Text>
+    </View>
+  );
+}
+
+function MemoryStatsContent({
+  stats,
+  onClearWorking,
+}: {
+  stats: MemoryStats;
+  onClearWorking: () => void;
+}) {
+  const tokenProgress = stats.maxTokens > 0 ? stats.workingTokens / stats.maxTokens : 0;
+  const tokenColor =
+    tokenProgress > 0.8
+      ? colors.semantic.error
+      : tokenProgress > 0.5
+        ? colors.semantic.warning
+        : colors.accent.cyan;
+
+  return (
+    <View style={styles.memoryPanel}>
+      {/* Working Memory with progress bar */}
+      <View style={styles.memoryWorkingCard}>
+        <View style={styles.memoryWorkingHeader}>
+          <View style={styles.memoryWorkingLeft}>
+            <Ionicons
+              name="hardware-chip-outline"
+              size={18}
+              color={tokenColor}
+            />
+            <Text style={styles.memoryWorkingTitle}>Working Memory</Text>
+          </View>
+          <Text style={[styles.memoryWorkingCount, { color: tokenColor }]}>
+            {stats.workingTokens.toLocaleString()} /{" "}
+            {stats.maxTokens.toLocaleString()}
+          </Text>
+        </View>
+        <View style={styles.memoryWorkingBarWrap}>
+          <GlassProgressBar
+            progress={tokenProgress}
+            color={tokenColor}
+            height={6}
+          />
+        </View>
+        <Text style={styles.memoryWorkingPct}>
+          {Math.round(tokenProgress * 100)}% context used
+        </Text>
+      </View>
+
+      {/* Fact counts */}
+      <View style={styles.memStatsGrid}>
+        <MemoryStatRow
+          label="Short-term facts"
+          value={String(stats.shortTermFacts)}
+          color={colors.accent.lime}
+          icon="document-text-outline"
+        />
+        <MemoryStatRow
+          label="Long-term facts"
+          value={String(stats.longTermFacts)}
+          color={colors.accent.violet}
+          icon="library-outline"
+        />
+        <MemoryStatRow
+          label="Episodic memories"
+          value={String(stats.episodicMemories)}
+          color={colors.accent.amber}
+          icon="film-outline"
+        />
+      </View>
+
+      {/* Clear button */}
+      <GlassButton
+        title="Clear Working Memory"
+        icon="trash-outline"
+        variant="secondary"
+        onPress={onClearWorking}
+        style={styles.clearMemoryBtn}
+      />
+    </View>
+  );
+}
+
+// ─── Section: Recent Sessions ───────────────────────────────────────────────
+
+function SessionCard({ session }: { session: SessionSummary }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const handlePress = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  return (
+    <Pressable onPress={handlePress} style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <View style={styles.sessionTitleRow}>
+          <Ionicons
+            name="chatbubbles-outline"
+            size={16}
+            color={colors.accent.cyan}
+          />
+          <Text style={styles.sessionTitle} numberOfLines={1}>
+            {session.title}
+          </Text>
+        </View>
+        <View style={styles.sessionMeta}>
+          <Text style={styles.sessionDate}>
+            {formatDate(session.dateIso)}
+          </Text>
+          <View style={styles.sessionMsgCount}>
+            <Ionicons
+              name="chatbubble-outline"
+              size={11}
+              color={colors.text.tertiary}
+            />
+            <Text style={styles.sessionMsgCountText}>
+              {session.messageCount}
+            </Text>
+          </View>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={colors.text.tertiary}
+          />
+        </View>
+      </View>
+      {!expanded && (
+        <Text style={styles.sessionPreview} numberOfLines={2}>
+          {session.summaryPreview}
+        </Text>
+      )}
+      {expanded && (
+        <View style={styles.sessionExpanded}>
+          <Text style={styles.sessionFullSummary}>
+            {session.summaryPreview}
+          </Text>
+          <View style={styles.sessionExpandedMeta}>
+            <View style={styles.sessionExpandedMetaItem}>
+              <Ionicons
+                name="time-outline"
+                size={12}
+                color={colors.text.tertiary}
+              />
+              <Text style={styles.sessionExpandedMetaText}>
+                {formatRelativeTime(session.dateIso)}
+              </Text>
+            </View>
+            <View style={styles.sessionExpandedMetaItem}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={12}
+                color={colors.text.tertiary}
+              />
+              <Text style={styles.sessionExpandedMetaText}>
+                {session.messageCount} messages
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+function RecentSessionsContent({
+  sessions,
+}: {
+  sessions: SessionSummary[];
+}) {
+  if (sessions.length === 0) {
+    return (
+      <EmptyState
+        icon="chatbubbles-outline"
+        title="No sessions yet"
+        subtitle="Start a conversation and your session history will appear here"
+      />
+    );
+  }
+
+  return (
+    <View style={styles.sessionList}>
+      {sessions.map((session) => (
+        <SessionCard key={session.id} session={session} />
+      ))}
+    </View>
+  );
+}
+
+// ─── Main Screen ────────────────────────────────────────────────────────────
+
 export function CommandScreen() {
   const insets = useSafeAreaInsets();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // State for all sections
+  const [tasks, setTasks] = useState<ActiveTask[]>(MOCK_TASKS);
+  const [jobs, setJobs] = useState<ScheduledJob[]>(MOCK_JOBS);
+  const [triggers, setTriggers] = useState<Trigger[]>(MOCK_TRIGGERS);
+  const [memoryStats, setMemoryStats] = useState<MemoryStats>(MOCK_MEMORY);
+  const [sessions, setSessions] = useState<SessionSummary[]>(MOCK_SESSIONS);
+
+  // Derive overall status from tasks
+  const overallStatus: "idle" | "active" | "error" = tasks.some(
+    (t) => t.status === "failed"
+  )
+    ? "error"
+    : tasks.some((t) => t.status === "running")
+      ? "active"
+      : "idle";
+
+  const runningCount = tasks.filter((t) => t.status === "running").length;
+  const enabledTriggersCount = triggers.filter((t) => t.enabled).length;
+
+  // Load live data from native bridges
+  const loadLiveData = useCallback(async () => {
+    try {
+      const [nativeTasks, nativeStats, nativeSessions, nativeTriggers] =
+        await Promise.allSettled([
+          getActiveTasks(),
+          getMemoryStats(),
+          getSessionHistory(10),
+          getTriggers(),
+        ]);
+
+      if (nativeTasks.status === "fulfilled" && nativeTasks.value.length > 0) {
+        setTasks(
+          nativeTasks.value.map((t: MemoryTask) => ({
+            id: t.id,
+            title: t.title,
+            status: (t.status === "in_progress" ? "running" : t.status) as TaskStatus,
+            progress: t.status === "completed" ? 100 : 50,
+            elapsed: Math.floor((Date.now() - t.createdAt) / 1000),
+            detail: t.description,
+          }))
+        );
+      }
+
+      if (nativeStats.status === "fulfilled" && nativeStats.value) {
+        const s = nativeStats.value;
+        setMemoryStats({
+          workingTokens: 0,
+          maxTokens: 8192,
+          shortTermFacts: s.shortTermFacts,
+          longTermFacts: s.longTermFacts,
+          episodicMemories: s.totalEpisodes,
+        });
+      }
+
+      if (nativeSessions.status === "fulfilled" && nativeSessions.value.length > 0) {
+        setSessions(
+          nativeSessions.value.map((s: MemorySession) => ({
+            id: s.id,
+            title: s.title,
+            date: new Date(s.startedAt).toLocaleDateString(),
+            messageCount: s.tokenCount,
+            summary: s.summary ?? "No summary available",
+          }))
+        );
+      }
+
+      if (nativeTriggers.status === "fulfilled" && nativeTriggers.value.length > 0) {
+        setTriggers(
+          nativeTriggers.value.map((t: ProactiveTrigger) => ({
+            id: t.id,
+            name: t.name,
+            type: t.type as Trigger["type"],
+            enabled: t.enabled,
+            lastFired: t.lastFired
+              ? new Date(t.lastFired).toLocaleString()
+              : undefined,
+          }))
+        );
+      }
+    } catch {
+      // Fall back to mock data on error
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadLiveData();
+  }, [loadLiveData]);
+
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadLiveData();
+    setRefreshing(false);
+  }, [loadLiveData]);
+
+  // Toggle handlers
+  const handleToggleJob = useCallback((id: string) => {
+    setJobs((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, enabled: !j.enabled } : j))
+    );
+  }, []);
+
+  const handleToggleTrigger = useCallback((id: string) => {
+    setTriggers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t))
+    );
+  }, []);
+
+  const handleClearWorkingMemory = useCallback(() => {
+    Alert.alert(
+      "Clear Working Memory",
+      "This will reset the current conversation context. The agent will lose track of the current discussion.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            setMemoryStats((prev) => ({ ...prev, workingTokens: 0 }));
+            // In production: await NativeModules.GuappaAgent.clearWorkingMemory();
+          },
+        },
+      ]
+    );
+  }, []);
 
   return (
     <LinearGradient
@@ -170,10 +1011,45 @@ export function CommandScreen() {
         style={[styles.header, { paddingTop: insets.top + spacing.sm }]}
       >
         <View style={styles.headerInner}>
-          <Text style={styles.title}>Command Center</Text>
-          <StatusPill />
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.title}>Command Center</Text>
+            {runningCount > 0 && (
+              <View style={styles.runningBadge}>
+                <Text style={styles.runningBadgeText}>{runningCount}</Text>
+              </View>
+            )}
+          </View>
+          <StatusPill status={overallStatus} />
         </View>
-        {/* Bottom gradient line: cyan -> transparent -> cyan */}
+
+        {/* Summary bar */}
+        <View style={styles.headerSummary}>
+          <View style={styles.headerSummaryItem}>
+            <Text style={styles.headerSummaryValue}>{tasks.length}</Text>
+            <Text style={styles.headerSummaryLabel}>Tasks</Text>
+          </View>
+          <View style={styles.headerSummaryDivider} />
+          <View style={styles.headerSummaryItem}>
+            <Text style={styles.headerSummaryValue}>{jobs.length}</Text>
+            <Text style={styles.headerSummaryLabel}>Scheduled</Text>
+          </View>
+          <View style={styles.headerSummaryDivider} />
+          <View style={styles.headerSummaryItem}>
+            <Text style={styles.headerSummaryValue}>
+              {enabledTriggersCount}
+            </Text>
+            <Text style={styles.headerSummaryLabel}>Triggers</Text>
+          </View>
+          <View style={styles.headerSummaryDivider} />
+          <View style={styles.headerSummaryItem}>
+            <Text style={styles.headerSummaryValue}>
+              {sessions.length}
+            </Text>
+            <Text style={styles.headerSummaryLabel}>Sessions</Text>
+          </View>
+        </View>
+
+        {/* Bottom gradient line */}
         <LinearGradient
           colors={[colors.accent.cyan, "transparent", colors.accent.cyan]}
           start={{ x: 0, y: 0 }}
@@ -187,34 +1063,58 @@ export function CommandScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent.cyan}
+            colors={[colors.accent.cyan]}
+            progressBackgroundColor={colors.base.spaceBlack}
+          />
+        }
       >
         <CollapsibleSection
           title="Active Tasks"
           icon="list-outline"
           defaultExpanded
         >
-          <ActiveTasksContent />
+          <ActiveTasksContent tasks={tasks} />
         </CollapsibleSection>
 
-        <CollapsibleSection title="Scheduled" icon="calendar-outline">
-          <ScheduledContent />
+        <CollapsibleSection title="Scheduled Jobs" icon="calendar-outline">
+          <ScheduledJobsContent jobs={jobs} onToggleJob={handleToggleJob} />
         </CollapsibleSection>
 
         <CollapsibleSection title="Triggers" icon="flash-outline">
-          <TriggersContent />
+          <TriggersContent
+            triggers={triggers}
+            onToggleTrigger={handleToggleTrigger}
+          />
         </CollapsibleSection>
 
         <CollapsibleSection
-          title="Memory"
+          title="Memory Stats"
           icon="server-outline"
           defaultExpanded
         >
-          <MemoryContent />
+          <MemoryStatsContent
+            stats={memoryStats}
+            onClearWorking={handleClearWorkingMemory}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Recent Sessions"
+          icon="chatbubbles-outline"
+        >
+          <RecentSessionsContent sessions={sessions} />
         </CollapsibleSection>
       </ScrollView>
     </LinearGradient>
   );
 }
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -232,13 +1132,66 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
   title: {
     color: colors.text.primary,
     fontSize: 18,
     fontFamily: typography.display.fontFamily,
     letterSpacing: 1,
+  },
+  runningBadge: {
+    backgroundColor: "rgba(0, 240, 255, 0.20)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 240, 255, 0.35)",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  runningBadgeText: {
+    color: colors.accent.cyan,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+    fontWeight: "700",
+  },
+  headerSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+    gap: spacing.md,
+  },
+  headerSummaryItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  headerSummaryValue: {
+    color: colors.text.primary,
+    fontSize: 18,
+    fontFamily: typography.mono.fontFamily,
+    fontWeight: "700",
+  },
+  headerSummaryLabel: {
+    color: colors.text.tertiary,
+    fontSize: 10,
+    fontFamily: typography.body.fontFamily,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  headerSummaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   headerLine: {
     height: 1,
@@ -262,10 +1215,8 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.text.tertiary,
   },
   statusLabel: {
-    color: colors.text.tertiary,
     fontSize: 12,
     fontFamily: typography.mono.fontFamily,
     letterSpacing: 0.5,
@@ -280,7 +1231,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // ── Section Empty States ────────────────────────────────
+  // ── Empty States ────────────────────────────────────────
   sectionContent: {
     alignItems: "center",
     paddingVertical: spacing.lg,
@@ -311,89 +1262,348 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // ── Scheduled: "Next in" ────────────────────────────────
-  nextInRow: {
+  // ── Badge (shared) ──────────────────────────────────────
+  badge: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: spacing.md,
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 12,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderWidth: 1,
-    borderColor: colors.glass.borderSubtle,
   },
-  nextInLabel: {
-    color: colors.text.secondary,
-    fontSize: 13,
+  badgeLabel: {
+    fontSize: 10,
     fontFamily: typography.bodySemiBold.fontFamily,
-  },
-  nextInValue: {
-    color: colors.text.tertiary,
-    fontSize: 13,
-    fontFamily: typography.mono.fontFamily,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
-  // ── Triggers: info pill ─────────────────────────────────
-  triggersInfoPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: spacing.md,
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
-    borderWidth: 1,
-    borderColor: colors.glass.borderSubtle,
-  },
-  triggersInfoText: {
-    color: colors.text.secondary,
-    fontSize: 12,
-    fontFamily: typography.body.fontFamily,
+  // ── Pulsing Dot ─────────────────────────────────────────
+  pulsingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 
-  // ── Memory ──────────────────────────────────────────────
-  memoryPanel: {
+  // ── Active Tasks ────────────────────────────────────────
+  taskList: {
     gap: spacing.sm,
   },
-  memoryTier: {
+  taskCard: {
     backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.glass.borderSubtle,
   },
-  memoryTierHeader: {
+  taskHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
     gap: spacing.sm,
-    marginBottom: 10,
   },
-  memoryDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  memoryTierName: {
+  taskTitle: {
+    flex: 1,
     color: colors.text.primary,
     fontSize: 14,
     fontFamily: typography.bodySemiBold.fontFamily,
   },
-  memoryBar: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    marginBottom: 6,
+  taskDetail: {
+    color: colors.text.tertiary,
+    fontSize: 12,
+    fontFamily: typography.body.fontFamily,
+    marginBottom: spacing.sm,
   },
-  memoryFill: {
-    height: "100%",
-    borderRadius: 3,
+  taskFooter: {
+    gap: spacing.xs,
   },
-  memorySize: {
+  taskMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
+  },
+  taskMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  taskMetaText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+  taskProgress: {
+    color: colors.text.secondary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+
+  // ── Scheduled Jobs ──────────────────────────────────────
+  jobList: {
+    gap: spacing.sm,
+  },
+  jobCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 14,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+  },
+  jobContent: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  jobHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
+  jobName: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.bodySemiBold.fontFamily,
+    flex: 1,
+  },
+  jobNameDisabled: {
+    color: colors.text.tertiary,
+  },
+  jobSchedule: {
     color: colors.text.secondary,
     fontSize: 12,
+    fontFamily: typography.body.fontFamily,
+    marginBottom: 4,
+    marginLeft: 24,
+  },
+  jobNextRun: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: 24,
+  },
+  jobNextRunText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+
+  // ── Triggers ────────────────────────────────────────────
+  triggerList: {
+    gap: spacing.sm,
+  },
+  triggerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 14,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+  },
+  triggerContent: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  triggerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
+  triggerName: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.bodySemiBold.fontFamily,
+    flex: 1,
+  },
+  triggerNameDisabled: {
+    color: colors.text.tertiary,
+  },
+  triggerLastFired: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  triggerLastFiredText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+  triggerNeverFired: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.body.fontFamily,
+    fontStyle: "italic",
+  },
+
+  // ── Memory Stats ────────────────────────────────────────
+  memoryPanel: {
+    gap: spacing.sm,
+  },
+  memoryWorkingCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 14,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+  },
+  memoryWorkingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.sm,
+  },
+  memoryWorkingLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  memoryWorkingTitle: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.bodySemiBold.fontFamily,
+  },
+  memoryWorkingCount: {
+    fontSize: 12,
+    fontFamily: typography.mono.fontFamily,
+  },
+  memoryWorkingBarWrap: {
+    marginBottom: spacing.xs,
+  },
+  memoryWorkingPct: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+    textAlign: "right",
+  },
+  memStatsGrid: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 14,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+    gap: spacing.sm,
+  },
+  memStatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  memStatLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  memStatDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  memStatIcon: {
+    marginLeft: -2,
+  },
+  memStatLabel: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontFamily: typography.body.fontFamily,
+  },
+  memStatValue: {
+    fontSize: 15,
+    fontFamily: typography.mono.fontFamily,
+    fontWeight: "700",
+  },
+  clearMemoryBtn: {
+    marginTop: spacing.xs,
+  },
+
+  // ── Recent Sessions ─────────────────────────────────────
+  sessionList: {
+    gap: spacing.sm,
+  },
+  sessionCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 14,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glass.borderSubtle,
+  },
+  sessionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  sessionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  sessionTitle: {
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.bodySemiBold.fontFamily,
+    flex: 1,
+  },
+  sessionMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  sessionDate: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+  sessionMsgCount: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  sessionMsgCountText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
+    fontFamily: typography.mono.fontFamily,
+  },
+  sessionPreview: {
+    color: colors.text.tertiary,
+    fontSize: 12,
+    fontFamily: typography.body.fontFamily,
+    lineHeight: 18,
+  },
+  sessionExpanded: {
+    marginTop: spacing.xs,
+  },
+  sessionFullSummary: {
+    color: colors.text.secondary,
+    fontSize: 13,
+    fontFamily: typography.body.fontFamily,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  sessionExpandedMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.06)",
+  },
+  sessionExpandedMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  sessionExpandedMetaText: {
+    color: colors.text.tertiary,
+    fontSize: 11,
     fontFamily: typography.mono.fontFamily,
   },
 });

@@ -89,5 +89,11 @@
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
       </intent-filter>
     </receiver>
+    <receiver android:name=".proactive.BatteryReceiver" android:enabled="true" android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BATTERY_LOW"/>
+        <action android:name="android.intent.action.BATTERY_OKAY"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

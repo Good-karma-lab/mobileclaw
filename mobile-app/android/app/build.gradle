@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "org.jetbrains.kotlin.kapt"
 apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
@@ -190,5 +191,18 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:$cameraxVersion"
     implementation "androidx.camera:camera-view:$cameraxVersion"
     implementation "androidx.work:work-runtime-ktx:2.10.0"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
+
+    // Room database (memory system)
+    def roomVersion = "2.6.1"
+    implementation "androidx.room:room-runtime:$roomVersion"
+    implementation "androidx.room:room-ktx:$roomVersion"
+    kapt "androidx.room:room-compiler:$roomVersion"
+
+    // DataStore (config persistence)
+    implementation "androidx.datastore:datastore-preferences:1.1.1"
+
+    // WorkManager (scheduled tasks, morning briefing, swarm polling)
+    implementation "androidx.work:work-runtime-ktx:2.9.1"
 }

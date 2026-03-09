@@ -18,6 +18,9 @@ import expo.modules.ReactNativeHostWrapper
 
 import com.guappa.app.GuappaAgentPackage
 import com.guappa.app.config.ConfigBridgePackage
+import com.guappa.app.memory.MemoryBridgePackage
+import com.guappa.app.memory.MemoryConsolidationWorker
+import com.guappa.app.proactive.NotificationChannels
 
 class MainApplication : Application(), ReactApplication {
 
@@ -31,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
               add(ModelDownloaderPackage())
               add(LocalLlmServerPackage())
               add(ConfigBridgePackage())
+              add(MemoryBridgePackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
@@ -51,6 +55,8 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
+    NotificationChannels.createAll(this)
+    MemoryConsolidationWorker.schedule(this)
     loadReactNative(this)
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }

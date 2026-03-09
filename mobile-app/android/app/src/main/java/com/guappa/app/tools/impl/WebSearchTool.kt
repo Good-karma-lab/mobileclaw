@@ -1,6 +1,7 @@
 package com.guappa.app.tools.impl
 
 import android.content.Context
+import com.guappa.app.config.SecurePrefs
 import com.guappa.app.tools.Tool
 import com.guappa.app.tools.ToolResult
 import kotlinx.coroutines.Dispatchers
@@ -50,11 +51,16 @@ class WebSearchTool : Tool {
         }
         val count = params.optInt("count", 5).coerceIn(1, 20)
 
-        val prefs = context.getSharedPreferences("guappa_config", Context.MODE_PRIVATE)
-        val apiKey = prefs.getString("brave_search_api_key", "") ?: ""
+        val prefs = SecurePrefs.config(context)
+        val agentConfig = prefs.getString(SecurePrefs.AGENT_CONFIG_JSON_KEY, "") ?: ""
+        val apiKey = try {
+            JSONObject(agentConfig).optString("braveApiKey", "")
+        } catch (_: Exception) {
+            ""
+        }
         if (apiKey.isEmpty()) {
             return ToolResult.Error(
-                "Brave Search API key not configured. Set 'brave_search_api_key' in app config.",
+                "Brave Search API key not configured. Set Brave Search in app config.",
                 "CONFIG_MISSING"
             )
         }

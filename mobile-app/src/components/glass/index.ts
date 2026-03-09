@@ -11,3 +11,4 @@ export { GlassProgressBar } from "./GlassProgressBar";
 export { GlassModal } from "./GlassModal";
 export { GlassAvatar } from "./GlassAvatar";
 export { GlassTabBar } from "./GlassTabBar";
+export { GlassDivider } from "./GlassDivider";
