@@ -89,6 +89,9 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.guappa.app'
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
     defaultConfig {
         applicationId 'com.guappa.app'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -195,7 +198,7 @@ dependencies {
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
 
     // Room database (memory system)
-    def roomVersion = "2.6.1"
+    def roomVersion = "2.7.1"
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.room:room-ktx:$roomVersion"
     kapt "androidx.room:room-compiler:$roomVersion"
@@ -205,4 +208,12 @@ dependencies {
 
     // WorkManager (scheduled tasks, morning briefing, swarm polling)
     implementation "androidx.work:work-runtime-ktx:2.9.1"
+
+    // Lifecycle (ProcessLifecycleOwner for app foreground/background detection)
+    implementation "androidx.lifecycle:lifecycle-process:2.8.7"
+
+    // Unit testing
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.json:json:20231013"
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0"
 }

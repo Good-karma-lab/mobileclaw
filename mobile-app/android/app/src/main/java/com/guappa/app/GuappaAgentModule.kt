@@ -174,6 +174,40 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Quick, non-orchestrated LLM call for the Swarm Director.
+     * Separate pipeline from the main agent — used for emotion/intent classification.
+     * Uses a fast model with low max_tokens for sub-200ms responses.
+     */
+    @ReactMethod
+    fun quickLlmCall(prompt: String, systemPrompt: String, promise: Promise) {
+        val orchestrator = GuappaAgentService.orchestrator
+        if (orchestrator == null) {
+            promise.reject("AGENT_NOT_RUNNING", "Agent not started")
+            return
+        }
+
+        scope.launch {
+            try {
+                val router = orchestrator.getRouter()
+                if (router == null) {
+                    promise.reject("NO_ROUTER", "No provider configured")
+                    return@launch
+                }
+
+                // Use the fastest available model with low token budget
+                val response = router.quickCall(
+                    systemPrompt = systemPrompt,
+                    userPrompt = prompt,
+                    maxTokens = 100
+                )
+                promise.resolve(response)
+            } catch (e: Exception) {
+                promise.reject("QUICK_CALL_FAILED", e.message, e)
+            }
+        }
+    }
+
     @ReactMethod
     fun collectDebugInfo(promise: Promise) {
         try {

@@ -83,5 +83,32 @@ class ProviderRouter {
         return provider.streamChat(messages, tools, model, temperature)
     }
 
+    /**
+     * Quick, lightweight LLM call for the Swarm Director.
+     * Uses the text chat provider with low max_tokens for fast response.
+     * Separate from orchestrator context — stateless single-turn.
+     */
+    suspend fun quickCall(
+        systemPrompt: String,
+        userPrompt: String,
+        maxTokens: Int = 100
+    ): String {
+        val provider = getProviderForCapability(CapabilityType.TEXT_CHAT)
+            ?: throw IllegalStateException("No text chat provider configured")
+
+        val messages = listOf(
+            ChatMessage(role = "system", content = systemPrompt),
+            ChatMessage(role = "user", content = userPrompt)
+        )
+
+        val response = provider.chat(
+            messages = messages,
+            tools = null,
+            model = null, // use default model
+            temperature = 0.3 // low temperature for classification
+        )
+        return response.content ?: ""
+    }
+
     fun listProviders(): List<String> = providers.keys().toList()
 }

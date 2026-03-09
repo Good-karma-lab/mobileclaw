@@ -1,0 +1,13 @@
+appId: com.guappa.app
+---
+# E2E: Config screen has all sections
+- launchApp
+
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 10000
+
+- assertVisible: "How GUAPPA Thinks"
+- assertVisible: "Apply"

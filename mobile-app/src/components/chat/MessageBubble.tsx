@@ -21,6 +21,7 @@ export type Message = {
   content: string;
   timestamp: number;
   isStreaming?: boolean;
+  isError?: boolean;
 };
 
 type Props = {
@@ -113,7 +114,7 @@ export function MessageBubble({ message, index, animate = true }: Props) {
 
   const bubbleContent = (
     <View
-      testID={`chat-message-${message.role}-${index}`}
+      testID={message.isError ? "chat-error-message" : isUser ? "chat-bubble-user" : "chat-bubble-agent"}
       style={[
         styles.bubble,
         isUser ? styles.userBubble : styles.assistantBubble,
@@ -182,14 +183,14 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: "flex-end",
-    backgroundColor: "rgba(255, 170, 51, 0.10)",
-    borderColor: "rgba(255, 170, 51, 0.15)",
+    backgroundColor: "rgba(90, 70, 30, 0.12)",
+    borderColor: "rgba(90, 70, 30, 0.15)",
     borderTopRightRadius: 4,
   },
   assistantBubble: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(139, 92, 246, 0.08)",
-    borderColor: "rgba(139, 92, 246, 0.12)",
+    backgroundColor: "rgba(30, 45, 60, 0.2)",
+    borderColor: "rgba(40, 60, 80, 0.15)",
     borderTopLeftRadius: 4,
   },
 });

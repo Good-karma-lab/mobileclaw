@@ -1,0 +1,16 @@
+appId: com.guappa.app
+---
+# E2E: Voice screen with neural swarm (tilt requires real device)
+- launchApp
+
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Verify neural swarm is present
+- assertVisible:
+    id: "neural-swarm"
+
+# Verify voice controls
+- assertVisible:
+    id: "floating-dock"

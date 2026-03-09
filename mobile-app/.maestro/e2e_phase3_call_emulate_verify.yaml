@@ -1,0 +1,18 @@
+appId: com.guappa.app
+---
+# Phase 3: Verify agent received incoming call notification
+# Prerequisite: Hook set up (Phase 2), call emulated via:
+#   adb emu gsm call 5551234567
+#   sleep 10
+#   adb emu gsm cancel 5551234567
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Wait for agent to post caller number in chat
+- extendedWaitUntil:
+    visible:
+      text: ".*555.*1234567.*"
+      regex: true
+    timeout: 90000

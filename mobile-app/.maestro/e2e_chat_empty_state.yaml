@@ -1,0 +1,17 @@
+appId: com.guappa.app
+---
+# E2E: Chat screen empty state
+- launchApp
+
+# Navigate to Chat
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Verify input is present
+- assertVisible:
+    id: "chat-input"
+- assertVisible:
+    id: "chat-send-button"

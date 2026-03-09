@@ -1,0 +1,129 @@
+appId: com.guappa.app
+---
+# ============================================================
+# E2E: Memory → Incoming Call Hook → Call Emulation → Voice STT
+# ============================================================
+# Prerequisites:
+#   - Provider configured with valid API key
+#   - Deepgram key set (for voice STT)
+#   - BlackHole 2ch installed & configured as virtual audio cable
+#   - Emulator mic input set to BlackHole 2ch
+#   - App already onboarded (clearState: false)
+#
+# Run with companion script:
+#   bash mobile-app/.maestro/e2e_agent_memory_call_voice.sh
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# ── Phase 1: Store memory ─────────────────────────────────────
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "My wife's name is Kate"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+
+# Agent should acknowledge — no backend errors
+- assertNotVisible:
+    text: "Backend error"
+- assertNotVisible:
+    text: "Network request failed"
+- assertNotVisible:
+    text: "disabled"
+
+# ── Phase 2: Set up incoming call hook ─────────────────────────
+- tapOn:
+    id: chat-input
+- inputText: "When I have incoming call - please send me a message with caller number to the chat here"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+
+# Agent should acknowledge the call hook setup
+- assertNotVisible:
+    text: "Backend error"
+- assertNotVisible:
+    text: "Network request failed"
+
+# Agent should NOT use a cron/polling approach
+- assertNotVisible:
+    text: "every 60 seconds"
+- assertNotVisible:
+    text: "every minute"
+
+# ── Phase 3: Emulate incoming call (triggered by companion script) ──
+# The companion script will run:
+#   adb emu gsm call 5551234567
+# Wait for the agent to post the caller number in chat
+- extendedWaitUntil:
+    visible:
+      text: ".*555.*1234567.*"
+      regex: true
+    timeout: 90000
+
+# ── Phase 4: Recall memory ────────────────────────────────────
+- tapOn:
+    id: chat-input
+- inputText: "What is my wife's name?"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+
+# Agent must recall "Kate" from memory
+- assertVisible:
+    text: "Kate"
+
+# ── Phase 5: Voice mode — STT via virtual audio cable ─────────
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- extendedWaitUntil:
+    visible:
+      id: "voice-screen"
+    timeout: 10000
+
+# Verify neural swarm orb is in idle state
+- assertVisible:
+    id: "neural-swarm"
+- assertVisible: "Tap to speak"
+
+# Tap mic to start listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+
+# Allow mic permission if prompted
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "While using the app"
+    optional: true
+
+# The companion script plays TTS audio: "What is my wife's name?"
+# via BlackHole virtual cable into the emulator mic.
+# Wait for STT to recognize the speech.
+- extendedWaitUntil:
+    visible:
+      text: ".*wife.*name.*"
+      regex: true
+    timeout: 30000
+
+# Neural swarm should transition from listening to processing state
+- assertVisible:
+    id: "neural-swarm"
+
+# Wait for agent response in voice mode — should say "Kate"
+- extendedWaitUntil:
+    visible:
+      text: ".*Kate.*"
+      regex: true
+    timeout: 120000

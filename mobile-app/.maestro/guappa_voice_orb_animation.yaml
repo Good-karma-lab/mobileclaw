@@ -7,11 +7,11 @@ appId: com.guappa.app
 - assertVisible:
     id: "voice-screen"
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"
 # Tap the orb to trigger animation
 - tapOn:
-    id: "plasma-orb"
+    id: "neural-swarm"
 - waitForAnimationToEnd
 # Orb should still be visible after animation
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"

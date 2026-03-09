@@ -7,4 +7,4 @@ appId: com.guappa.app
 - assertVisible:
     id: "voice-screen"
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"

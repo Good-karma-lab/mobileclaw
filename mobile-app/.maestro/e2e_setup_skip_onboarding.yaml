@@ -1,0 +1,49 @@
+appId: com.guappa.app
+---
+# Skip onboarding to reach the main app
+- launchApp:
+    clearState: true
+
+# Wait for onboarding to appear
+- extendedWaitUntil:
+    visible: "Get Started"
+    timeout: 15000
+
+# Tap Get Started
+- tapOn: "Get Started"
+
+# Wait for provider setup step
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 10000
+
+# Skip provider setup
+- tapOn: "Skip"
+
+# Wait for model download step
+- extendedWaitUntil:
+    visible: "Skip for now"
+    timeout: 10000
+
+# Skip model download
+- tapOn: "Skip for now"
+
+# Wait for permissions step
+- extendedWaitUntil:
+    visible: "Permissions GUAPPA needs"
+    timeout: 10000
+
+# Scroll down to find Continue button
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 10000
+
+# Tap Continue
+- tapOn: "Continue"
+
+# Wait for main app (floating dock)
+- extendedWaitUntil:
+    visible:
+      id: "floating-dock"
+    timeout: 15000

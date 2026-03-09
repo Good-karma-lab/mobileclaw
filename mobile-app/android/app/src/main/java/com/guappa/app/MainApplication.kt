@@ -21,6 +21,9 @@ import com.guappa.app.config.ConfigBridgePackage
 import com.guappa.app.memory.MemoryBridgePackage
 import com.guappa.app.memory.MemoryConsolidationWorker
 import com.guappa.app.proactive.NotificationChannels
+import com.guappa.app.proactive.GuappaProactivePackage
+import com.guappa.app.swarm.GuappaSwarmPackage
+import com.guappa.app.channels.GuappaChannelsPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -35,6 +38,9 @@ class MainApplication : Application(), ReactApplication {
               add(LocalLlmServerPackage())
               add(ConfigBridgePackage())
               add(MemoryBridgePackage())
+              add(GuappaSwarmPackage())
+              add(GuappaProactivePackage())
+              add(GuappaChannelsPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

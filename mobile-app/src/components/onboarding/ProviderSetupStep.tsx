@@ -20,14 +20,17 @@ type Props = {
 type SetupMode = null | "cloud" | "local";
 
 const PROVIDER_OPTIONS = [
+  { label: "OpenRouter", value: "openrouter" },
   { label: "OpenAI", value: "openai" },
   { label: "Anthropic", value: "anthropic" },
-  { label: "Google", value: "gemini" },
+  { label: "Google Gemini", value: "gemini" },
+  { label: "Groq", value: "groq" },
+  { label: "DeepSeek", value: "deepseek" },
 ];
 
 export function ProviderSetupStep({ onNext, onSkip }: Props) {
   const [mode, setMode] = useState<SetupMode>(null);
-  const [provider, setProvider] = useState("openai");
+  const [provider, setProvider] = useState("openrouter");
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -144,7 +147,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
         </View>
       )}
 
-      <Pressable onPress={onSkip} style={styles.skipButton}>
+      <Pressable onPress={onSkip} style={styles.skipButton} testID="onboarding-skip">
         <Text style={styles.skipText}>Skip</Text>
       </Pressable>
     </ScrollView>

@@ -87,14 +87,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: THUMB_MARGIN,
   },
   trackOff: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(15, 25, 35, 0.4)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(40, 65, 80, 0.15)",
   },
   trackOn: {
-    backgroundColor: "rgba(0, 240, 255, 0.25)",
+    backgroundColor: "rgba(26, 80, 100, 0.35)",
     borderWidth: 1,
-    borderColor: "rgba(0, 240, 255, 0.40)",
+    borderColor: "rgba(30, 90, 110, 0.3)",
   },
   thumb: {
     width: THUMB_SIZE,

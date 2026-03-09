@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# E2E: Verify Config screen sections
+- launchApp
+
+# Navigate to Config
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 10000
+
+# Verify main sections
+- assertVisible: "Configuration"
+- assertVisible: "How GUAPPA Thinks"
+- assertVisible: "PROVIDER"
+- assertVisible: "MODEL"
+- assertVisible: "TEMPERATURE"
+
+# Verify collapsible sections
+- assertVisible: "How GUAPPA Sees"
+- assertVisible: "How GUAPPA Speaks & Listens"
+- assertVisible: "How GUAPPA Connects"
+- assertVisible: "What GUAPPA Can Do"

@@ -101,6 +101,17 @@ export async function isAgentRunning(): Promise<boolean> {
   }
 }
 
+/**
+ * Quick, non-orchestrated LLM call for the Swarm Director.
+ * Separate pipeline from the main agent — fast emotion/intent classification.
+ */
+export async function quickLlmCall(prompt: string, systemPrompt: string): Promise<string> {
+  if (!GuappaAgent) {
+    throw new Error("GuappaAgent native module not available");
+  }
+  return GuappaAgent.quickLlmCall(prompt, systemPrompt);
+}
+
 export async function collectDebugInfo(): Promise<string> {
   if (!GuappaAgent) {
     throw new Error("GuappaAgent native module not available");

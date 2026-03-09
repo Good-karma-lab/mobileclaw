@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Pressable, Text, StyleSheet, Platform } from "react-native";
+import { View, Pressable, StyleSheet, Platform } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,8 +13,6 @@ import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors } from "../../theme/colors";
-import { typography } from "../../theme/typography";
 import { springs } from "../../theme/animations";
 
 export type DockTab = {
@@ -56,20 +54,21 @@ function DockTabItem({
   isActive: boolean;
   onPress: () => void;
 }) {
-  const scale = useSharedValue(isActive ? 1.1 : 1);
-  const glowOpacity = useSharedValue(isActive ? 0.35 : 0);
+  const scale = useSharedValue(isActive ? 1.25 : 1);
+  const glowOpacity = useSharedValue(isActive ? 1 : 0);
 
   useEffect(() => {
-    scale.value = withSpring(isActive ? 1.1 : 1, springs.snappy);
-    glowOpacity.value = withSpring(isActive ? 0.35 : 0, springs.gentle);
+    scale.value = withSpring(isActive ? 1.25 : 1, springs.snappy);
+    glowOpacity.value = withSpring(isActive ? 1 : 0, springs.gentle);
   }, [isActive, scale, glowOpacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  // Very subtle dark glow behind active icon
   const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
+    opacity: glowOpacity.value * 0.35,
   }));
 
   const iconName = isActive
@@ -85,36 +84,27 @@ function DockTabItem({
       onPress={onPress}
       style={[styles.tabButton, animatedStyle]}
     >
-      {/* Glow ring behind active icon */}
-      <Animated.View style={[styles.glowRing, glowStyle]} />
+      {/* Subtle dark glow behind active icon */}
+      <Animated.View style={[styles.activeGlow, glowStyle]} />
       <Ionicons
         name={iconName as any}
-        size={20}
-        color={isActive ? colors.accent.cyan : colors.text.secondary}
+        size={24}
+        color={isActive ? "#D0E8F5" : "rgba(160, 190, 210, 0.75)"}
       />
-      <Text
-        style={[
-          styles.tabLabel,
-          isActive && styles.tabLabelActive,
-        ]}
-      >
-        {tab.label}
-      </Text>
     </AnimatedPressable>
   );
 }
 
 export function FloatingDock({ tabs, activeTab, onTabPress }: Props) {
   const insets = useSafeAreaInsets();
-  const bottomOffset = Math.max(16, insets.bottom + 16);
+  const bottomOffset = Math.max(16, insets.bottom + 12);
 
-  // Subtle breathing animation on the dock
   const breathe = useSharedValue(1);
   useEffect(() => {
     breathe.value = withRepeat(
       withSequence(
-        withTiming(1.005, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.995, { duration: 4000, easing: Easing.inOut(Easing.sin) })
+        withTiming(1.003, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.997, { duration: 4000, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       false
@@ -131,7 +121,7 @@ export function FloatingDock({ tabs, activeTab, onTabPress }: Props) {
       style={[styles.container, { bottom: bottomOffset }]}
     >
       <Animated.View style={[styles.dockWrapper, dockBreathStyle]}>
-        <BlurView intensity={40} tint="dark" style={styles.blurWrap}>
+        <BlurView intensity={50} tint="dark" style={styles.blurWrap}>
           <View style={styles.innerRow}>
             {tabs.map((tab) => (
               <DockTabItem
@@ -148,29 +138,28 @@ export function FloatingDock({ tabs, activeTab, onTabPress }: Props) {
   );
 }
 
-const DOCK_HEIGHT = 68;
+const DOCK_HEIGHT = 56;
 
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    left: 20,
-    right: 20,
+    left: 40,
+    right: 40,
     alignItems: "center",
     zIndex: 999,
     elevation: 20,
   },
   dockWrapper: {
     width: "100%",
-    // Shadow for depth on both platforms
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 20,
+        elevation: 16,
       },
     }),
   },
@@ -179,38 +168,28 @@ const styles = StyleSheet.create({
     height: DOCK_HEIGHT,
     borderRadius: DOCK_HEIGHT / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(15, 15, 40, 0.92)",
+    backgroundColor: "rgba(10, 22, 35, 0.92)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.22)",
+    borderColor: "rgba(80, 130, 160, 0.2)",
   },
   innerRow: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
   tabButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     height: DOCK_HEIGHT,
-    gap: 3,
   },
-  tabLabel: {
-    fontSize: 9,
-    fontFamily: typography.body.fontFamily,
-    color: colors.text.tertiary,
-    letterSpacing: 0.3,
-  },
-  tabLabelActive: {
-    color: colors.accent.cyan,
-  },
-  glowRing: {
+  activeGlow: {
     position: "absolute",
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: colors.accent.cyan,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(50, 100, 130, 0.3)",
   },
 });

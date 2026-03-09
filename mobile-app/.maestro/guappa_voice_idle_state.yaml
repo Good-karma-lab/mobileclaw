@@ -8,7 +8,7 @@ appId: com.guappa.app
     id: "voice-screen"
 # Orb should be in idle state
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"
 - assertVisible: "Tap to speak"
 - assertVisible: "GUAPPA"
 # Floating dock should be visible

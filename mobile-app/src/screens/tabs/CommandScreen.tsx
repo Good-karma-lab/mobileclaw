@@ -88,132 +88,7 @@ interface SessionSummary {
   summaryPreview: string;
 }
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────
-
-const MOCK_TASKS: ActiveTask[] = [
-  {
-    id: "t1",
-    title: "Summarizing conversation history",
-    status: "running",
-    progress: 0.65,
-    elapsedMs: 12400,
-    detail: "Processing 48 messages...",
-  },
-  {
-    id: "t2",
-    title: "Web search: latest React Native updates",
-    status: "pending",
-    progress: 0,
-    elapsedMs: 0,
-  },
-  {
-    id: "t3",
-    title: "Calendar sync",
-    status: "done",
-    progress: 1,
-    elapsedMs: 3200,
-  },
-  {
-    id: "t4",
-    title: "Failed to fetch weather data",
-    status: "failed",
-    progress: 0.3,
-    elapsedMs: 8100,
-    detail: "Network timeout after 8s",
-  },
-];
-
-const MOCK_JOBS: ScheduledJob[] = [
-  {
-    id: "j1",
-    name: "Morning Briefing",
-    cronExpression: "0 8 * * *",
-    cronReadable: "Every day at 8:00 AM",
-    nextRunIso: new Date(Date.now() + 3600_000 * 14).toISOString(),
-    enabled: true,
-  },
-  {
-    id: "j2",
-    name: "Weekly Report",
-    cronExpression: "0 17 * * 5",
-    cronReadable: "Every Friday at 5:00 PM",
-    nextRunIso: new Date(Date.now() + 3600_000 * 72).toISOString(),
-    enabled: true,
-  },
-  {
-    id: "j3",
-    name: "Evening Summary",
-    cronExpression: "0 21 * * *",
-    cronReadable: "Every day at 9:00 PM",
-    nextRunIso: new Date(Date.now() + 3600_000 * 6).toISOString(),
-    enabled: false,
-  },
-];
-
-const MOCK_TRIGGERS: Trigger[] = [
-  {
-    id: "tr1",
-    name: "Missed Call Logger",
-    type: "event",
-    enabled: true,
-    lastFiredIso: new Date(Date.now() - 3600_000 * 2).toISOString(),
-  },
-  {
-    id: "tr2",
-    name: "Low Battery Alert",
-    type: "condition",
-    enabled: true,
-    lastFiredIso: new Date(Date.now() - 3600_000 * 24).toISOString(),
-  },
-  {
-    id: "tr3",
-    name: "New Email Digest",
-    type: "event",
-    enabled: false,
-  },
-  {
-    id: "tr4",
-    name: "Calendar Reminder",
-    type: "schedule",
-    enabled: true,
-    lastFiredIso: new Date(Date.now() - 3600_000 * 1).toISOString(),
-  },
-];
-
-const MOCK_MEMORY: MemoryStats = {
-  workingTokens: 3200,
-  maxTokens: 8192,
-  shortTermFacts: 14,
-  longTermFacts: 42,
-  episodicMemories: 7,
-};
-
-const MOCK_SESSIONS: SessionSummary[] = [
-  {
-    id: "s1",
-    title: "Project Planning Discussion",
-    dateIso: new Date(Date.now() - 3600_000 * 2).toISOString(),
-    messageCount: 34,
-    summaryPreview:
-      "Discussed Q2 roadmap priorities, agreed on three key features for the next sprint. Explored migration strategy for the database layer.",
-  },
-  {
-    id: "s2",
-    title: "Code Review Assistance",
-    dateIso: new Date(Date.now() - 3600_000 * 26).toISOString(),
-    messageCount: 18,
-    summaryPreview:
-      "Reviewed pull request for authentication module. Identified two security concerns and suggested refactoring the token refresh logic.",
-  },
-  {
-    id: "s3",
-    title: "Research: Vector Databases",
-    dateIso: new Date(Date.now() - 3600_000 * 72).toISOString(),
-    messageCount: 22,
-    summaryPreview:
-      "Compared Pinecone, Weaviate, and ChromaDB for local embedding storage. Concluded that SQLite with BLOB storage fits the mobile constraint best.",
-  },
-];
+// Mock data removed — all sections load from native bridges
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -399,13 +274,15 @@ function EmptyState({
   icon,
   title,
   subtitle,
+  testID,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
+  testID?: string;
 }) {
   return (
-    <View style={styles.sectionContent}>
+    <View style={styles.sectionContent} testID={testID}>
       <AnimatedEmptyIcon icon={icon} />
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptySubtitle}>{subtitle}</Text>
@@ -479,6 +356,7 @@ function ActiveTasksContent({ tasks }: { tasks: ActiveTask[] }) {
         icon="list-outline"
         title="No active tasks"
         subtitle="Ask GUAPPA to do something and tasks will appear here"
+        testID="tasks-empty-state"
       />
     );
   }
@@ -553,6 +431,7 @@ function ScheduledJobsContent({
         icon="calendar-outline"
         title="No scheduled jobs"
         subtitle='Create recurring actions like "Every morning, check my calendar"'
+        testID="schedules-empty-state"
       />
     );
   }
@@ -639,6 +518,7 @@ function TriggersContent({
         icon="flash-outline"
         title="No triggers configured"
         subtitle='Set up event-based actions like "When I get a call, log it"'
+        testID="triggers-empty-state"
       />
     );
   }
@@ -697,7 +577,7 @@ function MemoryStatsContent({
         : colors.accent.cyan;
 
   return (
-    <View style={styles.memoryPanel}>
+    <View style={styles.memoryPanel} testID="memory-stats-panel">
       {/* Working Memory with progress bar */}
       <View style={styles.memoryWorkingCard}>
         <View style={styles.memoryWorkingHeader}>
@@ -867,16 +747,23 @@ function RecentSessionsContent({
 
 // ─── Main Screen ────────────────────────────────────────────────────────────
 
-export function CommandScreen() {
+export function CommandScreen({ isActive }: { isActive?: boolean }) {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
-  // State for all sections
-  const [tasks, setTasks] = useState<ActiveTask[]>(MOCK_TASKS);
-  const [jobs, setJobs] = useState<ScheduledJob[]>(MOCK_JOBS);
-  const [triggers, setTriggers] = useState<Trigger[]>(MOCK_TRIGGERS);
-  const [memoryStats, setMemoryStats] = useState<MemoryStats>(MOCK_MEMORY);
-  const [sessions, setSessions] = useState<SessionSummary[]>(MOCK_SESSIONS);
+  // State for all sections — initialize empty, load from native
+  const [tasks, setTasks] = useState<ActiveTask[]>([]);
+  const [jobs, setJobs] = useState<ScheduledJob[]>([]);
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
+  const [memoryStats, setMemoryStats] = useState<MemoryStats>({
+    workingTokens: 0,
+    maxTokens: 8192,
+    shortTermFacts: 0,
+    longTermFacts: 0,
+    episodicMemories: 0,
+  });
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Derive overall status from tasks
   const overallStatus: "idle" | "active" | "error" = tasks.some(
@@ -901,14 +788,14 @@ export function CommandScreen() {
           getTriggers(),
         ]);
 
-      if (nativeTasks.status === "fulfilled" && nativeTasks.value.length > 0) {
+      if (nativeTasks.status === "fulfilled") {
         setTasks(
           nativeTasks.value.map((t: MemoryTask) => ({
             id: t.id,
             title: t.title,
-            status: (t.status === "in_progress" ? "running" : t.status) as TaskStatus,
-            progress: t.status === "completed" ? 100 : 50,
-            elapsed: Math.floor((Date.now() - t.createdAt) / 1000),
+            status: (t.status === "in_progress" ? "running" : t.status === "completed" ? "done" : t.status === "cancelled" ? "failed" : t.status) as TaskStatus,
+            progress: t.status === "completed" ? 1 : t.status === "in_progress" ? 0.5 : 0,
+            elapsedMs: Math.max(0, Date.now() - t.createdAt),
             detail: t.description,
           }))
         );
@@ -925,33 +812,35 @@ export function CommandScreen() {
         });
       }
 
-      if (nativeSessions.status === "fulfilled" && nativeSessions.value.length > 0) {
+      if (nativeSessions.status === "fulfilled") {
         setSessions(
           nativeSessions.value.map((s: MemorySession) => ({
             id: s.id,
             title: s.title,
-            date: new Date(s.startedAt).toLocaleDateString(),
+            dateIso: new Date(s.startedAt).toISOString(),
             messageCount: s.tokenCount,
-            summary: s.summary ?? "No summary available",
+            summaryPreview: s.summary ?? "No summary available",
           }))
         );
       }
 
-      if (nativeTriggers.status === "fulfilled" && nativeTriggers.value.length > 0) {
+      if (nativeTriggers.status === "fulfilled") {
         setTriggers(
           nativeTriggers.value.map((t: ProactiveTrigger) => ({
             id: t.id,
             name: t.name,
-            type: t.type as Trigger["type"],
+            type: (t.type === "time_based" ? "schedule" : t.type === "event_based" ? "event" : t.type === "condition_based" ? "condition" : "event") as Trigger["type"],
             enabled: t.enabled,
-            lastFired: t.lastFired
-              ? new Date(t.lastFired).toLocaleString()
+            lastFiredIso: t.lastFired
+              ? new Date(t.lastFired).toISOString()
               : undefined,
           }))
         );
       }
     } catch {
-      // Fall back to mock data on error
+      // Leave empty states on error — no mock fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -999,9 +888,8 @@ export function CommandScreen() {
   }, []);
 
   return (
-    <LinearGradient
-      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-      style={styles.container}
+    <View
+      style={[styles.container, { backgroundColor: "rgba(2, 2, 6, 0.85)" }]}
       testID="command-screen"
     >
       {/* Glass Header */}
@@ -1110,7 +998,7 @@ export function CommandScreen() {
           <RecentSessionsContent sessions={sessions} />
         </CollapsibleSection>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -1146,9 +1034,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   runningBadge: {
-    backgroundColor: "rgba(0, 240, 255, 0.20)",
+    backgroundColor: "rgba(20, 70, 90, 0.2)",
     borderWidth: 1,
-    borderColor: "rgba(0, 240, 255, 0.35)",
+    borderColor: "rgba(30, 85, 105, 0.25)",
     borderRadius: 10,
     minWidth: 20,
     height: 20,

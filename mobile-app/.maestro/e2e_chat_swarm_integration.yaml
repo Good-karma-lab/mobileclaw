@@ -1,0 +1,22 @@
+appId: com.guappa.app
+---
+# E2E: Chat screen with swarm integration
+- launchApp
+
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Send a message to trigger swarm director
+- tapOn:
+    id: "chat-input"
+- inputText: "What is the meaning of life?"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for message to appear
+- extendedWaitUntil:
+    visible: "What is the meaning of life?"
+    timeout: 10000

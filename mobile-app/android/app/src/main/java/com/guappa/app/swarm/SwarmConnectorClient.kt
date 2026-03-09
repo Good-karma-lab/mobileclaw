@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  * simpler and sufficient for mobile use cases.
  */
 class SwarmConnectorClient(
-    private val baseUrl: String = "http://127.0.0.1:9371"
+    private val baseUrl: String = "http://10.0.2.2:9371"
 ) {
     private val TAG = "SwarmConnector"
     private val client = OkHttpClient.Builder()

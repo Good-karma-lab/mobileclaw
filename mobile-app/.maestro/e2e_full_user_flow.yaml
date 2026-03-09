@@ -1,0 +1,53 @@
+appId: com.guappa.app
+---
+# E2E: Full user journey - onboarding -> voice -> chat -> config
+- launchApp:
+    clearState: true
+
+# Onboarding
+- extendedWaitUntil:
+    visible: "Get Started"
+    timeout: 15000
+- tapOn: "Get Started"
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 10000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Skip for now"
+    timeout: 10000
+- tapOn: "Skip for now"
+- extendedWaitUntil:
+    visible: "Permissions GUAPPA needs"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Continue"
+
+# Voice screen
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Chat screen
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Config screen
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 10000
+- assertVisible: "How GUAPPA Thinks"
+
+# Back to voice
+- tapOn: "Voice"
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 10000

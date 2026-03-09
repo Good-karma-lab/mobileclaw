@@ -9,7 +9,7 @@ appId: com.guappa.app
 # Verify idle state
 - assertVisible: "Tap to speak"
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"
 # Start listening
 - tapOn:
     id: "mic-button"

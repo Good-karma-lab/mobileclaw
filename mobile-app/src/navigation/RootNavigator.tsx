@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LayoutProvider, useLayoutContext } from "../state/layout";
 import { FloatingDock, type DockTab } from "../components/dock/FloatingDock";
 import { SideRail } from "../components/dock/SideRail";
+import { SwarmCanvas } from "../swarm/SwarmCanvas";
 
 import { VoiceScreen } from "../screens/tabs/VoiceScreen";
 import { ChatScreen } from "../screens/tabs/ChatScreen";
@@ -27,7 +28,7 @@ const TABS: DockTab[] = [
   { key: "config", icon: "\u2699", label: "Config" },
 ];
 
-const SCREENS: Record<string, React.ComponentType> = {
+const SCREENS: Record<string, React.ComponentType<{ isActive: boolean }>> = {
   voice: VoiceScreen,
   chat: ChatScreen,
   command: CommandScreen,
@@ -37,23 +38,38 @@ const SCREENS: Record<string, React.ComponentType> = {
 
 const RAIL_WIDTH = 72;
 
+/**
+ * Screens that should show the neural swarm at full opacity behind them.
+ * Voice = fullscreen swarm. Chat = swarm recedes to far background.
+ * Other screens use their own backgrounds but the swarm is still there, very dim.
+ */
+const SWARM_OPACITY: Record<string, number> = {
+  voice: 1.0,
+  chat: 0.15,
+  command: 0.08,
+  swarm: 0.05,
+  config: 0.05,
+};
+
 function NavigatorContent() {
   const { useSidebar } = useLayoutContext();
   const [activeTab, setActiveTab] = useState("voice");
 
   const ActiveScreen = SCREENS[activeTab] ?? VoiceScreen;
+  const swarmOpacity = SWARM_OPACITY[activeTab] ?? 0.1;
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-        style={StyleSheet.absoluteFill}
-      />
       <StatusBar
         barStyle="light-content"
         translucent
         backgroundColor="transparent"
       />
+
+      {/* Global neural swarm background — always alive */}
+      <View style={[StyleSheet.absoluteFill, { opacity: swarmOpacity }]} testID="neural-swarm">
+        <SwarmCanvas />
+      </View>
 
       {/* Screen content layer */}
       <View
@@ -62,10 +78,10 @@ function NavigatorContent() {
           useSidebar && { paddingLeft: RAIL_WIDTH },
         ]}
       >
-        <ActiveScreen />
+        <ActiveScreen isActive={true} />
       </View>
 
-      {/* Navigation overlay layer — separate from content for reliable touch handling */}
+      {/* Navigation overlay layer */}
       <View style={styles.navLayer} pointerEvents="box-none">
         {useSidebar ? (
           <SideRail
@@ -130,6 +146,7 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#020206",
   },
   screenLayer: {
     flex: 1,

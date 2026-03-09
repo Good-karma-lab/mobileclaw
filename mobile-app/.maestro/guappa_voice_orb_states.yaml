@@ -8,7 +8,7 @@ appId: com.guappa.app
     id: "voice-screen"
 # Idle state
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"
 - assertVisible: "Tap to speak"
 # Tap to start listening
 - tapOn:

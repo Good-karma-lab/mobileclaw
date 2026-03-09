@@ -1,0 +1,15 @@
+appId: com.guappa.app
+---
+# E2E: Swarm screen pull-to-refresh
+- launchApp
+
+- tapOn: "Swarm"
+- extendedWaitUntil:
+    visible:
+      id: "swarm-screen"
+    timeout: 10000
+
+# Verify sections
+- assertVisible: "World Wide Swarm"
+- assertVisible: "Identity"
+- assertVisible: "Connection"

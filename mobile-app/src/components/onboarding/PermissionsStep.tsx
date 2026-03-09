@@ -139,12 +139,16 @@ export function PermissionsStep({ onComplete }: Props) {
     [],
   );
 
-  const handleGrantAllEssential = useCallback(async () => {
-    const essential = PERMISSION_GROUPS[0].items;
-    for (const item of essential) {
+  const handleGrantAll = useCallback(async () => {
+    const allItems = PERMISSION_GROUPS.flatMap((g) => g.items);
+    for (const item of allItems) {
       await requestPermission(item);
     }
   }, [requestPermission]);
+
+  const allGranted = PERMISSION_GROUPS.flatMap((g) => g.items).every(
+    (item) => granted[item.key] === true,
+  );
 
   return (
     <ScrollView
@@ -153,12 +157,25 @@ export function PermissionsStep({ onComplete }: Props) {
     >
       <Text style={styles.heading}>Permissions GUAPPA needs</Text>
 
-      <GlassButton
-        title="Grant All Essential"
-        onPress={handleGrantAllEssential}
-        icon="shield-checkmark-outline"
-        style={styles.grantAllButton}
-      />
+      {/* Grant All toggle at top */}
+      <GlassCard style={styles.grantAllCard}>
+        <View style={styles.grantAllRow}>
+          <View style={styles.grantAllTextWrap}>
+            <Text style={styles.grantAllTitle}>Grant All Permissions</Text>
+            <Text style={styles.grantAllSubtext}>Allow everything at once</Text>
+          </View>
+          {allGranted ? (
+            <Ionicons name="checkmark-circle" size={28} color={colors.semantic.success} />
+          ) : (
+            <GlassButton
+              title="Grant All"
+              onPress={handleGrantAll}
+              icon="shield-checkmark-outline"
+              style={styles.grantAllBtn}
+            />
+          )}
+        </View>
+      </GlassCard>
 
       {PERMISSION_GROUPS.map((group) => (
         <View key={group.label} style={styles.group}>
@@ -215,6 +232,7 @@ export function PermissionsStep({ onComplete }: Props) {
         onPress={onComplete}
         icon="arrow-forward"
         style={styles.continueButton}
+        testID="onboarding-continue"
       />
     </ScrollView>
   );
@@ -236,8 +254,33 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: spacing.lg,
   },
-  grantAllButton: {
+  grantAllCard: {
     marginBottom: spacing.lg,
+  },
+  grantAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  grantAllTextWrap: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  grantAllTitle: {
+    fontFamily: typography.bodySemiBold.fontFamily,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  grantAllSubtext: {
+    fontFamily: typography.body.fontFamily,
+    fontSize: 12,
+    color: colors.text.tertiary,
+    marginTop: 2,
+  },
+  grantAllBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    minHeight: 36,
   },
   group: {
     marginBottom: spacing.lg,

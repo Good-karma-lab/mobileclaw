@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(10, 20, 28, 0.4)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.10)",
+    borderColor: "rgba(40, 70, 90, 0.12)",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -155,9 +155,9 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     marginTop: spacing.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(10, 22, 30, 0.4)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.10)",
+    borderColor: "rgba(40, 70, 90, 0.12)",
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   optionItemSelected: {
-    backgroundColor: "rgba(0, 240, 255, 0.08)",
+    backgroundColor: "rgba(20, 60, 80, 0.15)",
   },
   optionText: {
     color: colors.text.primary,

@@ -53,12 +53,17 @@ export function ChatInputBar({
           testID="chat-input"
           value={value}
           onChangeText={onChangeText}
+          onSubmitEditing={() => {
+            if (value.trim().length > 0 && !isThinking) onSend();
+          }}
+          returnKeyType="send"
+          blurOnSubmit={false}
           placeholder={isThinking ? "GUAPPA is thinking..." : "Message GUAPPA..."}
           placeholderTextColor={
             isThinking ? colors.accent.violet : colors.text.tertiary
           }
           editable={editable && !isThinking}
-          multiline
+          multiline={false}
           maxLength={4000}
           style={styles.input}
         />
@@ -137,8 +142,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 240, 255, 0.12)",
+    backgroundColor: "rgba(20, 60, 80, 0.15)",
     borderWidth: 1,
-    borderColor: "rgba(0, 240, 255, 0.25)",
+    borderColor: "rgba(25, 80, 100, 0.22)",
   },
 });

@@ -58,11 +58,11 @@ export default function App() {
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
+    // If font error occurred, continue without custom fonts
 
     if (fontError) {
-      console.error("[app] font loading error", fontError);
-      setInitError(`Font loading failed: ${fontError.message}`);
-      return;
+      console.warn("[app] font loading error (continuing with system fonts)", fontError);
+      // Don't block app startup for font errors — fall through to initialization
     }
 
     // Initialize app

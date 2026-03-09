@@ -44,6 +44,7 @@ export function WelcomeStep({ onNext }: Props) {
           title="Get Started"
           onPress={onNext}
           icon="arrow-forward"
+          testID="onboarding-get-started"
         />
       </View>
     </View>

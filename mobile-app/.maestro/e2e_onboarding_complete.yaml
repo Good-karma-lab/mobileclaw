@@ -1,0 +1,48 @@
+appId: com.guappa.app
+---
+# E2E: Full onboarding flow
+- launchApp:
+    clearState: true
+
+# Step 1: Welcome screen
+- extendedWaitUntil:
+    visible: "GUAPPA"
+    timeout: 15000
+- assertVisible: "Your AI companion"
+- assertVisible: "Get Started"
+
+# Step 2: Tap Get Started
+- tapOn: "Get Started"
+
+# Step 3: Provider setup
+- extendedWaitUntil:
+    visible: "Choose how GUAPPA thinks"
+    timeout: 10000
+- assertVisible: "Skip"
+- tapOn: "Skip"
+
+# Step 4: Model download
+- extendedWaitUntil:
+    visible: "Skip for now"
+    timeout: 10000
+- tapOn: "Skip for now"
+
+# Step 5: Permissions
+- extendedWaitUntil:
+    visible: "Permissions GUAPPA needs"
+    timeout: 10000
+- assertVisible: "ESSENTIAL"
+
+# Scroll to Continue
+- scrollUntilVisible:
+    element: "Continue"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Continue"
+
+# Step 6: Main app
+- extendedWaitUntil:
+    visible:
+      id: "floating-dock"
+    timeout: 15000
+- assertVisible: "Tap to speak"

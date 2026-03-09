@@ -1,0 +1,30 @@
+appId: com.guappa.app
+---
+# Phase 2: Ask agent to set up incoming call notification hook
+# Prerequisite: App already launched, on chat screen
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "When I have incoming call - please send me a message with caller number to the chat here"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+
+# No errors
+- assertNotVisible:
+    text: "Backend error"
+- assertNotVisible:
+    text: "Network request failed"
+
+# Agent should use a real-time hook, not polling
+- assertNotVisible:
+    text: "every 60 seconds"
+- assertNotVisible:
+    text: "every minute"

@@ -11,4 +11,4 @@ appId: com.guappa.app
     id: "voice-screen"
 - assertVisible: "Tap to speak"
 - assertVisible:
-    id: "plasma-orb"
+    id: "neural-swarm"

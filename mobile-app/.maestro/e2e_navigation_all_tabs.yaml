@@ -1,0 +1,43 @@
+appId: com.guappa.app
+---
+# E2E: Navigate all 5 tabs
+- launchApp
+
+# Starts on Voice
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Chat
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Command
+- tapOn: "Command"
+- extendedWaitUntil:
+    visible:
+      id: "command-screen"
+    timeout: 10000
+
+# Swarm
+- tapOn: "Swarm"
+- extendedWaitUntil:
+    visible:
+      id: "swarm-screen"
+    timeout: 10000
+
+# Config
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 10000
+
+# Back to Voice
+- tapOn: "Voice"
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 10000

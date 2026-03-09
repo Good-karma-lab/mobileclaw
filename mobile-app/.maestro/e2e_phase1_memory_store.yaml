@@ -1,0 +1,28 @@
+appId: com.guappa.app
+---
+# Phase 1: Store personal fact in agent memory
+# Can be run standalone for debugging
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+- assertVisible:
+    id: chat-input
+- tapOn:
+    id: chat-input
+- inputText: "My wife's name is Kate"
+- tapOn:
+    id: chat-send-or-voice
+- waitForAnimationToEnd:
+    timeout: 120000
+
+# No errors
+- assertNotVisible:
+    text: "Backend error"
+- assertNotVisible:
+    text: "Network request failed"
+- assertNotVisible:
+    text: "disabled"
+- assertNotVisible:
+    text: "not available"

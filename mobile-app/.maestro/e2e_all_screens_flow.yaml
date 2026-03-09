@@ -1,0 +1,58 @@
+appId: com.guappa.app
+---
+# Full E2E: Navigate all 5 screens, verify each renders correctly
+
+- launchApp
+
+# Voice screen should be default
+- extendedWaitUntil:
+    visible:
+      id: "voice-screen"
+    timeout: 15000
+
+# Verify neural swarm is rendering
+- assertVisible:
+    id: "neural-swarm"
+- assertVisible: "Tap to speak"
+- assertVisible:
+    id: "floating-dock"
+
+# --- CHAT SCREEN ---
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 5000
+
+# --- COMMAND SCREEN ---
+- tapOn: "Command"
+- extendedWaitUntil:
+    visible:
+      id: "command-screen"
+    timeout: 5000
+
+# --- SWARM SCREEN ---
+- tapOn: "Swarm"
+- extendedWaitUntil:
+    visible:
+      id: "swarm-screen"
+    timeout: 5000
+- assertVisible:
+    id: "identity-card"
+
+# --- CONFIG SCREEN ---
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 5000
+
+# --- BACK TO VOICE ---
+- tapOn: "Voice"
+- extendedWaitUntil:
+    visible:
+      id: "voice-screen"
+    timeout: 5000
+- assertVisible:
+    id: "neural-swarm"
+- assertVisible: "Tap to speak"

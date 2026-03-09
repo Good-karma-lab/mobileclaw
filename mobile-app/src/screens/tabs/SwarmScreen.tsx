@@ -44,25 +44,68 @@ import { CollapsibleSection } from "../../components/glass/CollapsibleSection";
 // Native bridge
 // ---------------------------------------------------------------------------
 
-type NativeSwarmManager = {
+// Raw native module returns JSON strings for complex types
+type NativeSwarmManagerRaw = {
   connect(url: string): Promise<boolean>;
   disconnect(): Promise<boolean>;
-  getStatus(): Promise<SwarmStatusPayload>;
-  getIdentity(): Promise<SwarmIdentityPayload>;
-  generateIdentity(): Promise<SwarmIdentityPayload>;
+  getStatus(): Promise<string>;
+  getIdentity(): Promise<string>;
+  generateIdentity(): Promise<string>;
   updateAgentName(name: string): Promise<boolean>;
-  getMessages(since: number): Promise<SwarmMessagePayload[]>;
-  getPeers(): Promise<SwarmPeerPayload[]>;
-  getStats(): Promise<SwarmStatsPayload>;
-  getActiveTasks(): Promise<SwarmTaskPayload[]>;
+  getMessages(since: number): Promise<string>;
+  getPeers(): Promise<string>;
+  getStats(): Promise<string>;
+  getActiveTasks(): Promise<string>;
   acceptTask(taskId: string): Promise<boolean>;
   rejectTask(taskId: string): Promise<boolean>;
 };
 
-const SwarmManager: NativeSwarmManager | null =
+const RawSwarmManager: NativeSwarmManagerRaw | null =
   Platform.OS === "android"
-    ? (NativeModules.SwarmManager as NativeSwarmManager) ?? null
+    ? (NativeModules.GuappaSwarm as NativeSwarmManagerRaw) ?? null
     : null;
+
+// Wrapper that parses JSON strings from the native module
+const SwarmManager = RawSwarmManager
+  ? {
+      connect: (url: string) => RawSwarmManager!.connect(url),
+      disconnect: () => RawSwarmManager!.disconnect(),
+      getStatus: async (): Promise<SwarmStatusPayload> => {
+        const json = await RawSwarmManager!.getStatus();
+        return typeof json === "string" ? JSON.parse(json) : json;
+      },
+      getIdentity: async (): Promise<SwarmIdentityPayload> => {
+        const json = await RawSwarmManager!.getIdentity();
+        return typeof json === "string" ? JSON.parse(json) : json;
+      },
+      generateIdentity: async (): Promise<SwarmIdentityPayload> => {
+        const json = await RawSwarmManager!.generateIdentity();
+        return typeof json === "string" ? JSON.parse(json) : json;
+      },
+      updateAgentName: (name: string) => RawSwarmManager!.updateAgentName(name),
+      getMessages: async (since: number): Promise<SwarmMessagePayload[]> => {
+        const json = await RawSwarmManager!.getMessages(since);
+        const parsed = typeof json === "string" ? JSON.parse(json) : json;
+        return Array.isArray(parsed) ? parsed : [];
+      },
+      getPeers: async (): Promise<SwarmPeerPayload[]> => {
+        const json = await RawSwarmManager!.getPeers();
+        const parsed = typeof json === "string" ? JSON.parse(json) : json;
+        return Array.isArray(parsed) ? parsed : [];
+      },
+      getStats: async (): Promise<SwarmStatsPayload> => {
+        const json = await RawSwarmManager!.getStats();
+        return typeof json === "string" ? JSON.parse(json) : json;
+      },
+      getActiveTasks: async (): Promise<SwarmTaskPayload[]> => {
+        const json = await RawSwarmManager!.getActiveTasks();
+        const parsed = typeof json === "string" ? JSON.parse(json) : json;
+        return Array.isArray(parsed) ? parsed : [];
+      },
+      acceptTask: (taskId: string) => RawSwarmManager!.acceptTask(taskId),
+      rejectTask: (taskId: string) => RawSwarmManager!.rejectTask(taskId),
+    }
+  : null;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,10 +146,13 @@ interface SwarmMessagePayload {
 
 interface SwarmPeerPayload {
   id: string;
-  name: string;
+  displayName: string;
+  name?: string; // alias
   capabilities: string[];
-  reputationScore: number;
-  lastSeenTimestamp: number;
+  reputationTier: string;
+  reputationScore?: number;
+  lastSeen: number;
+  lastSeenTimestamp?: number;
   online: boolean;
 }
 
@@ -135,7 +181,7 @@ const DEFAULT_STATUS: SwarmStatusPayload = {
   connectionStatus: "disconnected",
   peerCount: 0,
   uptimeSeconds: 0,
-  connectorUrl: "http://localhost:9371",
+  connectorUrl: "http://10.0.2.2:9371",
 };
 
 const DEFAULT_IDENTITY: SwarmIdentityPayload = {
@@ -441,19 +487,19 @@ function PeerRow({ peer }: { peer: SwarmPeerPayload }) {
         </View>
       </View>
       <View style={peerStyles.capabilities}>
-        {peer.capabilities.slice(0, 3).map((cap) => (
+        {(peer.capabilities ?? []).slice(0, 3).map((cap) => (
           <View key={cap} style={peerStyles.capBadge}>
             <Text style={peerStyles.capText}>{cap}</Text>
           </View>
         ))}
-        {peer.capabilities.length > 3 && (
+        {(peer.capabilities ?? []).length > 3 && (
           <Text style={peerStyles.capMore}>
-            +{peer.capabilities.length - 3}
+            +{(peer.capabilities ?? []).length - 3}
           </Text>
         )}
       </View>
       <Text style={peerStyles.lastSeen}>
-        {peer.online ? "Online now" : `Last seen ${formatTimestamp(peer.lastSeenTimestamp)}`}
+        {peer.online ? "Online now" : `Last seen ${formatTimestamp(peer.lastSeen)}`}
       </Text>
     </View>
   );
@@ -701,7 +747,7 @@ const taskStyles = StyleSheet.create({
 const POLL_INTERVAL_MS = 5_000;
 const FEED_POLL_INTERVAL_MS = 3_000;
 
-export function SwarmScreen() {
+export function SwarmScreen({ isActive }: { isActive?: boolean }) {
   const insets = useSafeAreaInsets();
   const feedScrollRef = useRef<ScrollView>(null);
 
@@ -713,7 +759,7 @@ export function SwarmScreen() {
   const [stats, setStats] = useState<SwarmStatsPayload>(DEFAULT_STATS);
   const [tasks, setTasks] = useState<SwarmTaskPayload[]>([]);
 
-  const [connectorUrl, setConnectorUrl] = useState("http://localhost:9371");
+  const [connectorUrl, setConnectorUrl] = useState("http://10.0.2.2:9371");
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
@@ -811,11 +857,38 @@ export function SwarmScreen() {
     ]);
   }, [fetchStatus, fetchIdentity, fetchMessages, fetchPeers, fetchStats, fetchTasks]);
 
-  // ---------- Initial load + polling ----------
+  // ---------- Initial load + auto-connect ----------
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Auto-generate identity and auto-connect on mount
+  useEffect(() => {
+    if (!SwarmManager) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        // Auto-generate identity if missing
+        let id = await SwarmManager.getIdentity();
+        if (!id.publicKey && !cancelled) {
+          const raw = await SwarmManager.generateIdentity();
+          if (raw && typeof raw === "string") {
+            id = JSON.parse(raw);
+          }
+          await fetchIdentity();
+        }
+        // Auto-connect if not already connected
+        if (!cancelled && status.connectionStatus === "disconnected") {
+          await SwarmManager.connect(connectorUrl);
+          await fetchStatus();
+        }
+      } catch {
+        // Connector may not be running — that's fine
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const statusInterval = setInterval(() => {
@@ -946,9 +1019,8 @@ export function SwarmScreen() {
   // ---------- Render ----------
 
   return (
-    <LinearGradient
-      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-      style={styles.container}
+    <View
+      style={[styles.container, { backgroundColor: "rgba(2, 2, 6, 0.9)" }]}
       testID="swarm-screen"
     >
       {/* ---- Header ---- */}
@@ -966,11 +1038,13 @@ export function SwarmScreen() {
             />
             <Text style={styles.headerTitle}>World Wide Swarm</Text>
           </View>
-          <GlassStatusBadge
-            status={connectionStatusBadge.status}
-            label={connectionStatusBadge.label}
-            size="sm"
-          />
+          <View testID="swarm-status-pill">
+            <GlassStatusBadge
+              status={connectionStatusBadge.status}
+              label={connectionStatusBadge.label}
+              size="sm"
+            />
+          </View>
         </View>
         <LinearGradient
           colors={[colors.accent.violet, "transparent", colors.accent.violet]}
@@ -998,7 +1072,7 @@ export function SwarmScreen() {
         }
       >
         {/* ---- Identity Card ---- */}
-        <GlassCard style={styles.sectionCard}>
+        <GlassCard style={styles.sectionCard} testID="identity-card">
           <View style={styles.sectionHeader}>
             <Ionicons
               name="finger-print-outline"
@@ -1119,6 +1193,7 @@ export function SwarmScreen() {
                 icon="key-outline"
                 variant="primary"
                 onPress={handleGenerateIdentity}
+                testID="generate-identity-btn"
               />
             </View>
           )}
@@ -1157,6 +1232,7 @@ export function SwarmScreen() {
             onPress={handleConnect}
             loading={connectLoading || isConnecting}
             style={styles.connectButton}
+            testID="swarm-connect-btn"
           />
 
           <View style={styles.connectionInfo}>
@@ -1228,7 +1304,7 @@ export function SwarmScreen() {
           </View>
 
           {!isConnected ? (
-            <View style={emptyStyles.container}>
+            <View style={emptyStyles.container} testID="feed-empty-state">
               <RotatingGlobe />
               <Text style={emptyStyles.title}>Connect to the Swarm</Text>
               <Text style={emptyStyles.subtitle}>
@@ -1270,7 +1346,7 @@ export function SwarmScreen() {
           defaultExpanded={false}
         >
           {peers.length === 0 ? (
-            <Text style={styles.emptyText}>No peers discovered yet.</Text>
+            <Text style={styles.emptyText} testID="peers-empty-state">No peers discovered yet.</Text>
           ) : (
             peers.map((peer) => <PeerRow key={peer.id} peer={peer} />)
           )}
@@ -1282,7 +1358,7 @@ export function SwarmScreen() {
           icon="stats-chart-outline"
           defaultExpanded={false}
         >
-          <View style={styles.statsGrid}>
+          <View style={styles.statsGrid} testID="swarm-stats-panel">
             <StatBox
               label="Completed"
               value={stats.tasksCompleted}
@@ -1338,7 +1414,7 @@ export function SwarmScreen() {
           )}
         </CollapsibleSection>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 

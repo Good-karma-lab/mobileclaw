@@ -8,6 +8,7 @@ import { typography } from "../../theme/typography";
 import { spacing } from "../../theme/spacing";
 import { checkModelExists, downloadModel } from "../../native/modelDownloader";
 import { DEFAULT_AGENT_CONFIG, loadAgentConfig, saveAgentConfig } from "../../state/guappa";
+import { isModelDownloaded as isWhisperDownloaded, downloadModel as downloadWhisperModel } from "../../voice/whisperModelManager";
 
 type Props = {
   onNext: () => void;
@@ -27,6 +28,12 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+
+  // Voice model (Whisper) state
+  const [whisperDownloading, setWhisperDownloading] = useState(false);
+  const [whisperProgress, setWhisperProgress] = useState(0);
+  const [whisperDone, setWhisperDone] = useState(false);
+  const [whisperError, setWhisperError] = useState<string | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -58,6 +65,36 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
       cancelled = true;
       mountedRef.current = false;
     };
+  }, []);
+
+  // Check Whisper model on mount
+  useEffect(() => {
+    (async () => {
+      const downloaded = await isWhisperDownloaded("base.en");
+      if (downloaded && mountedRef.current) {
+        setWhisperDone(true);
+        setWhisperProgress(100);
+      }
+    })();
+  }, []);
+
+  const handleWhisperDownload = useCallback(async () => {
+    setWhisperDownloading(true);
+    setWhisperProgress(0);
+    setWhisperError(null);
+    try {
+      await downloadWhisperModel("base.en", (p) => {
+        if (mountedRef.current) setWhisperProgress(Math.round(p * 100));
+      });
+      if (mountedRef.current) setWhisperDone(true);
+    } catch (err) {
+      if (mountedRef.current) {
+        setWhisperError(err instanceof Error ? err.message : String(err));
+        setWhisperProgress(0);
+      }
+    } finally {
+      if (mountedRef.current) setWhisperDownloading(false);
+    }
   }, []);
 
   const handleDownload = useCallback(async () => {
@@ -126,6 +163,48 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </GlassCard>
 
+      {/* Voice Model (Whisper STT) */}
+      <GlassCard style={{ marginTop: spacing.md }}>
+        <View style={styles.modelHeader}>
+          <Ionicons
+            name="mic-outline"
+            size={28}
+            color={colors.accent.cyan}
+            style={styles.modelIcon}
+          />
+          <View style={styles.modelTextWrap}>
+            <Text style={styles.modelName}>Whisper Base (English)</Text>
+            <Text style={styles.modelSize}>~148 MB — Voice Recognition</Text>
+          </View>
+        </View>
+        <Text style={styles.modelDesc}>
+          On-device speech-to-text. No cloud needed. Required for voice interaction.
+        </Text>
+
+        {(whisperDownloading || whisperDone) && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${whisperProgress}%`, backgroundColor: colors.accent.cyan }]} />
+            </View>
+            <Text style={styles.progressLabel}>
+              {whisperDone ? "Download complete" : `${whisperProgress}%`}
+            </Text>
+          </View>
+        )}
+        {whisperError ? <Text style={styles.errorText}>{whisperError}</Text> : null}
+
+        {!whisperDone && (
+          <GlassButton
+            title={whisperDownloading ? "Downloading..." : "Download Voice Model"}
+            onPress={handleWhisperDownload}
+            loading={whisperDownloading}
+            disabled={whisperDownloading}
+            icon="download-outline"
+            style={{ marginTop: spacing.sm }}
+          />
+        )}
+      </GlassCard>
+
       <View style={styles.actions}>
         {done ? (
           <GlassButton
@@ -145,7 +224,7 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
       </View>
 
       {!done && (
-        <Pressable onPress={onSkip} style={styles.skipButton} disabled={downloading}>
+        <Pressable onPress={onSkip} style={styles.skipButton} disabled={downloading} testID="onboarding-skip-model">
           <Text style={styles.skipText}>Skip for now</Text>
           <Text style={styles.warningText}>
             GUAPPA needs a model to chat

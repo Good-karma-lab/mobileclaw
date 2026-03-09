@@ -1,0 +1,70 @@
+appId: com.guappa.app
+---
+# Phase 5: Voice mode — STT via BlackHole virtual audio cable
+# Prerequisites:
+#   - BlackHole 2ch installed, system output → BlackHole, emulator mic → BlackHole
+#   - Deepgram API key configured
+#   - Companion script plays TTS audio after mic button is tapped
+#
+# Run with:
+#   bash play_tts.sh "What is my wife's name?" &
+#   maestro test e2e_phase5_voice_stt_blackhole.yaml
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- extendedWaitUntil:
+    visible:
+      id: "voice-screen"
+    timeout: 10000
+
+# Verify neural swarm orb is idle
+- assertVisible:
+    id: "neural-swarm"
+- assertVisible: "Tap to speak"
+
+# Start listening
+- tapOn:
+    id: "mic-button"
+- waitForAnimationToEnd
+
+# Handle permission prompts
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "While using the app"
+    optional: true
+
+# Small delay for mic initialization
+- sleep: 2000
+
+# TTS audio is played by companion script via BlackHole
+# The emulator's mic picks it up through the virtual audio cable
+# Wait for STT to transcribe the speech
+- runScript:
+    script: |
+      // Signal that mic is ready — companion script watches for this
+      console.log("MIC_READY")
+
+- extendedWaitUntil:
+    visible:
+      text: ".*wife.*name.*"
+      regex: true
+    timeout: 30000
+
+# Neural swarm should reflect state change
+- assertVisible:
+    id: "neural-swarm"
+
+# Agent processes the voice query and responds
+- extendedWaitUntil:
+    visible:
+      text: ".*Kate.*"
+      regex: true
+    timeout: 120000

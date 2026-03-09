@@ -1,0 +1,43 @@
+appId: com.guappa.app
+---
+# Navigate all screens and capture visual state
+- launchApp
+
+# Voice screen (default) - verify it loaded
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Chat screen
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Command screen
+- tapOn: "Command"
+- extendedWaitUntil:
+    visible:
+      id: "command-screen"
+    timeout: 10000
+
+# Swarm screen
+- tapOn: "Swarm"
+- extendedWaitUntil:
+    visible:
+      id: "swarm-screen"
+    timeout: 10000
+
+# Config screen
+- tapOn: "Config"
+- extendedWaitUntil:
+    visible:
+      id: "config-screen"
+    timeout: 10000
+
+# Back to Voice
+- tapOn: "Voice"
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 10000

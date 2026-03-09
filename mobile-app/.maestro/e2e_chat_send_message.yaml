@@ -1,0 +1,23 @@
+appId: com.guappa.app
+---
+# E2E: Send a message in Chat
+- launchApp
+
+# Navigate to Chat
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+
+# Type a message
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello Guappa"
+- tapOn:
+    id: "chat-send-button"
+
+# Verify message appears
+- extendedWaitUntil:
+    visible: "Hello Guappa"
+    timeout: 5000

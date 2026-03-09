@@ -1,0 +1,22 @@
+appId: com.guappa.app
+---
+# E2E: Voice screen basic state
+- launchApp
+
+# Voice is default tab
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Verify neural swarm canvas
+- assertVisible:
+    id: "neural-swarm"
+
+# Verify dock
+- assertVisible:
+    id: "floating-dock"
+- assertVisible: "Voice"
+- assertVisible: "Chat"
+- assertVisible: "Command"
+- assertVisible: "Swarm"
+- assertVisible: "Config"

@@ -1,0 +1,24 @@
+appId: com.guappa.app
+---
+# E2E: Swarm screen identity flow
+- launchApp
+
+# Navigate to Swarm
+- tapOn: "Swarm"
+- extendedWaitUntil:
+    visible:
+      id: "swarm-screen"
+    timeout: 10000
+
+# Verify swarm UI elements
+- assertVisible: "World Wide Swarm"
+- assertVisible: "Identity"
+- assertVisible: "Connection"
+- assertVisible: "Connect"
+
+# Generate identity
+- tapOn: "Generate New Identity"
+- extendedWaitUntil:
+    visible:
+      id: "identity-card"
+    timeout: 10000

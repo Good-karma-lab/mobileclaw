@@ -75,9 +75,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(10, 20, 28, 0.4)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.10)",
+    borderColor: "rgba(40, 70, 90, 0.15)",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.body.fontFamily,
   },
   inputFocused: {
-    borderColor: "rgba(0, 240, 255, 0.30)",
+    borderColor: "rgba(30, 80, 100, 0.3)",
   },
   multiline: {
     minHeight: 80,

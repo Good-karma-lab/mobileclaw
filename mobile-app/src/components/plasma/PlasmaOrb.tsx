@@ -123,7 +123,7 @@ export function PlasmaOrb({
       >
         <LinearGradient
           colors={[
-            "#00F0FF",
+            "#1A5C6A",
             "#8B5CF6",
             "#D4F49C",
             "#5CC8FF",
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   glow: {
     position: "absolute",
-    backgroundColor: "rgba(0, 240, 255, 0.15)",
+    backgroundColor: "rgba(20, 70, 90, 0.18)",
   },
   innerGlass: {
     ...StyleSheet.absoluteFillObject,
@@ -171,6 +171,6 @@ const styles = StyleSheet.create({
   innerRing: {
     position: "absolute",
     borderWidth: 2,
-    borderColor: "rgba(0, 240, 255, 0.3)",
+    borderColor: "rgba(30, 80, 100, 0.25)",
   },
 });

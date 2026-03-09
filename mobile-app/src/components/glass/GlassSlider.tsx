@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   track: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(15, 30, 40, 0.4)",
     overflow: "hidden",
   },
   fill: {
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: "rgba(20, 35, 45, 0.35)",
     borderWidth: 2,
     borderColor: colors.accent.cyan,
   },

@@ -1,0 +1,13 @@
+appId: com.guappa.app
+---
+# E2E: Swarm director formation (requires LLM, visual only)
+- launchApp
+
+# Start on Voice
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Verify swarm renders
+- assertVisible:
+    id: "neural-swarm"

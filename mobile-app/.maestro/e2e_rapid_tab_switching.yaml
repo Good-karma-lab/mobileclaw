@@ -1,0 +1,21 @@
+appId: com.guappa.app
+---
+# E2E: Rapid tab switching stress test
+- launchApp
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Rapid switches
+- tapOn: "Chat"
+- tapOn: "Command"
+- tapOn: "Config"
+- tapOn: "Voice"
+- tapOn: "Chat"
+- tapOn: "Config"
+- tapOn: "Voice"
+
+# Should still be functional
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 10000

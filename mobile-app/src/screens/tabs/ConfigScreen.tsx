@@ -156,7 +156,7 @@ const CHANNEL_META: ChannelMeta[] = [
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function ConfigScreen() {
+export function ConfigScreen({ isActive }: { isActive?: boolean }) {
   const insets = useSafeAreaInsets();
   const [config, setConfig] = useState<AgentRuntimeConfig>(DEFAULT_AGENT_CONFIG);
   const [loaded, setLoaded] = useState(false);
@@ -531,9 +531,8 @@ export function ConfigScreen() {
   }));
 
   return (
-    <LinearGradient
-      colors={[colors.base.spaceBlack, colors.base.midnightBlue]}
-      style={styles.container}
+    <View
+      style={[styles.container, { backgroundColor: "rgba(2, 2, 6, 0.85)" }]}
       testID="config-screen"
     >
       {/* Glass Header */}
@@ -1054,7 +1053,7 @@ export function ConfigScreen() {
           </BlurView>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -1149,9 +1148,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: "rgba(0, 240, 255, 0.08)",
+    backgroundColor: "rgba(20, 60, 80, 0.12)",
     borderWidth: 1,
-    borderColor: "rgba(0, 240, 255, 0.20)",
+    borderColor: "rgba(20, 70, 90, 0.2)",
   },
   restartButtonText: {
     color: colors.accent.cyan,
@@ -1245,8 +1244,8 @@ const channelStyles = StyleSheet.create({
     padding: spacing.sm,
   },
   tileExpanded: {
-    borderColor: "rgba(0, 240, 255, 0.20)",
-    backgroundColor: "rgba(0, 240, 255, 0.04)",
+    borderColor: "rgba(20, 70, 90, 0.2)",
+    backgroundColor: "rgba(20, 60, 80, 0.06)",
   },
   tileHeader: {
     flexDirection: "row",

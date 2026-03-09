@@ -32,6 +32,7 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function GlassButton({
@@ -42,6 +43,7 @@ export function GlassButton({
   loading = false,
   disabled = false,
   style,
+  testID,
 }: Props) {
   const scale = useSharedValue(1);
 
@@ -58,7 +60,9 @@ export function GlassButton({
   }, [scale]);
 
   const variantStyles = variantMap[variant];
-  const textColor = variant === "primary" ? "#FFFFFF" : colors.accent.cyan;
+  const textColor = variant === "primary"
+    ? "rgba(180, 210, 220, 0.9)"
+    : "rgba(140, 170, 185, 0.7)";
 
   return (
     <AnimatedPressable
@@ -66,6 +70,7 @@ export function GlassButton({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled || loading}
+      testID={testID}
       style={[
         styles.base,
         variantStyles,
@@ -103,14 +108,14 @@ export function GlassButton({
 
 const variantMap: Record<Variant, ViewStyle> = {
   primary: {
-    backgroundColor: "rgba(0, 240, 255, 0.25)",
-    borderWidth: 1,
-    borderColor: "rgba(0, 240, 255, 0.35)",
+    backgroundColor: "rgba(20, 60, 70, 0.4)",
+    borderWidth: 0.5,
+    borderColor: "rgba(40, 90, 100, 0.3)",
   },
   secondary: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.10)",
+    backgroundColor: "rgba(20, 30, 40, 0.35)",
+    borderWidth: 0.5,
+    borderColor: "rgba(60, 80, 100, 0.15)",
   },
   ghost: {
     backgroundColor: "transparent",
@@ -121,7 +126,7 @@ const variantMap: Record<Variant, ViewStyle> = {
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: spacing.lg,
     alignItems: "center",

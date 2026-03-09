@@ -1,0 +1,29 @@
+appId: com.guappa.app
+---
+# E2E: Session persistence - send message, relaunch, verify
+- launchApp
+
+# Go to chat and send
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember this test"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible: "Remember this test"
+    timeout: 10000
+
+# Relaunch without clearing state
+- launchApp
+
+# Go back to chat - message should persist
+- tapOn: "Chat"
+- extendedWaitUntil:
+    visible:
+      id: "chat-screen"
+    timeout: 10000

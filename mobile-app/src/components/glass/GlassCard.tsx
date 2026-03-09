@@ -9,9 +9,9 @@ import {
   type ViewStyle,
   type StyleProp,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 
+import { LiquidGlassView } from "./LiquidGlass";
 import { colors } from "../../theme/colors";
 import { spacing } from "../../theme/spacing";
 
@@ -29,6 +29,7 @@ type Props = {
   collapsed?: boolean;
   onToggle?: () => void;
   header?: React.ReactNode;
+  testID?: string;
 };
 
 export function GlassCard({
@@ -38,6 +39,7 @@ export function GlassCard({
   collapsed,
   onToggle,
   header,
+  testID,
 }: Props) {
   const isCollapsible = onToggle !== undefined;
   const isCollapsed = collapsed ?? false;
@@ -48,51 +50,37 @@ export function GlassCard({
   }, [onToggle]);
 
   const content = (
-    <BlurView intensity={20} tint="dark" style={[styles.blur, style]}>
-      <View style={styles.inner}>
-        {isCollapsible && header ? (
-          <>
-            <Pressable onPress={handleToggle} style={styles.headerRow}>
-              {header}
-              <Ionicons
-                name={isCollapsed ? "chevron-down" : "chevron-up"}
-                size={18}
-                color={colors.text.secondary}
-              />
-            </Pressable>
-            {!isCollapsed && <View style={styles.body}>{children}</View>}
-          </>
-        ) : (
-          children
-        )}
-      </View>
-    </BlurView>
+    <LiquidGlassView style={style} testID={testID} intensity={0.5} borderRadius={16}>
+      {isCollapsible && header ? (
+        <>
+          <Pressable onPress={handleToggle} style={styles.headerRow}>
+            {header}
+            <Ionicons
+              name={isCollapsed ? "chevron-down" : "chevron-up"}
+              size={18}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+          {!isCollapsed && <View style={styles.body}>{children}</View>}
+        </>
+      ) : (
+        children
+      )}
+    </LiquidGlassView>
   );
 
   if (onPress && !isCollapsible) {
     return (
-      <Pressable onPress={onPress} style={styles.wrapper}>
+      <Pressable onPress={onPress}>
         {content}
       </Pressable>
     );
   }
 
-  return <View style={styles.wrapper}>{content}</View>;
+  return content;
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.10)",
-  },
-  blur: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  inner: {
-    padding: spacing.md,
-  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

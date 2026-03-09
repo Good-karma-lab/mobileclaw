@@ -1,0 +1,10 @@
+appId: com.guappa.app
+---
+# E2E: Command screen accessible
+- launchApp
+
+- tapOn: "Command"
+- extendedWaitUntil:
+    visible:
+      id: "command-screen"
+    timeout: 10000

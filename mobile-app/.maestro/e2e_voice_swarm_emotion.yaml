@@ -1,0 +1,14 @@
+appId: com.guappa.app
+---
+# E2E: Voice screen swarm emotion (mic interaction requires real device)
+- launchApp
+
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 15000
+
+# Voice screen with neural swarm
+- assertVisible:
+    id: "neural-swarm"
+- assertVisible:
+    id: "floating-dock"

@@ -5,6 +5,8 @@
   <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
   <uses-permission android:name="android.permission.CALL_PHONE"/>
   <uses-permission android:name="android.permission.CAMERA"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
@@ -19,12 +21,10 @@
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
   <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
   <uses-permission android:name="android.permission.READ_SMS"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.RECEIVE_SMS"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.SEND_SMS"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -38,7 +38,6 @@
     </intent>
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false" android:largeHeap="true">
-    <uses-native-library android:name="libOpenCL.so" android:required="false" />
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
@@ -48,17 +47,8 @@
       </intent-filter>
       <meta-data android:name="android.accessibilityservice" android:resource="@xml/agent_accessibility_service_config"/>
     </service>
-    <service
-      android:name=".RuntimeAlwaysOnService"
-      android:enabled="true"
-      android:exported="false"
-      android:foregroundServiceType="dataSync" />
-    <!-- Guappa Agent Service -->
-    <service
-      android:name=".GuappaAgentService"
-      android:enabled="true"
-      android:exported="false"
-      android:foregroundServiceType="dataSync" />
+    <service android:name=".RuntimeAlwaysOnService" android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync"/>
+    <service android:name=".GuappaAgentService" android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync"/>
     <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -73,6 +63,7 @@
     </activity>
     <activity android:name=".DirectPhotoCaptureActivity" android:exported="false" android:theme="@style/AppTheme"/>
     <activity android:name=".AgentBrowserActivity" android:exported="false" android:theme="@style/AppTheme"/>
+    <uses-native-library android:name="libOpenCL.so" android:required="false"/>
     <receiver android:name=".IncomingCallReceiver" android:enabled="true" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.PHONE_STATE"/>
