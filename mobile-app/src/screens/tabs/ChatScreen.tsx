@@ -6,7 +6,7 @@
  * All elements feel managed by the swarm — glass panels, no solid fills.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, FlatList, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
+import { View, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Alert } from "react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -20,6 +20,7 @@ import Animated, {
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 
 import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
@@ -101,6 +102,7 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
   const [draft, setDraft] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const flatListRef = useRef<FlatList>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionRef = useRef<string | null>(null);
@@ -141,21 +143,76 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
 
+  // ---- Image Picker Handlers ----
+
+  const handlePickImage = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please grant gallery access to attach images.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        selectionLimit: 4,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        setAttachedImages((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 4));
+      }
+    } catch (e) {
+      console.warn("Image picker error:", e);
+    }
+  }, []);
+
+  const handleTakePhoto = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please grant camera access to take photos.");
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        setAttachedImages((prev) => [...prev, result.assets[0].uri].slice(0, 4));
+      }
+    } catch (e) {
+      console.warn("Camera error:", e);
+    }
+  }, []);
+
+  const handleRemoveImage = useCallback((index: number) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // ---- Send Handler ----
+
   const handleSend = useCallback(async () => {
     const trimmed = draft.trim();
-    if (!trimmed || isThinking) return;
+    const hasImages = attachedImages.length > 0;
+    if ((!trimmed && !hasImages) || isThinking) return;
 
     const now = Date.now();
     const userMsg: Message = {
       id: `m_${now}_${Math.random().toString(36).slice(2, 8)}`,
-      role: "user", content: trimmed, timestamp: now,
+      role: "user",
+      content: trimmed,
+      timestamp: now,
+      imageUris: hasImages ? [...attachedImages] : undefined,
     };
     const assistantId = `m_${now + 1}_${Math.random().toString(36).slice(2, 8)}`;
     const assistantPlaceholder: Message = {
       id: assistantId, role: "assistant", content: "", timestamp: now + 1, isStreaming: true,
     };
 
+    // Capture images before clearing
+    const imagesToSend = hasImages ? [...attachedImages] : undefined;
+
     setDraft("");
+    setAttachedImages([]);
     setMessages((prev) => {
       const next = [...prev, userMsg, assistantPlaceholder];
       saveMessages(next, sessionRef.current);
@@ -164,13 +221,14 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
     setIsThinking(true);
-    swarmDirector.analyzeTranscript(trimmed);
+    if (trimmed) swarmDirector.analyzeTranscript(trimmed);
     swarmStore.setState("processing");
 
     try {
       const { assistantText, sessionId: resolvedSessionId } = await runAgentTurnStream({
-        userPrompt: trimmed,
+        userPrompt: trimmed || "(user sent image(s) — please describe what you see)",
         sessionId: sessionRef.current || undefined,
+        imageUris: imagesToSend,
         onSession: (sid) => { sessionRef.current = sid; setSessionId(sid); },
         onDelta: (partial) => {
           setMessages((prev) => {
@@ -178,6 +236,29 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
             saveMessages(next, sessionRef.current);
             return next;
           });
+        },
+        onAgentImages: (imagePaths) => {
+          // Agent sent images (from camera tool, screenshot, etc.) — insert as a new message
+          const imageMsg: Message = {
+            id: `m_${Date.now()}_img_${Math.random().toString(36).slice(2, 8)}`,
+            role: "assistant",
+            content: "",
+            timestamp: Date.now(),
+            imageUris: imagePaths.map((p) => (p.startsWith("/") ? `file://${p}` : p)),
+          };
+          setMessages((prev) => {
+            // Insert image message before the streaming assistant message
+            const idx = prev.findIndex((m) => m.id === assistantId);
+            if (idx >= 0) {
+              const next = [...prev.slice(0, idx), imageMsg, ...prev.slice(idx)];
+              saveMessages(next, sessionRef.current);
+              return next;
+            }
+            const next = [...prev, imageMsg];
+            saveMessages(next, sessionRef.current);
+            return next;
+          });
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         },
       });
 
@@ -205,7 +286,7 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
       setIsThinking(false);
       if (swarmStore.state.state === "processing") swarmStore.setState("idle");
     }
-  }, [draft, saveMessages, isThinking]);
+  }, [draft, attachedImages, saveMessages, isThinking]);
 
   const showThinking = useMemo(() => {
     if (!isThinking) return false;
@@ -268,6 +349,10 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
             value={draft}
             onChangeText={setDraft}
             onSend={handleSend}
+            onPickImage={handlePickImage}
+            onTakePhoto={handleTakePhoto}
+            attachedImages={attachedImages}
+            onRemoveImage={handleRemoveImage}
             isThinking={isThinking}
           />
         </View>

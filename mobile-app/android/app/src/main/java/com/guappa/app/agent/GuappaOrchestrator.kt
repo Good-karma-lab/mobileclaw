@@ -8,6 +8,7 @@ import com.guappa.app.memory.MessageEntity
 import com.guappa.app.memory.MemoryManager
 import com.guappa.app.providers.ChatMessage
 import com.guappa.app.providers.ChatResponse
+import com.guappa.app.providers.ContentPart
 import com.guappa.app.providers.ProviderRouter
 import com.guappa.app.providers.CapabilityType
 import com.guappa.app.tools.ToolEngine
@@ -16,7 +17,11 @@ import com.guappa.app.tools.ToolResult
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.json.JSONObject
+import java.io.File
 import java.util.UUID
+import android.graphics.BitmapFactory
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 class GuappaOrchestrator(
     private val messageBus: MessageBus,
@@ -208,7 +213,11 @@ class GuappaOrchestrator(
                 } else {
                     getOrCreateDefaultSession()
                 }
-                val msg = Message(role = "user", content = message.text)
+                val msg = Message(
+                    role = "user",
+                    content = message.text,
+                    imageAttachments = message.imageAttachments
+                )
                 session.addMessage(msg)
                 persistMessage(session.id, msg)
 
@@ -342,11 +351,22 @@ class GuappaOrchestrator(
 
         for (iteration in 0 until MAX_REACT_ITERATIONS) {
             val chatMessages = session.getContextMessages(fullSystemPrompt).map { msg ->
-                ChatMessage(
-                    role = msg.role,
-                    content = msg.content,
-                    toolCallId = msg.toolCallId
-                )
+                if (msg.hasImages) {
+                    val imageParts = msg.imageAttachments.mapNotNull { path ->
+                        encodeImageToBase64(path)
+                    }
+                    ChatMessage.withImages(
+                        role = msg.role,
+                        text = msg.content,
+                        images = imageParts
+                    ).copy(toolCallId = msg.toolCallId)
+                } else {
+                    ChatMessage(
+                        role = msg.role,
+                        content = msg.content,
+                        toolCallId = msg.toolCallId
+                    )
+                }
             }
 
             // Determine capability: prefer TOOL_USE if available, fall back to TEXT_CHAT
@@ -366,8 +386,13 @@ class GuappaOrchestrator(
                     temperature = selectedTemperature,
                 )
             } catch (e: Exception) {
+                val errorText = if (e.message?.contains("No provider registered") == true) {
+                    "⚙\uFE0F No AI provider configured yet.\n\nGo to Config → set a Provider and API Key, then tap Apply.\n\nOr download a local model in Config → How GUAPPA Thinks."
+                } else {
+                    "I encountered an error: ${e.message}"
+                }
                 messageBus.publish(BusMessage.AgentMessage(
-                    text = "I encountered an error processing your request: ${e.message}",
+                    text = errorText,
                     sessionId = session.id,
                     isComplete = true
                 ))
@@ -400,13 +425,35 @@ class GuappaOrchestrator(
                     val toolName = toolCall?.function?.name ?: callId
 
                     val resultJson = result.toJSON()
+
+                    // Collect image attachments from tool results (camera, screenshot, etc.)
+                    val toolImageAttachments = if (result is ToolResult.Success) {
+                        result.attachments?.filter { path ->
+                            val lower = path.lowercase()
+                            lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                            lower.endsWith(".png") || lower.endsWith(".webp") ||
+                            lower.endsWith(".gif")
+                        } ?: emptyList()
+                    } else emptyList()
+
                     val toolMsg = Message(
                         role = "tool",
                         content = resultJson.toString(),
-                        toolCallId = callId
+                        toolCallId = callId,
+                        imageAttachments = toolImageAttachments
                     )
                     session.addMessage(toolMsg)
                     persistMessage(session.id, toolMsg)
+
+                    // Emit tool images to the chat UI so the user sees them
+                    if (toolImageAttachments.isNotEmpty()) {
+                        messageBus.publish(BusMessage.AgentMessage(
+                            text = "",
+                            sessionId = session.id,
+                            isComplete = false,
+                            imageAttachments = toolImageAttachments
+                        ))
+                    }
 
                     val isSuccess = result is ToolResult.Success
                     messageBus.publish(BusMessage.SystemEvent(
@@ -512,5 +559,57 @@ class GuappaOrchestrator(
             start = end
         }
         return chunks.filter { it.isNotEmpty() }
+    }
+
+    // ---- Image Encoding ----
+
+    /**
+     * Encode an image file to base64 ContentPart for vision models.
+     * Resizes large images to max 1024px on longest side to stay within API limits.
+     */
+    private fun encodeImageToBase64(filePath: String): ContentPart.ImagePart? {
+        return try {
+            val file = File(filePath)
+            if (!file.exists()) return null
+
+            val mimeType = when {
+                filePath.endsWith(".png", ignoreCase = true) -> "image/png"
+                filePath.endsWith(".webp", ignoreCase = true) -> "image/webp"
+                filePath.endsWith(".gif", ignoreCase = true) -> "image/gif"
+                else -> "image/jpeg"
+            }
+
+            // Decode with inJustDecodeBounds first to check size
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(filePath, options)
+            val origWidth = options.outWidth
+            val origHeight = options.outHeight
+
+            // Calculate sample size for images > 1024px
+            val maxDim = 1024
+            var sampleSize = 1
+            if (origWidth > maxDim || origHeight > maxDim) {
+                val longestSide = maxOf(origWidth, origHeight)
+                sampleSize = (longestSide.toFloat() / maxDim).toInt().coerceAtLeast(1)
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            val bitmap = BitmapFactory.decodeFile(filePath, decodeOptions) ?: return null
+
+            val outputStream = ByteArrayOutputStream()
+            val compressFormat = when (mimeType) {
+                "image/png" -> android.graphics.Bitmap.CompressFormat.PNG
+                "image/webp" -> android.graphics.Bitmap.CompressFormat.WEBP
+                else -> android.graphics.Bitmap.CompressFormat.JPEG
+            }
+            bitmap.compress(compressFormat, 85, outputStream)
+            bitmap.recycle()
+
+            val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            ContentPart.ImagePart(base64 = base64, mimeType = mimeType)
+        } catch (e: Exception) {
+            android.util.Log.w("GuappaOrchestrator", "Failed to encode image: $filePath", e)
+            null
+        }
     }
 }

@@ -69,6 +69,11 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun sendMessage(text: String, sessionId: String?, promise: Promise) {
+        sendMessageWithImages(text, sessionId, null, promise)
+    }
+
+    @ReactMethod
+    fun sendMessageWithImages(text: String, sessionId: String?, imageUris: ReadableArray?, promise: Promise) {
         val orchestrator = GuappaAgentService.orchestrator
         if (orchestrator == null) {
             promise.reject("AGENT_NOT_RUNNING", "Agent not started. Call startAgent first.")
@@ -79,6 +84,19 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
         if (bus == null) {
             promise.reject("AGENT_NOT_RUNNING", "Message bus not available")
             return
+        }
+
+        // Convert ReadableArray of URI strings to List<String> of file paths
+        val imagePaths = mutableListOf<String>()
+        if (imageUris != null) {
+            for (i in 0 until imageUris.size()) {
+                val uri = imageUris.getString(i)
+                if (!uri.isNullOrBlank()) {
+                    // Handle content:// URIs by copying to cache
+                    val path = resolveImageUri(uri)
+                    if (path != null) imagePaths.add(path)
+                }
+            }
         }
 
         scope.launch {
@@ -103,7 +121,8 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
                 bus.publish(BusMessage.UserMessage(
                     text = text,
-                    sessionId = effectiveSessionId
+                    sessionId = effectiveSessionId,
+                    imageAttachments = imagePaths
                 ))
 
                 val response = withTimeout(120_000) {
@@ -122,6 +141,11 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun sendMessageStream(text: String, sessionId: String?, promise: Promise) {
+        sendMessageStreamWithImages(text, sessionId, null, promise)
+    }
+
+    @ReactMethod
+    fun sendMessageStreamWithImages(text: String, sessionId: String?, imageUris: ReadableArray?, promise: Promise) {
         val orchestrator = GuappaAgentService.orchestrator
         if (orchestrator == null) {
             promise.reject("AGENT_NOT_RUNNING", "Agent not started. Call startAgent first.")
@@ -134,11 +158,26 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
             return
         }
 
+        val imagePaths = mutableListOf<String>()
+        if (imageUris != null) {
+            for (i in 0 until imageUris.size()) {
+                val uri = imageUris.getString(i)
+                if (!uri.isNullOrBlank()) {
+                    val path = resolveImageUri(uri)
+                    if (path != null) imagePaths.add(path)
+                }
+            }
+        }
+
         scope.launch {
             try {
                 ensureEventRelay()
                 val effectiveSessionId = orchestrator.resolveSessionId(sessionId)
-                bus.publish(BusMessage.UserMessage(text = text, sessionId = effectiveSessionId))
+                bus.publish(BusMessage.UserMessage(
+                    text = text,
+                    sessionId = effectiveSessionId,
+                    imageAttachments = imagePaths
+                ))
                 promise.resolve(effectiveSessionId)
             } catch (e: Exception) {
                 promise.reject("SEND_FAILED", "Failed to send message: ${e.message}", e)
@@ -318,8 +357,50 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
             putString("text", message.text)
             putBoolean("isStreaming", message.isStreaming)
             putBoolean("isComplete", message.isComplete)
+            if (message.imageAttachments.isNotEmpty()) {
+                val images = Arguments.createArray()
+                message.imageAttachments.forEach { images.pushString(it) }
+                putArray("imageAttachments", images)
+            }
         }
         sendEvent("guappa_agent_event", payload)
+    }
+
+    /**
+     * Resolve a content:// or file:// URI to a local file path.
+     * For content:// URIs, copies the file to the app cache directory.
+     */
+    private fun resolveImageUri(uriString: String): String? {
+        return try {
+            if (uriString.startsWith("/")) {
+                // Already a file path
+                if (java.io.File(uriString).exists()) uriString else null
+            } else {
+                val uri = android.net.Uri.parse(uriString)
+                if (uri.scheme == "file") {
+                    uri.path
+                } else {
+                    // content:// URI — copy to cache
+                    val inputStream = reactContext.contentResolver.openInputStream(uri) ?: return null
+                    val timestamp = System.currentTimeMillis()
+                    val ext = when {
+                        uriString.contains(".png", ignoreCase = true) -> "png"
+                        uriString.contains(".webp", ignoreCase = true) -> "webp"
+                        else -> "jpg"
+                    }
+                    val cacheFile = java.io.File(reactContext.cacheDir, "img_${timestamp}.$ext")
+                    inputStream.use { input ->
+                        java.io.FileOutputStream(cacheFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    cacheFile.absolutePath
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to resolve image URI: $uriString", e)
+            null
+        }
     }
 
     private fun emitSystemEvent(message: BusMessage.SystemEvent) {

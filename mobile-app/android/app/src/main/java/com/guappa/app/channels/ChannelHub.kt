@@ -70,7 +70,8 @@ class ChannelHub {
 
         for (channel in targets) {
             try {
-                channel.send(message)
+                val formatted = ChannelFormatter.format(channel.id, message)
+                channel.send(formatted)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to send to ${channel.id}: ${e.message}")
             }

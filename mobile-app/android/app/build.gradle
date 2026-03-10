@@ -99,6 +99,8 @@ android {
         versionCode 1
         versionName "0.1.0"
 
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
@@ -216,4 +218,10 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.json:json:20231013"
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0"
+
+    // Instrumented testing (UI Automator 2.4 + AndroidX Test)
+    androidTestImplementation "androidx.test:runner:1.6.2"
+    androidTestImplementation "androidx.test:rules:1.6.1"
+    androidTestImplementation "androidx.test.ext:junit:1.2.1"
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:2.4.0-beta01"
 }

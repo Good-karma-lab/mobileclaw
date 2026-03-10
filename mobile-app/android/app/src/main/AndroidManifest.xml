@@ -86,5 +86,11 @@
         <action android:name="android.intent.action.BATTERY_OKAY"/>
       </intent-filter>
     </receiver>
+    <receiver android:name=".proactive.NetworkStateReceiver" android:enabled="true" android:exported="false">
+      <intent-filter>
+        <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+      </intent-filter>
+    </receiver>
+    <!-- ScreenStateReceiver must be registered dynamically in GuappaAgentService -->
   </application>
 </manifest>

@@ -217,7 +217,42 @@ class AnthropicProvider(
                 }
                 else -> {
                     msgObj.put("role", msg.role)
-                    msgObj.put("content", msg.content)
+                    // Build content: multipart array if images present, plain string otherwise
+                    if (msg.hasImages && msg.contentParts != null) {
+                        val contentArray = JSONArray()
+                        for (part in msg.contentParts) {
+                            when (part) {
+                                is ContentPart.TextPart -> {
+                                    contentArray.put(JSONObject().apply {
+                                        put("type", "text")
+                                        put("text", part.text)
+                                    })
+                                }
+                                is ContentPart.ImagePart -> {
+                                    contentArray.put(JSONObject().apply {
+                                        put("type", "image")
+                                        put("source", JSONObject().apply {
+                                            put("type", "base64")
+                                            put("media_type", part.mimeType)
+                                            put("data", part.base64)
+                                        })
+                                    })
+                                }
+                                is ContentPart.ImageUrlPart -> {
+                                    contentArray.put(JSONObject().apply {
+                                        put("type", "image")
+                                        put("source", JSONObject().apply {
+                                            put("type", "url")
+                                            put("url", part.url)
+                                        })
+                                    })
+                                }
+                            }
+                        }
+                        msgObj.put("content", contentArray)
+                    } else {
+                        msgObj.put("content", msg.content)
+                    }
                 }
             }
             messagesArray.put(msgObj)

@@ -231,9 +231,33 @@ class GoogleGeminiProvider(
             contentObj.put("role", geminiRole)
 
             val partsArray = JSONArray()
-            val partObj = JSONObject()
-            partObj.put("text", msg.content)
-            partsArray.put(partObj)
+            // Build parts: inline images + text for multimodal, text-only otherwise
+            if (msg.hasImages && msg.contentParts != null) {
+                for (part in msg.contentParts) {
+                    when (part) {
+                        is ContentPart.TextPart -> {
+                            partsArray.put(JSONObject().apply { put("text", part.text) })
+                        }
+                        is ContentPart.ImagePart -> {
+                            partsArray.put(JSONObject().apply {
+                                put("inline_data", JSONObject().apply {
+                                    put("mime_type", part.mimeType)
+                                    put("data", part.base64)
+                                })
+                            })
+                        }
+                        is ContentPart.ImageUrlPart -> {
+                            partsArray.put(JSONObject().apply {
+                                put("file_data", JSONObject().apply {
+                                    put("file_uri", part.url)
+                                })
+                            })
+                        }
+                    }
+                }
+            } else {
+                partsArray.put(JSONObject().apply { put("text", msg.content) })
+            }
             contentObj.put("parts", partsArray)
 
             contentsArray.put(contentObj)

@@ -142,7 +142,7 @@ export function useVoiceRecording(config: {
 
       const wsUrl =
         "wss://api.deepgram.com/v1/listen" +
-        "?model=nova-2&language=en&interim_results=true&endpointing=300&punctuate=true&smart_format=true" +
+        "?model=nova-3&language=en&interim_results=true&endpointing=300&punctuate=true&smart_format=true" +
         "&encoding=linear16&sample_rate=16000&channels=1";
 
       const WebSocketAny = WebSocket as any;

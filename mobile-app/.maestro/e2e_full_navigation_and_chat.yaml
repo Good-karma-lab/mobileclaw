@@ -1,0 +1,66 @@
+appId: com.guappa.app
+---
+# ============================================
+# E2E Test: Config → Chat → Memory
+# ============================================
+
+# 1. Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible: "Configuration"
+
+# 2. Verify "How GUAPPA Thinks" section is accessible
+- tapOn:
+    id: "config-section-thinks"
+    optional: true
+    
+# 3. Check provider dropdown is accessible  
+- assertVisible:
+    id: "config-provider-select"
+    optional: true
+
+# 4. Navigate to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-input"
+
+# 5. Send a memory storage message
+- tapOn:
+    id: "chat-input"
+- inputText: "My name is Alex and I live in Berlin."
+- tapOn:
+    id: "chat-send-button"
+- assertVisible:
+    id: "chat-bubble-user"
+
+# 6. Wait for agent response (up to 30 seconds)
+- extendedWaitUntil:
+    visible:
+      id: "chat-bubble-agent"
+    timeout: 30000
+
+# 7. Navigate to Voice screen  
+- tapOn:
+    id: "dock-tab-voice"
+
+# 8. Navigate back to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-input"
+
+# 9. Navigate to Swarm
+- tapOn:
+    id: "dock-tab-swarm"
+
+# 10. Navigate to Command
+- tapOn:
+    id: "dock-tab-command"
+
+# 11. Back to Config
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible: "Configuration"
+
+# All 5 screens navigable ✓

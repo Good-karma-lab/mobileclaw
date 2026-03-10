@@ -41,6 +41,7 @@ class MainApplication : Application(), ReactApplication {
               add(GuappaSwarmPackage())
               add(GuappaProactivePackage())
               add(GuappaChannelsPackage())
+              add(com.guappa.app.voice.AndroidSTTPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

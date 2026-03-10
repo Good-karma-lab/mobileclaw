@@ -1,7 +1,16 @@
 import "react-native-gesture-handler";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, View, ActivityIndicator, Text } from "react-native";
+import { Platform, View, ActivityIndicator, Text, LogBox } from "react-native";
+
+// Suppress non-critical warnings that create a banner covering the dock navigation
+LogBox.ignoreLogs([
+  "expo-av",
+  "new NativeEventEmitter",
+  "setLayoutAnimationEnabledExperimental",
+  "Method getInfoAsync",
+  "Attempted to import the module",
+]);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
@@ -13,6 +22,8 @@ import { SpaceGrotesk_600SemiBold } from "@expo-google-fonts/space-grotesk";
 import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import { Orbitron_700Bold } from "@expo-google-fonts/orbitron";
 import { Exo2_400Regular, Exo2_500Medium, Exo2_600SemiBold } from "@expo-google-fonts/exo-2";
+// Ionicons font must be explicitly loaded for dev-client builds
+const ioniconsFont = require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf");
 
 import { theme } from "./ui/theme";
 import { ToastProvider } from "./src/state/toast";
@@ -54,10 +65,13 @@ export default function App() {
     Exo2_400Regular,
     Exo2_500Medium,
     Exo2_600SemiBold,
+    Ionicons: ioniconsFont,
+    ionicons: ioniconsFont,
   });
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
+    console.log("[app] fonts loaded:", fontsLoaded, "error:", fontError);
     // If font error occurred, continue without custom fonts
 
     if (fontError) {

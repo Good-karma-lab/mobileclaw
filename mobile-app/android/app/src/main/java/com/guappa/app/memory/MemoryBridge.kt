@@ -348,6 +348,118 @@ class MemoryBridge(private val reactContext: ReactApplicationContext) :
         }
     }
 
+    // =====================================================================
+    //  Export / Import
+    // =====================================================================
+
+    @ReactMethod
+    fun exportMemories(promise: Promise) {
+        scope.launch {
+            try {
+                val db = GuappaDatabase.getInstance(reactContext)
+                val facts = db.memoryFactDao().getTopFacts(10000)
+                val sessions = db.sessionDao().getRecent(1000)
+                val tasks = db.taskDao().getAll()
+
+                val export = org.json.JSONObject().apply {
+                    put("version", 1)
+                    put("exportedAt", System.currentTimeMillis())
+                    put("facts", org.json.JSONArray().apply {
+                        facts.forEach { f ->
+                            put(org.json.JSONObject().apply {
+                                put("id", f.id)
+                                put("key", f.key)
+                                put("value", f.value)
+                                put("category", f.category)
+                                put("tier", f.tier)
+                                put("importance", f.importance)
+                                put("createdAt", f.createdAt)
+                                put("accessCount", f.accessCount)
+                            })
+                        }
+                    })
+                    put("sessions", org.json.JSONArray().apply {
+                        sessions.forEach { s ->
+                            put(org.json.JSONObject().apply {
+                                put("id", s.id)
+                                put("title", s.title)
+                                put("startedAt", s.startedAt)
+                                s.endedAt?.let { put("endedAt", it) }
+                                s.summary?.let { put("summary", it) }
+                            })
+                        }
+                    })
+                    put("tasks", org.json.JSONArray().apply {
+                        tasks.forEach { t ->
+                            put(org.json.JSONObject().apply {
+                                put("id", t.id)
+                                put("title", t.title)
+                                put("status", t.status)
+                                put("priority", t.priority)
+                                t.description?.let { put("description", it) }
+                                put("createdAt", t.createdAt)
+                            })
+                        }
+                    })
+                }
+
+                // Write to cache file
+                val file = java.io.File(reactContext.cacheDir, "guappa_memory_export.json")
+                file.writeText(export.toString(2))
+
+                val result = Arguments.createMap().apply {
+                    putString("filePath", file.absolutePath)
+                    putInt("factCount", facts.size)
+                    putInt("sessionCount", sessions.size)
+                    putInt("taskCount", tasks.size)
+                }
+                promise.resolve(result)
+            } catch (e: Exception) {
+                promise.reject("EXPORT_FAILED", e.message, e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun importMemories(jsonString: String, promise: Promise) {
+        scope.launch {
+            try {
+                val json = org.json.JSONObject(jsonString)
+                val version = json.optInt("version", 1)
+                val db = GuappaDatabase.getInstance(reactContext)
+
+                var factsImported = 0
+                val facts = json.optJSONArray("facts")
+                if (facts != null) {
+                    for (i in 0 until facts.length()) {
+                        val f = facts.getJSONObject(i)
+                        val entity = MemoryFactEntity(
+                            id = f.optString("id", java.util.UUID.randomUUID().toString()),
+                            key = f.getString("key"),
+                            value = f.getString("value"),
+                            category = f.optString("category", "general"),
+                            tier = f.optString("tier", "long_term"),
+                            importance = f.optDouble("importance", 0.5).toFloat(),
+                            createdAt = f.optLong("createdAt", System.currentTimeMillis()),
+                            accessedAt = System.currentTimeMillis(),
+                            accessCount = f.optInt("accessCount", 0)
+                        )
+                        db.memoryFactDao().insert(entity)
+                        factsImported++
+                    }
+                }
+
+                val result = Arguments.createMap().apply {
+                    putInt("factsImported", factsImported)
+                    putInt("version", version)
+                }
+                promise.resolve(result)
+            } catch (e: Exception) {
+                promise.reject("IMPORT_FAILED", e.message, e)
+            }
+        }
+    }
+
     // Required for React Native event emitter compatibility
     @ReactMethod
     fun addListener(eventName: String) { }

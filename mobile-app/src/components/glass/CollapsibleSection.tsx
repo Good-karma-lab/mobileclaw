@@ -29,6 +29,7 @@ type Props = {
   children: React.ReactNode;
   defaultExpanded?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function CollapsibleSection({
@@ -37,6 +38,7 @@ export function CollapsibleSection({
   children,
   defaultExpanded = false,
   style,
+  testID,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -51,7 +53,7 @@ export function CollapsibleSection({
       borderRadius={16}
       intensity={expanded ? 0.6 : 0.3}
     >
-      <Pressable onPress={handleToggle} style={styles.header}>
+      <Pressable onPress={handleToggle} style={styles.header} testID={testID}>
         <View style={styles.headerLeft}>
           {icon && (
             <View style={[styles.iconWrap, expanded && styles.iconWrapActive]}>

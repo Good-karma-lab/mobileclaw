@@ -189,7 +189,41 @@ open class OpenAICompatibleProvider(
         for (msg in messages) {
             val msgObj = JSONObject()
             msgObj.put("role", msg.role)
-            msgObj.put("content", msg.content)
+
+            // Build content: multipart array if images present, plain string otherwise
+            if (msg.hasImages && msg.contentParts != null) {
+                val contentArray = JSONArray()
+                for (part in msg.contentParts) {
+                    when (part) {
+                        is ContentPart.TextPart -> {
+                            contentArray.put(JSONObject().apply {
+                                put("type", "text")
+                                put("text", part.text)
+                            })
+                        }
+                        is ContentPart.ImagePart -> {
+                            contentArray.put(JSONObject().apply {
+                                put("type", "image_url")
+                                put("image_url", JSONObject().apply {
+                                    put("url", "data:${part.mimeType};base64,${part.base64}")
+                                })
+                            })
+                        }
+                        is ContentPart.ImageUrlPart -> {
+                            contentArray.put(JSONObject().apply {
+                                put("type", "image_url")
+                                put("image_url", JSONObject().apply {
+                                    put("url", part.url)
+                                })
+                            })
+                        }
+                    }
+                }
+                msgObj.put("content", contentArray)
+            } else {
+                msgObj.put("content", msg.content)
+            }
+
             if (msg.toolCallId != null) {
                 msgObj.put("tool_call_id", msg.toolCallId)
             }

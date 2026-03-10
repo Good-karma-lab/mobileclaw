@@ -3,7 +3,10 @@ package com.guappa.app.providers
 object ProviderFactory {
     fun createRouter(providerName: String, apiKey: String, apiUrl: String): ProviderRouter {
         val router = ProviderRouter()
-        if (apiKey.isNotBlank() || normalizeProviderId(providerName) in setOf("ollama", "lm-studio")) {
+        val normalized = normalizeProviderId(providerName)
+        // Local inference engines and self-hosted services don't require API keys
+        val noKeyNeeded = setOf("ollama", "lm-studio", "local")
+        if (apiKey.isNotBlank() || (normalized in noKeyNeeded && apiUrl.isNotBlank())) {
             router.registerProvider(createProvider(providerName, apiKey, apiUrl))
         }
         return router

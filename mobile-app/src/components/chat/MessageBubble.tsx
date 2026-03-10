@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, StyleSheet, Linking, Text } from "react-native";
+import { View, StyleSheet, Linking, Text, Image, Pressable, Dimensions } from "react-native";
 import Animated, {
   FadeIn,
   SlideInLeft,
@@ -22,6 +22,8 @@ export type Message = {
   timestamp: number;
   isStreaming?: boolean;
   isError?: boolean;
+  /** Image URIs attached to this message (user photos, agent outputs). */
+  imageUris?: string[];
 };
 
 type Props = {
@@ -112,12 +114,16 @@ export function MessageBubble({ message, index, animate = true }: Props) {
     [],
   );
 
+  const hasImages = message.imageUris && message.imageUris.length > 0;
+  const maxImageWidth = Dimensions.get("window").width * 0.65;
+
   const bubbleContent = (
     <View
       testID={message.isError ? "chat-error-message" : isUser ? "chat-bubble-user" : "chat-bubble-agent"}
       style={[
         styles.bubble,
         isUser ? styles.userBubble : styles.assistantBubble,
+        hasImages && styles.imageBubble,
       ]}
     >
       <BlurView
@@ -126,20 +132,43 @@ export function MessageBubble({ message, index, animate = true }: Props) {
         style={styles.blurFill}
       />
       <View style={styles.bubbleContent}>
-        {message.isStreaming && !isUser ? (
-          <Text style={styles.streamingText}>{message.content || "..."}</Text>
-        ) : (
-          <Markdown
-            markdownit={MARKDOWN_PARSER}
-            style={markdownStyles}
-            onLinkPress={(url) => {
-              void Linking.openURL(url);
-              return false;
-            }}
-          >
-            {message.content}
-          </Markdown>
+        {/* Render attached images */}
+        {hasImages && (
+          <View style={styles.imageContainer}>
+            {message.imageUris!.map((uri, idx) => (
+              <Pressable
+                key={`img-${idx}`}
+                testID={`chat-image-${idx}`}
+                onPress={() => {
+                  // Could open a full-screen image viewer
+                }}
+              >
+                <Image
+                  source={{ uri: uri.startsWith("/") ? `file://${uri}` : uri }}
+                  style={[styles.attachedImage, { width: maxImageWidth, height: maxImageWidth * 0.75 }]}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            ))}
+          </View>
         )}
+        {/* Render text content (if any) */}
+        {message.content ? (
+          message.isStreaming && !isUser ? (
+            <Text style={styles.streamingText}>{message.content || "..."}</Text>
+          ) : (
+            <Markdown
+              markdownit={MARKDOWN_PARSER}
+              style={markdownStyles}
+              onLinkPress={(url) => {
+                void Linking.openURL(url);
+                return false;
+              }}
+            >
+              {message.content}
+            </Markdown>
+          )
+        ) : null}
       </View>
     </View>
   );
@@ -192,5 +221,16 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(30, 45, 60, 0.2)",
     borderColor: "rgba(40, 60, 80, 0.15)",
     borderTopLeftRadius: 4,
+  },
+  imageBubble: {
+    maxWidth: "85%",
+  },
+  imageContainer: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  attachedImage: {
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
 });

@@ -293,7 +293,7 @@ export async function transcribeWithDeepgram(audioUri: string, apiKey: string): 
   const form = new FormData();
   form.append("audio", { uri: audioUri, type: "audio/mp4", name: "recording.m4a" } as never);
 
-  const res = await fetch("https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true", {
+  const res = await fetch("https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true", {
     method: "POST",
     headers: {
       Authorization: `Token ${key}`,

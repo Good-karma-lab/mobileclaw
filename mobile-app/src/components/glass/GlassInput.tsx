@@ -22,6 +22,7 @@ type Props = {
   multiline?: boolean;
   keyboardType?: TextInputProps["keyboardType"];
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function GlassInput({
@@ -33,6 +34,7 @@ export function GlassInput({
   multiline,
   keyboardType,
   style,
+  testID,
 }: Props) {
   const [focused, setFocused] = useState(false);
 
@@ -43,6 +45,7 @@ export function GlassInput({
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
+        testID={testID}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

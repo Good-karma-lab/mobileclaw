@@ -586,12 +586,14 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
           title="How GUAPPA Thinks"
           icon="sparkles-outline"
           defaultExpanded={true}
+          testID="config-section-thinks"
         >
           <GlassDropdown
             label="Provider"
             value={config.provider}
             options={PROVIDER_OPTIONS}
             onValueChange={(v) => updateConfig("provider", v as AgentRuntimeConfig["provider"])}
+            testID="config-provider-select"
           />
           <GlassInput
             label="API Key"
@@ -599,6 +601,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
             onChangeText={(v) => updateConfig("apiKey", v)}
             placeholder="sk-..."
             secureTextEntry
+            testID="config-api-key-input"
           />
           {providerModelOptions.length > 0 ? (
             <GlassDropdown
@@ -614,6 +617,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
               value={config.model}
               onChangeText={(v) => updateConfig("model", v)}
               placeholder="Select provider first"
+              testID="config-model-input"
             />
           )}
           <Text style={styles.placeholder}>{providerStatusLabel}</Text>

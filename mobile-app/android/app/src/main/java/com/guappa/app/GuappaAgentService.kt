@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -14,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import com.guappa.app.agent.GuappaConfig
 import com.guappa.app.agent.GuappaOrchestrator
 import com.guappa.app.agent.MessageBus
+import com.guappa.app.proactive.ScreenStateReceiver
 
 /**
  * Foreground service that hosts the Guappa agent core (MessageBus, Config, Orchestrator).
@@ -28,6 +30,7 @@ import com.guappa.app.agent.MessageBus
 class GuappaAgentService : Service() {
     private val TAG = "GuappaAgentService"
     private val NOTIFICATION_ID = 1002
+    private var screenReceiver: ScreenStateReceiver? = null
 
     companion object {
         const val CHANNEL_ID = "guappa_agent"
@@ -66,6 +69,19 @@ class GuappaAgentService : Service() {
         orch.start()
         Log.i(TAG, "Guappa orchestrator started")
 
+        // Register screen state receiver (must be dynamic, not in manifest)
+        try {
+            screenReceiver = ScreenStateReceiver()
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            registerReceiver(screenReceiver, filter)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register screen receiver: ${e.message}")
+        }
+
         try {
             startForeground(NOTIFICATION_ID, createNotification(
                 "Guappa agent active",
@@ -85,6 +101,8 @@ class GuappaAgentService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed")
+        try { screenReceiver?.let { unregisterReceiver(it) } } catch (_: Exception) {}
+        screenReceiver = null
         _orchestrator?.stop()
         _orchestrator = null
         _config = null

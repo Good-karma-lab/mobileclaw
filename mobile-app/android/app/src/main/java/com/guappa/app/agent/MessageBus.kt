@@ -12,6 +12,8 @@ sealed class BusMessage {
     data class UserMessage(
         val text: String,
         val sessionId: String = "",
+        /** File paths of images attached by the user (from gallery, camera, or file picker). */
+        val imageAttachments: List<String> = emptyList(),
         override val priority: MessagePriority = MessagePriority.NORMAL,
         override val timestamp: Long = System.currentTimeMillis()
     ) : BusMessage()
@@ -21,6 +23,8 @@ sealed class BusMessage {
         val sessionId: String = "",
         val isStreaming: Boolean = false,
         val isComplete: Boolean = false,
+        /** File paths of images the agent wants to show in chat (tool outputs, generated images). */
+        val imageAttachments: List<String> = emptyList(),
         override val priority: MessagePriority = MessagePriority.NORMAL,
         override val timestamp: Long = System.currentTimeMillis()
     ) : BusMessage()

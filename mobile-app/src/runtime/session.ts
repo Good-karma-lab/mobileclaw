@@ -4,9 +4,13 @@ import type { AgentTurnResult, ToolExecutionEvent } from "./types";
 type RunAgentTurnStreamArgs = {
   userPrompt: string;
   sessionId?: string;
+  /** File URIs of images attached by the user. */
+  imageUris?: string[];
   onSession?: (sessionId: string) => void;
   onDelta?: (partialText: string, delta: string) => void;
   onToolEvent?: (event: ToolExecutionEvent) => void;
+  /** Called when the agent emits images (from camera, screenshots, generated images). */
+  onAgentImages?: (imagePaths: string[]) => void;
 };
 
 /**
@@ -42,9 +46,11 @@ export async function runAgentTurn(userPrompt: string, sessionId?: string): Prom
 export async function runAgentTurnStream({
   userPrompt,
   sessionId,
+  imageUris,
   onSession,
   onDelta,
   onToolEvent,
+  onAgentImages,
 }: RunAgentTurnStreamArgs): Promise<AgentTurnResult> {
   return new Promise<AgentTurnResult>(async (resolve, reject) => {
     const toolEvents: ToolExecutionEvent[] = [];
@@ -85,6 +91,11 @@ export async function runAgentTurnStream({
         return;
       }
 
+      // Handle agent image attachments (from camera tool, screenshot, etc.)
+      if (event.imageAttachments && event.imageAttachments.length > 0) {
+        onAgentImages?.(event.imageAttachments);
+      }
+
       if (event.type === "agent_chunk") {
         const delta = event.text || "";
         partialText += delta;
@@ -104,7 +115,7 @@ export async function runAgentTurnStream({
     });
 
     try {
-      activeSessionId = await sendMessageStream(userPrompt, sessionId);
+      activeSessionId = await sendMessageStream(userPrompt, sessionId, imageUris);
       onSession?.(activeSessionId);
     } catch (error) {
       fail(error);

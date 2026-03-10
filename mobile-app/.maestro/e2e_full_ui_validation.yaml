@@ -1,0 +1,71 @@
+appId: com.guappa.app
+---
+# ============================================
+# E2E Test: Full Navigation & UI Validation
+# Tests all 5 screens, config testIDs, chat UI
+# ============================================
+
+# 1. Navigate to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-input"
+
+# 2. Test image attachment buttons
+- assertVisible:
+    id: "chat-pick-image"
+    optional: true
+- assertVisible:
+    id: "chat-take-photo"
+    optional: true
+
+# 3. Type and send a message
+- tapOn:
+    id: "chat-input"
+- inputText: "Test message from E2E"
+- assertVisible:
+    id: "chat-send-button"
+- tapOn:
+    id: "chat-send-button"
+- assertVisible:
+    id: "chat-bubble-user"
+
+# 4. Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible: "Configuration"
+
+# 5. Verify config sections exist
+- assertVisible: "How GUAPPA Thinks"
+- assertVisible: "How GUAPPA Sees"
+- assertVisible: "How GUAPPA Speaks & Listens"
+- assertVisible: "How GUAPPA Connects"
+- assertVisible: "What GUAPPA Can Do"
+- assertVisible: "What GUAPPA Remembers"
+
+# 6. Expand Thinks section
+- tapOn:
+    id: "config-section-thinks"
+    optional: true
+- assertVisible:
+    text: "PROVIDER"
+    optional: true
+
+# 7. Navigate to Command screen
+- tapOn:
+    id: "dock-tab-command"
+
+# 8. Navigate to Swarm
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible: "World Wide Swarm"
+
+# 9. Navigate to Voice
+- tapOn:
+    id: "dock-tab-voice"
+
+# 10. Back to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "chat-input"

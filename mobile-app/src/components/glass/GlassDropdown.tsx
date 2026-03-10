@@ -35,6 +35,7 @@ type Props = {
   onValueChange: (value: string) => void;
   placeholder?: string;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function GlassDropdown({
@@ -44,6 +45,7 @@ export function GlassDropdown({
   onValueChange,
   placeholder = "Select...",
   style,
+  testID,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
@@ -67,7 +69,7 @@ export function GlassDropdown({
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <Pressable onPress={handleToggle} style={styles.pill}>
+      <Pressable onPress={handleToggle} style={styles.pill} testID={testID}>
         <Text
           style={[
             styles.pillText,

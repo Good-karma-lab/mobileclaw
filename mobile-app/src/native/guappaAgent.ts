@@ -42,6 +42,8 @@ export type AgentEvent = {
   success?: boolean;
   isStreaming?: boolean;
   isComplete?: boolean;
+  /** File paths of images from agent (tool outputs, generated images). */
+  imageAttachments?: string[];
 };
 
 export async function startAgent(config: AgentStartConfig = {}): Promise<boolean> {
@@ -70,17 +72,28 @@ export async function startAgent(config: AgentStartConfig = {}): Promise<boolean
 
 export async function sendMessage(
   text: string,
-  sessionId?: string
+  sessionId?: string,
+  imageUris?: string[]
 ): Promise<string> {
   if (!GuappaAgent) {
     throw new Error("GuappaAgent native module not available");
   }
+  if (imageUris && imageUris.length > 0) {
+    return GuappaAgent.sendMessageWithImages(text, sessionId ?? null, imageUris);
+  }
   return GuappaAgent.sendMessage(text, sessionId ?? null);
 }
 
-export async function sendMessageStream(text: string, sessionId?: string): Promise<string> {
+export async function sendMessageStream(
+  text: string,
+  sessionId?: string,
+  imageUris?: string[]
+): Promise<string> {
   if (!GuappaAgent) {
     throw new Error("GuappaAgent native module not available");
+  }
+  if (imageUris && imageUris.length > 0) {
+    return GuappaAgent.sendMessageStreamWithImages(text, sessionId ?? null, imageUris);
   }
   return GuappaAgent.sendMessageStream(text, sessionId ?? null);
 }
