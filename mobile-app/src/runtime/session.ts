@@ -13,6 +13,10 @@ type RunAgentTurnStreamArgs = {
   imageUris?: string[];
   onSession?: (sessionId: string) => void;
   onDelta?: (partialText: string, delta: string) => void;
+  /** Called with thinking/reasoning tokens as they stream in. */
+  onThinking?: (partialThinking: string, delta: string) => void;
+  /** Called when a tool call starts or completes. contentType is "tool_call" or "tool_result". */
+  onToolCallStream?: (text: string, contentType: "tool_call" | "tool_result") => void;
   onToolEvent?: (event: ToolExecutionEvent) => void;
   /** Called when the agent emits images (from camera, screenshots, generated images). */
   onAgentImages?: (imagePaths: string[]) => void;
@@ -56,7 +60,7 @@ async function ensureAgentReady(): Promise<void> {
           modelPath: agentConfig.localModelPath,
           gpuLayers: agentCfg.gpuLayers ?? 0,
           cpuThreads: agentCfg.cpuThreads ?? 4,
-          contextLength: agentCfg.contextLength ?? 2048,
+          contextLength: (agentCfg.contextLength && agentCfg.contextLength > 4096) ? agentCfg.contextLength : 32768,
           thinkingMode: agentCfg.thinkingMode ?? true,
         });
         agentConfig.provider = "openai";
@@ -111,12 +115,15 @@ export async function runAgentTurnStream({
   imageUris,
   onSession,
   onDelta,
+  onThinking,
+  onToolCallStream,
   onToolEvent,
   onAgentImages,
 }: RunAgentTurnStreamArgs): Promise<AgentTurnResult> {
   return new Promise<AgentTurnResult>(async (resolve, reject) => {
     const toolEvents: ToolExecutionEvent[] = [];
     let partialText = "";
+    let partialThinking = "";
     let activeSessionId = sessionId || "";
 
     const finish = (result: AgentTurnResult) => {
@@ -158,10 +165,26 @@ export async function runAgentTurnStream({
         onAgentImages?.(event.imageAttachments);
       }
 
+      const contentType = (event as any).contentType || "text";
+
       if (event.type === "agent_chunk") {
-        const delta = event.text || "";
-        partialText += delta;
-        onDelta?.(stripThinkingTags(partialText), delta);
+        const text = event.text || "";
+
+        if (contentType === "thinking") {
+          // Orchestrator sends accumulated thinking text
+          partialThinking = text;
+          onThinking?.(stripThinkingTags(partialThinking), text);
+          return;
+        }
+
+        if (contentType === "tool_call" || contentType === "tool_result") {
+          onToolCallStream?.(text, contentType);
+          return;
+        }
+
+        // Orchestrator sends accumulated text (full text so far)
+        partialText = text;
+        onDelta?.(stripThinkingTags(partialText), text);
         return;
       }
 

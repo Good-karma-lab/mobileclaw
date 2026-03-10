@@ -23,6 +23,14 @@ sealed class BusMessage {
         val sessionId: String = "",
         val isStreaming: Boolean = false,
         val isComplete: Boolean = false,
+        /**
+         * Content type for differentiated chat rendering:
+         * - "text"     : regular assistant response (default)
+         * - "thinking" : reasoning / chain-of-thought (shown collapsed, secondary color)
+         * - "tool_call": tool invocation announcement (shown with ⚡ icon)
+         * - "tool_result": tool execution result
+         */
+        val contentType: String = "text",
         /** File paths of images the agent wants to show in chat (tool outputs, generated images). */
         val imageAttachments: List<String> = emptyList(),
         override val priority: MessagePriority = MessagePriority.NORMAL,

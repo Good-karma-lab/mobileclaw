@@ -137,7 +137,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   thinkingMode: true, // Qwen3.5 thinking mode enabled by default
   gpuLayers: 99, // Auto: llama.rn offloads as many layers as GPU supports
   cpuThreads: 4,
-  contextLength: 4096,
+  contextLength: 32768,
   voiceProvider: "android",
   whisperModel: "whisper-base",
   whisperModelPath: "",

@@ -357,6 +357,7 @@ class GuappaAgentModule(private val reactContext: ReactApplicationContext) :
             putString("text", message.text)
             putBoolean("isStreaming", message.isStreaming)
             putBoolean("isComplete", message.isComplete)
+            putString("contentType", message.contentType)
             if (message.imageAttachments.isNotEmpty()) {
                 val images = Arguments.createArray()
                 message.imageAttachments.forEach { images.pushString(it) }

@@ -224,6 +224,10 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
     if (trimmed) swarmDirector.analyzeTranscript(trimmed);
     swarmStore.setState("processing");
 
+    // Track thinking message ID for this turn
+    const thinkingId = `m_${now}_thinking_${Math.random().toString(36).slice(2, 8)}`;
+    let hasThinking = false;
+
     try {
       console.log("[chat] runAgentTurnStream starting, prompt:", trimmed);
       const { assistantText, sessionId: resolvedSessionId } = await runAgentTurnStream({
@@ -237,6 +241,53 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
             saveMessages(next, sessionRef.current);
             return next;
           });
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+        },
+        onThinking: (partialThinking) => {
+          setMessages((prev) => {
+            if (!hasThinking) {
+              // Insert thinking bubble before the assistant placeholder
+              hasThinking = true;
+              const thinkingMsg: Message = {
+                id: thinkingId,
+                role: "thinking",
+                content: partialThinking,
+                timestamp: now - 1,
+                isStreaming: true,
+                contentType: "thinking",
+              };
+              const idx = prev.findIndex((m) => m.id === assistantId);
+              if (idx >= 0) {
+                return [...prev.slice(0, idx), thinkingMsg, ...prev.slice(idx)];
+              }
+              return [...prev, thinkingMsg];
+            }
+            return prev.map((m) => m.id === thinkingId ? { ...m, content: partialThinking, isStreaming: true } : m);
+          });
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+        },
+        onToolCallStream: (text, contentType) => {
+          const toolMsgId = `m_${Date.now()}_tool_${Math.random().toString(36).slice(2, 8)}`;
+          const toolMsg: Message = {
+            id: toolMsgId,
+            role: "tool_call",
+            content: text,
+            timestamp: Date.now(),
+            contentType,
+          };
+          setMessages((prev) => {
+            // Insert before the assistant placeholder
+            const idx = prev.findIndex((m) => m.id === assistantId);
+            if (idx >= 0) {
+              const next = [...prev.slice(0, idx), toolMsg, ...prev.slice(idx)];
+              saveMessages(next, sessionRef.current);
+              return next;
+            }
+            const next = [...prev, toolMsg];
+            saveMessages(next, sessionRef.current);
+            return next;
+          });
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
         },
         onAgentImages: (imagePaths) => {
           // Agent sent images (from camera tool, screenshot, etc.) — insert as a new message
@@ -264,6 +315,13 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
       });
 
       if (resolvedSessionId) { sessionRef.current = resolvedSessionId; setSessionId(resolvedSessionId); }
+
+      // Finalize thinking bubble (stop streaming indicator)
+      if (hasThinking) {
+        setMessages((prev) =>
+          prev.map((m) => m.id === thinkingId ? { ...m, isStreaming: false } : m)
+        );
+      }
 
       setMessages((prev) => {
         const next = prev.map((m) => m.id === assistantId ? { ...m, content: assistantText, isStreaming: false } : m);

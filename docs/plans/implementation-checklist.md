@@ -28,7 +28,7 @@ Legend:
 | 1.9 | Boot receiver (auto-start) | ✅ | `RuntimeBootReceiver.kt` (24 lines) | — | 🚫 Needs: `BootReceiverTest.kt` (UI Automator — reboot emulator) |
 | 1.10 | Room database (sessions, messages, tasks) | ✅ | `memory/GuappaDatabase.kt`, `Entities.kt`, `Daos.kt` | — | 🧪 `test_scenario_memory_persistence.yaml` |
 | 1.11 | Context Manager / budget allocation | ✅ | `memory/ContextCompactor.kt` (343 lines) | — | 🧪 `e2e_long_conversation_context.yaml` |
-| 1.12 | Streaming responses | ✅ | All providers implement `streamChat()` | — | 🧪 `live_openrouter_chat.yaml` |
+| 1.12 | Streaming responses | ✅ | All providers implement `streamChat()` + `streamChatStructured()` with text/thinking/tool_call deltas. Orchestrator always streams — no fake chunking. Local LLM server supports SSE via NanoHTTPD `PipedOutputStream`. | — | 🧪 `live_openrouter_chat.yaml` |
 | 1.13 | Retry with exponential backoff | ✅ | Logic in orchestrator + ChannelHub reconnect | — | 🧪 `e2e_provider_failover.yaml` |
 | 1.14 | Multi-session concurrency | ⚠️ | Session entity exists | Unclear if concurrent sessions tested | 🚫 Needs: `MultiSessionTest.kt` (UI Automator) |
 | 1.15 | Session encryption (SQLCipher / Keystore) | ❌ | No encryption layer found | Plain Room database | 🚫 Needs: `e2e_encrypted_db_check.yaml` |
@@ -50,7 +50,7 @@ Legend:
 | 2.8 | CapabilityType enum | ✅ | `providers/CapabilityType.kt` | — | 🚫 N/A — enum |
 | 2.9 | CostTracker | ✅ | `providers/CostTracker.kt` | — | 🧪 `e2e_cost_display.yaml` + unit test |
 | 2.10 | ProviderFactory | ✅ | `providers/ProviderFactory.kt` | — | 🧪 Unit test: `ProviderFactoryTest.kt` |
-| 2.11 | Local inference (llama.rn GGUF) | ✅ | `localLlmServer.ts` + NanoHTTPD, serial inference queue, thinking tag strip, GPU layers=99, tool-free for local models | — | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
+| 2.11 | Local inference (llama.rn GGUF) | ✅ | `localLlmServer.ts` + NanoHTTPD with SSE streaming, serial inference queue, thinking tag strip, GPU layers=99, n_ctx=32768, tools enabled, token-by-token streaming via `emit_partial_completion` callback | — | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
 | 2.12 | LiteRT-LM (Gemini Nano) | ❌ | Not found | — | 🚫 |
 | 2.13 | Qualcomm GENIE (NPU) | ❌ | Not found | — | 🚫 |
 | 2.14 | ONNX Runtime Mobile | ❌ | Not found | — | 🚫 |
@@ -161,7 +161,7 @@ Legend:
 | 6.7 | useWakeWord ("Hey Guappa") | ✅ | `hooks/useWakeWord.ts` | Energy + STT keyword | 🚫 Needs: `e2e_wake_word.yaml` |
 | 6.8 | VoiceAmplitude | ✅ | `swarm/audio/VoiceAmplitude.ts` | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
 | 6.9 | VoiceScreen UI | ✅ | `screens/tabs/VoiceScreen.tsx` (338 lines) | — | 🧪 `guappa_voice_full_flow.yaml` |
-| 6.10 | Streaming TTS | ⚠️ | Sentence-level queue | Not word-level | 🚫 |
+| 6.10 | Streaming TTS | ⚠️ | Sentence-level queue | Not word-level. LLM streaming now delivers tokens in real-time — TTS could start speaking as sentences complete. | 🚫 |
 | 6.11 | Android `SpeechRecognizer` (built-in) | ✅ | `voice/AndroidSTTModule.kt` + `AndroidSTTPackage.kt` — free, zero API key, **default STT provider** | — | 🧪 `e2e_android_stt_fallback.yaml` |
 | 6.12 | Google ML Kit Speech | ❌ | Not found | — | 🚫 |
 | 6.13 | Google Cloud Speech-to-Text | ❌ | Not found | — | 🚫 |
@@ -326,7 +326,7 @@ Legend:
 
 | # | Modality | Status | Engine | E2E Test |
 |---|----------|--------|--------|----------|
-| L.1 | Text (LLM) — GGUF | ✅ | `llama.rn` + NanoHTTPD, serial inference queue, `<think>` tag stripping, GPU layers=99 | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
+| L.1 | Text (LLM) — GGUF | ✅ | `llama.rn` + NanoHTTPD with SSE streaming, serial inference queue, `<think>` tag stripping, GPU layers=99, n_ctx=32768, tools enabled | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
 | L.2 | STT (on-device Whisper) | ✅ | `whisper.rn` GGML | 🧪 `e2e_local_whisper_stt.yaml` |
 | L.3 | STT (free, zero-download) | ✅ | `AndroidSTTModule.kt` — `SpeechRecognizer` API, default STT provider | 🧪 `e2e_android_stt_fallback.yaml` |
 | L.4 | TTS (built-in) | ✅ | `expo-speech` (Android TextToSpeech), default TTS provider | 🧪 `e2e_builtin_tts_response.yaml` |
@@ -473,6 +473,15 @@ appId: com.guappa.app
 | 9 | TurboModule (New Architecture) | Uses old NativeModule bridge | ❌ Major refactor |
 | 10 | Local inference engines (LiteRT, ONNX, Nexa) | All non-text local modalities need cloud | ❌ SDK deps |
 | 11 | ~~mDNS local discovery~~ | ~~Manual connector URL entry~~ | ✅ **RESOLVED** — `MdnsDiscovery.kt` |
+
+### P1b — Newly Identified
+
+| # | Gap | Impact | Status |
+|---|-----|--------|--------|
+| 12 | **Context window per model** | Qwen3.5-0.8B supports 262,144 tokens natively; currently hardcoded to 32K. Should auto-detect from model metadata or allow per-model override in Config UI. Cloud models (GPT-4o=128K, Claude=200K, Gemini=1M) also need correct limits. | ⚠️ Partial — 32K default, no per-model auto-detect |
+| 13 | **Streaming tool call parsing** | `streamChatStructured` accumulates tool calls from SSE deltas but not yet tested with cloud providers that emit `tool_calls` in stream (OpenAI, Anthropic). Local 0.8B model rarely generates valid tool calls. Needs testing with larger models (7B+, cloud). | ⚠️ Implemented but untested with real tool-use models |
+| 14 | **Thinking bubble UX** | Thinking/reasoning blocks (`<think>` tags, `reasoning_content` field) are rendered as collapsible bubbles with 🧠 icon, but inline `<think>` tag detection in stream happens post-hoc in `stripThinkingTags`. Should detect during streaming so thinking bubble appears in real-time before text. | ⚠️ Partial — tags stripped, `reasoning_content` streamed live |
+| 15 | **Max generation tokens** | `max_tokens` defaults to 2048 in local server. Should match model capability and be configurable. Small models generate repetitive output when given too many tokens. | ⚠️ Needs Config UI slider |
 
 ### P2 — Nice to Have
 

@@ -83,6 +83,18 @@ class ProviderRouter {
         return provider.streamChat(messages, tools, model, temperature)
     }
 
+    fun streamChatStructured(
+        messages: List<ChatMessage>,
+        capability: CapabilityType = CapabilityType.TEXT_CHAT,
+        tools: List<JSONObject>? = null,
+        model: String? = null,
+        temperature: Double = 0.7
+    ): Flow<StreamDelta> {
+        val provider = getProviderForCapability(capability)
+            ?: throw IllegalStateException("No provider registered for capability: $capability")
+        return provider.streamChatStructured(messages, tools, model, temperature)
+    }
+
     /**
      * Quick, lightweight LLM call for the Swarm Director.
      * Uses the text chat provider with low max_tokens for fast response.

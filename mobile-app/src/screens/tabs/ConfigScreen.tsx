@@ -281,7 +281,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
           modelPath: agentConfig.localModelPath,
           gpuLayers: config.gpuLayers ?? 99,
           cpuThreads: config.cpuThreads ?? 4,
-          contextLength: config.contextLength ?? 4096,
+          contextLength: (config.contextLength && config.contextLength > 4096) ? config.contextLength : 32768,
           thinkingMode: config.thinkingMode ?? true,
         });
         agentConfig.provider = "openai";

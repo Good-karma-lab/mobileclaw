@@ -216,7 +216,7 @@ data class ProviderConfig(
     val apiKey: String = "",
     val apiUrl: String = "",
     val temperature: Double = 0.7,
-    val maxTokens: Int = 4096,
+    val maxTokens: Int = 32768,
     val streamingEnabled: Boolean = true,
 ) {
     fun toJSON(): JSONObject = JSONObject().apply {
@@ -236,7 +236,7 @@ data class ProviderConfig(
             apiKey = json.optString("api_key", ""),
             apiUrl = json.optString("api_url", ""),
             temperature = json.optDouble("temperature", 0.7),
-            maxTokens = json.optInt("max_tokens", 4096),
+            maxTokens = json.optInt("max_tokens", 32768),
             streamingEnabled = json.optBoolean("streaming_enabled", true),
         )
     }

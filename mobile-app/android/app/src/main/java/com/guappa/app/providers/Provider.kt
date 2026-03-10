@@ -105,5 +105,26 @@ interface Provider {
         temperature: Double = 0.7
     ): Flow<String>
 
+    /**
+     * Structured streaming: returns [StreamDelta] items including text, thinking,
+     * tool call fragments, and done signals. Callers can accumulate tool calls
+     * from the stream and execute them without needing a separate non-streaming call.
+     */
+    fun streamChatStructured(
+        messages: List<ChatMessage>,
+        tools: List<JSONObject>? = null,
+        model: String? = null,
+        temperature: Double = 0.7
+    ): Flow<StreamDelta> {
+        // Default: wrap legacy streamChat() as Text deltas
+        val self = this
+        return kotlinx.coroutines.flow.flow {
+            self.streamChat(messages, tools, model, temperature).collect { text ->
+                emit(StreamDelta.Text(text))
+            }
+            emit(StreamDelta.Done("stop"))
+        }
+    }
+
     suspend fun healthCheck(): Boolean
 }

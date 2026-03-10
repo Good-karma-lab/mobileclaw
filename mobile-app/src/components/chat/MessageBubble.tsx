@@ -13,7 +13,7 @@ import { colors } from "../../theme/colors";
 import { typography } from "../../theme/typography";
 import { radius } from "../../theme/spacing";
 
-export type MessageRole = "user" | "assistant";
+export type MessageRole = "user" | "assistant" | "thinking" | "tool_call";
 
 export type Message = {
   id: string;
@@ -24,6 +24,8 @@ export type Message = {
   isError?: boolean;
   /** Image URIs attached to this message (user photos, agent outputs). */
   imageUris?: string[];
+  /** Content type for differentiated rendering */
+  contentType?: "text" | "thinking" | "tool_call" | "tool_result";
 };
 
 type Props = {
@@ -49,6 +51,8 @@ const BUBBLE_ASSISTANT_ENTERING = SlideInLeft.duration(280)
 
 export function MessageBubble({ message, index, animate = true }: Props) {
   const isUser = message.role === "user";
+  const isThinking = message.contentType === "thinking" || message.role === "thinking";
+  const isToolCall = message.contentType === "tool_call" || message.contentType === "tool_result" || message.role === "tool_call";
 
   const markdownStyles = useMemo(
     () => ({
@@ -119,19 +123,49 @@ export function MessageBubble({ message, index, animate = true }: Props) {
 
   const bubbleContent = (
     <View
-      testID={message.isError ? "chat-error-message" : isUser ? "chat-bubble-user" : "chat-bubble-agent"}
+      testID={
+        message.isError ? "chat-error-message"
+        : isThinking ? "chat-bubble-thinking"
+        : isToolCall ? "chat-bubble-tool"
+        : isUser ? "chat-bubble-user"
+        : "chat-bubble-agent"
+      }
       style={[
         styles.bubble,
-        isUser ? styles.userBubble : styles.assistantBubble,
+        isUser ? styles.userBubble
+          : isThinking ? styles.thinkingBubble
+          : isToolCall ? styles.toolCallBubble
+          : styles.assistantBubble,
         hasImages && styles.imageBubble,
       ]}
     >
       <BlurView
-        intensity={isUser ? 8 : 12}
+        intensity={isUser ? 8 : isThinking || isToolCall ? 6 : 12}
         tint="dark"
         style={styles.blurFill}
       />
       <View style={styles.bubbleContent}>
+        {/* Thinking header */}
+        {isThinking && (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaIcon}>🧠</Text>
+            <Text style={styles.metaLabel}>Thinking</Text>
+          </View>
+        )}
+        {/* Tool call header */}
+        {isToolCall && (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaIcon}>
+              {message.contentType === "tool_result" ? "✓" : "⚡"}
+            </Text>
+            <Text style={[
+              styles.metaLabel,
+              message.contentType === "tool_result" && styles.metaLabelSuccess,
+            ]}>
+              {message.content?.replace(/^[⚡✓✗]\s*/, "") || "Tool"}
+            </Text>
+          </View>
+        )}
         {/* Render attached images */}
         {hasImages && (
           <View style={styles.imageContainer}>
@@ -152,9 +186,11 @@ export function MessageBubble({ message, index, animate = true }: Props) {
             ))}
           </View>
         )}
-        {/* Render text content (if any) */}
-        {message.content ? (
-          message.isStreaming && !isUser ? (
+        {/* Render text content — skip for tool calls (shown in header) */}
+        {message.content && !isToolCall ? (
+          isThinking ? (
+            <Text style={styles.thinkingText}>{message.content}</Text>
+          ) : message.isStreaming && !isUser ? (
             <Text style={styles.streamingText}>{message.content || "..."}</Text>
           ) : (
             <Markdown
@@ -221,6 +257,47 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(30, 45, 60, 0.2)",
     borderColor: "rgba(40, 60, 80, 0.15)",
     borderTopLeftRadius: 4,
+  },
+  thinkingBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(90, 58, 138, 0.08)",
+    borderColor: "rgba(90, 58, 138, 0.12)",
+    borderTopLeftRadius: 4,
+    borderStyle: "dashed" as any,
+  },
+  toolCallBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(26, 92, 106, 0.10)",
+    borderColor: "rgba(26, 92, 106, 0.18)",
+    borderTopLeftRadius: 4,
+    maxWidth: "70%",
+  },
+  metaRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    marginBottom: 2,
+  },
+  metaIcon: {
+    fontSize: 13,
+  },
+  metaLabel: {
+    color: colors.text.secondary,
+    fontFamily: typography.mono.fontFamily,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+  },
+  metaLabelSuccess: {
+    color: colors.semantic?.success || "#50D0A0",
+  },
+  thinkingText: {
+    color: colors.text.secondary,
+    fontFamily: typography.body.fontFamily,
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: "italic" as const,
+    opacity: 0.7,
   },
   imageBubble: {
     maxWidth: "85%",

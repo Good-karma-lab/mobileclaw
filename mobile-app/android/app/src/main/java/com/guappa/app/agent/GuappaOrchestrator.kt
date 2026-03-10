@@ -13,6 +13,8 @@ import com.guappa.app.providers.ProviderRouter
 import com.guappa.app.providers.CapabilityType
 import com.guappa.app.tools.ToolEngine
 import com.guappa.app.tools.ToolRegistry
+import com.guappa.app.providers.ToolCall
+import com.guappa.app.providers.ToolCallFunction
 import com.guappa.app.tools.ToolResult
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -51,7 +53,7 @@ class GuappaOrchestrator(
 
     companion object {
         private const val MAX_REACT_ITERATIONS = 50
-        private const val STREAM_CHUNK_SIZE = 36
+        // Removed: STREAM_CHUNK_SIZE — now using real token streaming
         private const val CONTEXT_COMPACTION_THRESHOLD = 60 // compact when > 60 messages
         private const val CONTEXT_KEEP_RECENT = 30 // keep last 30 messages verbatim
     }
@@ -378,26 +380,152 @@ class GuappaOrchestrator(
             }
 
             // Determine capability: prefer TOOL_USE if available, fall back to TEXT_CHAT
-            // Local small models (≤3B params) cannot handle tool schemas in context
-            val isLocalModel = selectedModel == "local"
-            val capability = if (!isLocalModel && router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
+            val capability = if (router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
                 CapabilityType.TOOL_USE
             } else {
                 CapabilityType.TEXT_CHAT
             }
             val useTools = capability == CapabilityType.TOOL_USE && toolSchemas.isNotEmpty()
 
-            android.util.Log.d("GuappaOrchestrator", "calling router.chat: model=$selectedModel, msgs=${chatMessages.size}, capability=$capability, tools=$useTools")
-            val response: ChatResponse = try {
-                router.chat(
+            android.util.Log.d("GuappaOrchestrator", "calling streamChatStructured: model=$selectedModel, msgs=${chatMessages.size}, capability=$capability, tools=$useTools")
+
+            // ---- Always stream ----
+            val streamedText = StringBuilder()
+            val streamedThinking = StringBuilder()
+            // Accumulate tool call fragments from the stream
+            data class ToolCallAccum(var id: String, var name: String, val args: StringBuilder = StringBuilder())
+            val toolCallAccums = mutableMapOf<Int, ToolCallAccum>()
+            var finishReason: String? = null
+
+            // For local models, launch a coroutine that reads tokens directly
+            // from LocalStreamBridge (bypasses HTTP buffering)
+            val isLocalModel = selectedModel == "local"
+            var directStreamJob: Job? = null
+            if (isLocalModel) {
+                directStreamJob = scope.launch {
+                    com.guappa.app.providers.LocalStreamBridge.tokens.collect { token ->
+                        if (token == "\u0000") return@collect // End sentinel
+                        streamedText.append(token)
+                        messageBus.publish(BusMessage.AgentMessage(
+                            text = streamedText.toString(),
+                            sessionId = session.id,
+                            isStreaming = true,
+                            isComplete = false,
+                            contentType = "text"
+                        ))
+                    }
+                }
+            }
+
+            try {
+                var lastTextFlush = System.currentTimeMillis()
+                var lastThinkFlush = System.currentTimeMillis()
+                var textDirty = false
+                var thinkDirty = false
+
+                router.streamChatStructured(
                     messages = chatMessages,
                     capability = capability,
                     tools = if (useTools) toolSchemas else null,
                     model = selectedModel,
                     temperature = selectedTemperature,
-                )
+                ).collect { delta ->
+                    when (delta) {
+                        is com.guappa.app.providers.StreamDelta.Text -> {
+                            if (isLocalModel) {
+                                // Skip HTTP text deltas for local models —
+                                // tokens are streamed directly via LocalStreamBridge
+                                // But still accumulate for final response
+                                if (streamedText.isEmpty()) {
+                                    // Direct stream already accumulated text
+                                }
+                            } else {
+                                streamedText.append(delta.content)
+                                textDirty = true
+                                val now = System.currentTimeMillis()
+                                // Flush accumulated text to UI at ~30fps (every 33ms)
+                                if (now - lastTextFlush >= 33) {
+                                    lastTextFlush = now
+                                    textDirty = false
+                                    messageBus.publish(BusMessage.AgentMessage(
+                                        text = streamedText.toString(),
+                                        sessionId = session.id,
+                                        isStreaming = true,
+                                        isComplete = false,
+                                        contentType = "text"
+                                    ))
+                                    delay(1)
+                                }
+                            }
+                        }
+                        is com.guappa.app.providers.StreamDelta.Thinking -> {
+                            streamedThinking.append(delta.content)
+                            thinkDirty = true
+                            val now = System.currentTimeMillis()
+                            if (now - lastThinkFlush >= 33) {
+                                lastThinkFlush = now
+                                thinkDirty = false
+                                messageBus.publish(BusMessage.AgentMessage(
+                                    text = streamedThinking.toString(),
+                                    sessionId = session.id,
+                                    isStreaming = true,
+                                    isComplete = false,
+                                    contentType = "thinking"
+                                ))
+                                delay(1)
+                            }
+                        }
+                        is com.guappa.app.providers.StreamDelta.ToolCallDelta -> {
+                            val accum = toolCallAccums.getOrPut(delta.index) {
+                                ToolCallAccum(id = delta.id ?: "call_${delta.index}", name = delta.functionName ?: "")
+                            }
+                            if (delta.id != null) accum.id = delta.id
+                            if (!delta.functionName.isNullOrEmpty()) {
+                                accum.name = delta.functionName
+                                // Emit tool call start to chat
+                                messageBus.publish(BusMessage.AgentMessage(
+                                    text = "⚡ ${delta.functionName}",
+                                    sessionId = session.id,
+                                    isStreaming = true,
+                                    isComplete = false,
+                                    contentType = "tool_call"
+                                ))
+                            }
+                            accum.args.append(delta.argumentsDelta)
+                        }
+                        is com.guappa.app.providers.StreamDelta.Done -> {
+                            finishReason = delta.finishReason
+                        }
+                    }
+                }
+
+                // Cancel direct stream listener
+                directStreamJob?.cancel()
+
+                // Flush any remaining dirty text that wasn't sent due to throttling
+                if (textDirty && streamedText.isNotEmpty()) {
+                    messageBus.publish(BusMessage.AgentMessage(
+                        text = streamedText.toString(),
+                        sessionId = session.id,
+                        isStreaming = true,
+                        isComplete = false,
+                        contentType = "text"
+                    ))
+                    delay(1)
+                }
+                if (thinkDirty && streamedThinking.isNotEmpty()) {
+                    messageBus.publish(BusMessage.AgentMessage(
+                        text = streamedThinking.toString(),
+                        sessionId = session.id,
+                        isStreaming = true,
+                        isComplete = false,
+                        contentType = "thinking"
+                    ))
+                    delay(1)
+                }
             } catch (e: Exception) {
-                android.util.Log.e("GuappaOrchestrator", "router.chat FAILED: ${e.message}", e)
+                directStreamJob?.cancel()
+                android.util.Log.e("GuappaOrchestrator", "streamChatStructured FAILED: ${e.message}", e)
                 val errorText = if (e.message?.contains("No provider registered") == true) {
                     "⚙\uFE0F No AI provider configured yet.\n\nGo to Config → set a Provider and API Key, then tap Apply.\n\nOr download a local model in Config → How GUAPPA Thinks."
                 } else {
@@ -411,10 +539,21 @@ class GuappaOrchestrator(
                 return
             }
 
-            // If there are tool calls, execute them and continue the loop
-            val toolCalls = response.toolCalls
-            if (!toolCalls.isNullOrEmpty()) {
-                val assistantMsg = Message(role = "assistant", content = response.content ?: "")
+            // ---- Process accumulated tool calls ----
+            if (toolCallAccums.isNotEmpty()) {
+                val toolCalls = toolCallAccums.values.map { accum ->
+                    ToolCall(
+                        id = accum.id,
+                        type = "function",
+                        function = ToolCallFunction(
+                            name = accum.name,
+                            arguments = accum.args.toString()
+                        )
+                    )
+                }
+
+                val assistantContent = streamedText.toString()
+                val assistantMsg = Message(role = "assistant", content = assistantContent)
                 session.addMessage(assistantMsg)
                 persistMessage(session.id, assistantMsg)
 
@@ -468,6 +607,16 @@ class GuappaOrchestrator(
                     }
 
                     val isSuccess = result is ToolResult.Success
+
+                    // Emit tool result to chat
+                    messageBus.publish(BusMessage.AgentMessage(
+                        text = if (isSuccess) "✓ $toolName" else "✗ $toolName failed",
+                        sessionId = session.id,
+                        isStreaming = false,
+                        isComplete = false,
+                        contentType = "tool_result"
+                    ))
+
                     messageBus.publish(BusMessage.SystemEvent(
                         type = "tool_executed",
                         data = mapOf(
@@ -484,7 +633,7 @@ class GuappaOrchestrator(
             }
 
             // No tool calls: we have a final text response
-            val rawText = response.content ?: ""
+            val rawText = streamedText.toString()
             if (rawText.isNotEmpty()) {
                 val responseText = persona.adaptResponse(rawText)
                 val assistantMsg = Message(role = "assistant", content = responseText)
@@ -494,7 +643,17 @@ class GuappaOrchestrator(
                 // Extract facts from the conversation for long-term memory
                 scope.launch { extractMemoryFacts(session, responseText) }
 
-                publishStreamedResponse(session.id, responseText)
+                messageBus.publish(BusMessage.AgentMessage(
+                    text = responseText,
+                    sessionId = session.id,
+                    isComplete = true
+                ))
+            } else {
+                messageBus.publish(BusMessage.AgentMessage(
+                    text = "(empty response)",
+                    sessionId = session.id,
+                    isComplete = true
+                ))
             }
             return
         }
@@ -530,47 +689,6 @@ class GuappaOrchestrator(
         } catch (_: Exception) {
             // Non-fatal
         }
-    }
-
-    // ---- Streaming ----
-
-    private suspend fun publishStreamedResponse(sessionId: String, responseText: String) {
-        for (chunk in chunkResponse(responseText)) {
-            messageBus.publish(BusMessage.AgentMessage(
-                text = chunk,
-                sessionId = sessionId,
-                isStreaming = true,
-                isComplete = false
-            ))
-            delay(24)
-        }
-
-        messageBus.publish(BusMessage.AgentMessage(
-            text = responseText,
-            sessionId = sessionId,
-            isComplete = true
-        ))
-    }
-
-    private fun chunkResponse(text: String): List<String> {
-        if (text.length <= STREAM_CHUNK_SIZE) {
-            return listOf(text)
-        }
-
-        val chunks = mutableListOf<String>()
-        var start = 0
-        while (start < text.length) {
-            var end = minOf(start + STREAM_CHUNK_SIZE, text.length)
-            if (end < text.length) {
-                val boundary = text.lastIndexOf(' ', end)
-                if (boundary > start) {
-                    end = boundary + 1
-                }
-            }
-            chunks.add(text.substring(start, end))
-            start = end
-        }
-        return chunks.filter { it.isNotEmpty() }
     }
 
     // ---- Image Encoding ----

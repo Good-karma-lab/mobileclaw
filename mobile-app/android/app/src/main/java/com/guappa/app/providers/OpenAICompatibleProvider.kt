@@ -183,6 +183,111 @@ open class OpenAICompatibleProvider(
         awaitClose { call.cancel() }
     }
 
+    override fun streamChatStructured(
+        messages: List<ChatMessage>,
+        tools: List<JSONObject>?,
+        model: String?,
+        temperature: Double
+    ): Flow<StreamDelta> = callbackFlow {
+        val requestBody = buildChatRequestBody(messages, tools, model, temperature, stream = true)
+
+        val requestBuilder = Request.Builder()
+            .url("$normalizedBaseUrl/v1/chat/completions")
+            .post(requestBody.toString().toRequestBody(jsonMediaType))
+        buildHeaders().forEach { (key, value) -> requestBuilder.addHeader(key, value) }
+
+        val call = client.newCall(requestBuilder.build())
+
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                close(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    if (!response.isSuccessful) {
+                        val body = response.body?.string() ?: "HTTP ${response.code}"
+                        close(IOException("API error: $body"))
+                        return
+                    }
+                    val source = response.body?.byteStream()
+                        ?: run { close(IOException("Empty response body")); return }
+                    val reader = BufferedReader(InputStreamReader(source))
+
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        val currentLine = line ?: continue
+                        if (!currentLine.startsWith("data: ")) continue
+
+                        val data = currentLine.removePrefix("data: ").trim()
+                        if (data == "[DONE]") {
+                            trySend(StreamDelta.Done(null))
+                            break
+                        }
+
+                        try {
+                            val json = JSONObject(data)
+                            val choices = json.optJSONArray("choices")
+                            if (choices == null || choices.length() == 0) continue
+
+                            val choice = choices.getJSONObject(0)
+                            val finishReason = if (choice.has("finish_reason") && !choice.isNull("finish_reason"))
+                                choice.getString("finish_reason") else null
+                            val delta = choice.optJSONObject("delta") ?: continue
+
+                            // 1. Check for reasoning_content (OpenAI o-series, DeepSeek, Qwen thinking)
+                            val reasoning = delta.optString("reasoning_content", "")
+                            if (reasoning.isNotEmpty()) {
+                                trySend(StreamDelta.Thinking(reasoning))
+                            }
+
+                            // 2. Check for regular content
+                            val content = delta.optString("content", "")
+                            if (content.isNotEmpty()) {
+                                // Detect <think>...</think> inline thinking tags (Qwen3.5 style)
+                                // These will be handled downstream — just send as text
+                                trySend(StreamDelta.Text(content))
+                            }
+
+                            // 3. Check for tool_calls
+                            val toolCalls = delta.optJSONArray("tool_calls")
+                            if (toolCalls != null) {
+                                for (i in 0 until toolCalls.length()) {
+                                    val tc = toolCalls.getJSONObject(i)
+                                    val idx = tc.optInt("index", 0)
+                                    val id = if (tc.has("id") && !tc.isNull("id")) tc.getString("id") else null
+                                    val fn = tc.optJSONObject("function")
+                                    val name = fn?.optString("name")?.takeIf { it.isNotEmpty() }
+                                    val args = fn?.optString("arguments", "") ?: ""
+                                    trySend(StreamDelta.ToolCallDelta(
+                                        index = idx,
+                                        id = id,
+                                        functionName = name,
+                                        argumentsDelta = args
+                                    ))
+                                }
+                            }
+
+                            // 4. Check for finish reason
+                            if (finishReason != null) {
+                                trySend(StreamDelta.Done(finishReason))
+                            }
+                        } catch (_: Exception) {
+                            // Skip malformed JSON chunks
+                        }
+                    }
+
+                    reader.close()
+                    close()
+                } catch (e: Exception) {
+                    close(e)
+                }
+            }
+        })
+
+        awaitClose { call.cancel() }
+    }
+
     override suspend fun healthCheck(): Boolean {
         return try {
             fetchModels().isNotEmpty()
