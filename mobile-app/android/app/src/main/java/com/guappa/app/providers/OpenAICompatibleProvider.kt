@@ -93,16 +93,34 @@ open class OpenAICompatibleProvider(
         temperature: Double
     ): ChatResponse = withContext(Dispatchers.IO) {
         val requestBody = buildChatRequestBody(messages, tools, model, temperature, stream = false)
+        val url = "$normalizedBaseUrl/v1/chat/completions"
+        android.util.Log.d("OpenAIProvider", "POST $url model=$model msgs=${messages.size}")
+        android.util.Log.d("OpenAIProvider", "Request body length: ${requestBody.toString().length}")
 
         val requestBuilder = Request.Builder()
-            .url("$normalizedBaseUrl/v1/chat/completions")
+            .url(url)
             .post(requestBody.toString().toRequestBody(jsonMediaType))
         buildHeaders().forEach { (key, value) -> requestBuilder.addHeader(key, value) }
 
-        val response = client.newCall(requestBuilder.build()).await()
-        val body = response.body?.string()
-            ?: throw IOException("Empty response body")
-        parseChatResponse(JSONObject(body))
+        try {
+            val response = client.newCall(requestBuilder.build()).await()
+            android.util.Log.d("OpenAIProvider", "Response code: ${response.code}")
+            val body = response.body?.string()
+                ?: throw IOException("Empty response body")
+            android.util.Log.d("OpenAIProvider", "Response body length: ${body.length}, preview: ${body.take(200)}")
+
+            if (response.code !in 200..299) {
+                val json = try { JSONObject(body) } catch (_: Exception) { null }
+                val errorMsg = json?.optJSONObject("error")?.optString("message")
+                    ?: "HTTP ${response.code}: $body"
+                throw IOException("API error: $errorMsg")
+            }
+
+            parseChatResponse(JSONObject(body))
+        } catch (e: Exception) {
+            android.util.Log.e("OpenAIProvider", "HTTP request failed: ${e::class.simpleName}: ${e.message}")
+            throw e
+        }
     }
 
     override fun streamChat(

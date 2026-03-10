@@ -1,0 +1,33 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - wake-word
+  - virtual-audio
+---
+# Wake Word Test — Say "Hey Guappa, what time is it" via virtual audio cable
+# Verifies wake word detection triggers STT and agent processes the query
+# Prerequisites: BlackHole 2ch active, emulator mic = host audio input, gTTS installed
+
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Generate and play the wake word phrase
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Hey Guappa, what time is it"]
+
+# Wait for wake word detection to auto-activate STT
+# The app should detect "Hey Guappa" and start listening
+- extendedWaitUntil:
+    visible:
+      text: ".*[Ll]istening.*"
+    timeout: 10000
+    optional: true
+
+# Wait for the agent to process and respond
+- extendedWaitUntil:
+    visible:
+      text: ".*time.*"
+    timeout: 20000

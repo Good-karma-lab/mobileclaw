@@ -172,8 +172,11 @@ export async function runAgentTurnStream({
     });
 
     try {
+      console.log("[session] ensureAgentReady...");
       await ensureAgentReady();
+      console.log("[session] agent ready, sending message:", userPrompt);
       activeSessionId = await sendMessageStream(userPrompt, sessionId, imageUris);
+      console.log("[session] sendMessageStream returned sessionId:", activeSessionId);
       onSession?.(activeSessionId);
     } catch (error) {
       fail(error);

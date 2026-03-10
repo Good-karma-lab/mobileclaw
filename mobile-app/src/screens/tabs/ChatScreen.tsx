@@ -225,6 +225,7 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
     swarmStore.setState("processing");
 
     try {
+      console.log("[chat] runAgentTurnStream starting, prompt:", trimmed);
       const { assistantText, sessionId: resolvedSessionId } = await runAgentTurnStream({
         userPrompt: trimmed || "(user sent image(s) — please describe what you see)",
         sessionId: sessionRef.current || undefined,
@@ -273,6 +274,7 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
       swarmDirector.analyzeAgentResponse(assistantText);
       swarmStore.setState("idle");
     } catch (e: any) {
+      console.error("[chat] runAgentTurnStream ERROR:", e?.message || e);
       setMessages((prev) => {
         const next = prev.map((m) =>
           m.id === assistantId

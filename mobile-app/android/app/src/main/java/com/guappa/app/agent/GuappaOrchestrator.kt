@@ -206,6 +206,7 @@ class GuappaOrchestrator(
     // ---- Message Handling ----
 
     private suspend fun handleMessage(message: BusMessage) {
+        android.util.Log.d("GuappaOrchestrator", "handleMessage: ${message::class.simpleName}")
         when (message) {
             is BusMessage.UserMessage -> {
                 val session = if (message.sessionId.isNotEmpty()) {
@@ -335,8 +336,15 @@ class GuappaOrchestrator(
     // ---- ReAct Loop ----
 
     private suspend fun runReActLoop(session: GuappaSession) {
-        val router = providerRouter ?: return
-        val ctx = context ?: return
+        android.util.Log.d("GuappaOrchestrator", "runReActLoop starting, session=${session.id}")
+        val router = providerRouter ?: run {
+            android.util.Log.e("GuappaOrchestrator", "providerRouter is NULL, aborting")
+            return
+        }
+        val ctx = context ?: run {
+            android.util.Log.e("GuappaOrchestrator", "context is NULL, aborting")
+            return
+        }
 
         val systemPrompt = persona.getSystemPrompt()
         val toolSchemas = toolRegistry.getToolSchemas(ctx)
@@ -377,6 +385,7 @@ class GuappaOrchestrator(
             }
             val useTools = capability == CapabilityType.TOOL_USE && toolSchemas.isNotEmpty()
 
+            android.util.Log.d("GuappaOrchestrator", "calling router.chat: model=$selectedModel, msgs=${chatMessages.size}, capability=$capability, tools=$useTools")
             val response: ChatResponse = try {
                 router.chat(
                     messages = chatMessages,
@@ -386,6 +395,7 @@ class GuappaOrchestrator(
                     temperature = selectedTemperature,
                 )
             } catch (e: Exception) {
+                android.util.Log.e("GuappaOrchestrator", "router.chat FAILED: ${e.message}", e)
                 val errorText = if (e.message?.contains("No provider registered") == true) {
                     "⚙\uFE0F No AI provider configured yet.\n\nGo to Config → set a Provider and API Key, then tap Apply.\n\nOr download a local model in Config → How GUAPPA Thinks."
                 } else {

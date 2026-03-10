@@ -1,0 +1,61 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - deepgram
+  - stt
+  - virtual-audio
+  - api-key-required
+---
+# Deepgram Nova-3 Cloud STT — Verify cloud STT with real Deepgram API key
+# Prerequisites: BlackHole 2ch, emulator mic = host audio, Deepgram key configured
+
+# Navigate to config and set Deepgram API key
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- tapOn:
+    text: "How GUAPPA Speaks & Listens"
+- waitForAnimationToEnd
+
+# Set Deepgram API key
+- tapOn:
+    id: "config-deepgram-key-input"
+    optional: true
+- eraseText: 100
+- inputText: "dddeb932f55fe13aa42a7a9e366d2c3b63ec4053"
+- hideKeyboard
+
+# Select Deepgram as STT engine
+- tapOn:
+    text: "Deepgram"
+    optional: true
+- waitForAnimationToEnd
+
+# Apply config
+- tapOn:
+    text: "Apply"
+- waitForAnimationToEnd
+
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Start STT
+- tapOn:
+    id: "voice-mic-button"
+
+# Play speech via virtual audio cable
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Search for nearby restaurants"]
+
+# Wait for Deepgram to transcribe
+- extendedWaitUntil:
+    visible:
+      text: ".*restaurant.*"
+    timeout: 15000
+
+# Stop recording
+- tapOn:
+    id: "voice-mic-button"

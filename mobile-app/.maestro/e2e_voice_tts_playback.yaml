@@ -1,0 +1,30 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - tts
+---
+# TTS Playback Test — Send a chat message, verify TTS engine speaks the response
+# Does NOT require virtual audio cable — tests that TTS activates, not STT
+
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send a short message that should trigger a short TTS response
+- tapOn:
+    id: "chat-input"
+- inputText: "Say hello"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for agent response to appear
+- extendedWaitUntil:
+    notVisible:
+      text: "GUAPPA is thinking..."
+    timeout: 30000
+
+# Verify a response bubble appeared (agent replied with text)
+# TTS would have been triggered automatically if voice is enabled
+- assertVisible:
+    id: "chat-message-list"

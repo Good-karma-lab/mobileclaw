@@ -1,0 +1,34 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - stt
+  - virtual-audio
+---
+# Voice STT Basic — Speak "Hello Guappa" via virtual audio cable, verify transcription
+# Prerequisites: BlackHole 2ch active, emulator mic = host audio input, gTTS installed
+
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Generate and play TTS into virtual mic
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Hello Guappa"]
+
+# Small delay for audio to start flowing
+- swipe:
+    direction: "DOWN"
+    duration: 500
+
+# Tap the microphone to start STT listening
+- tapOn:
+    id: "voice-mic-button"
+- waitForAnimationToEnd
+
+# Wait for transcription to appear (STT processes audio → text)
+- extendedWaitUntil:
+    visible:
+      text: ".*[Hh]ello.*"
+    timeout: 15000

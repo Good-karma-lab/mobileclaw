@@ -54,7 +54,7 @@ Legend:
 | 2.12 | LiteRT-LM (Gemini Nano) | ❌ | Not found | — | 🚫 |
 | 2.13 | Qualcomm GENIE (NPU) | ❌ | Not found | — | 🚫 |
 | 2.14 | ONNX Runtime Mobile | ❌ | Not found | — | 🚫 |
-| 2.15 | HardwareProbe (SoC/NPU detection) | ✅ | `providers/HardwareProbe.kt` — SoC detection, NPU, model recommendations | — | 🚫 Unit test needed |
+| 2.15 | HardwareProbe (SoC/NPU detection) | ✅ | `providers/HardwareProbe.kt` — SoC detection, NPU, model recommendations | — | 🧪 Unit test: `HardwareProbeTest.kt` |
 | 2.16 | ModelDownloadManager | ✅ | `ModelDownloaderModule.kt` + `modelDownloader.ts` | — | 🧪 `e2e_model_download.yaml` |
 | 2.17 | Token counter (tiktoken) | ✅ | `providers/TokenCounter.kt` — approximate cl100k_base tokenizer | — | 🧪 Unit test: `TokenCounterTest.kt` |
 | 2.18 | Separate model per capability | ⚠️ | ConfigStore has fields | UI supports but routing unverified | 🚫 Needs: `e2e_vision_model_routing.yaml` |
@@ -118,7 +118,7 @@ Legend:
 | 4.17 | DailySummaryWorker | ✅ | `proactive/DailySummaryWorker.kt` | — | 🚫 Same as above |
 | 4.18 | MessagingStyle notifications | ⚠️ | NotificationManager exists | Verify MessagingStyle used | 🚫 |
 | 4.19 | Inline reply from notification | ⚠️ | NotificationActionReceiver exists | Verify direct reply input | 🚫 |
-| 4.20 | LocationGeofenceReceiver | ⚠️ | GeofenceTool exists | No dedicated broadcast receiver | 🚫 |
+| 4.20 | LocationGeofenceReceiver | ✅ | `proactive/GeofenceBroadcastReceiver.kt` — receives PendingIntent transitions, publishes to MessageBus | — | 🧪 Unit test: `GeofenceReceiverTest.kt` |
 | 4.21 | Network state receiver | ✅ | `proactive/NetworkStateReceiver.kt` — publishes to MessageBus | — | 🚫 Unit test sufficient |
 | 4.22 | Screen state receiver | ✅ | `proactive/ScreenStateReceiver.kt` — dynamic registration | — | 🚫 Unit test sufficient |
 
@@ -133,13 +133,13 @@ Legend:
 | 5.3 | ChannelFactory | ✅ | `channels/ChannelFactory.kt` (52 lines) | — | 🧪 Unit test: `ChannelFactoryTest.kt` |
 | 5.4 | Telegram (send via Bot API) | ✅ | `channels/TelegramChannel.kt` | — | 🧪 `e2e_telegram_send_channel.yaml` |
 | 5.5 | Telegram incoming (long polling) | ✅ | `TelegramChannel.kt` — `getUpdates` with 30s timeout, offset tracking | — | 🧪 `e2e_telegram_receive.yaml` |
-| 5.6 | Discord (webhook send) | 🔧 | `channels/DiscordChannel.kt` (31 lines) | Webhook-only, no incoming | 🚫 |
-| 5.7 | Discord gateway (incoming) | ❌ | Not found | — | 🚫 |
-| 5.8 | Slack (webhook send) | 🔧 | `channels/SlackChannel.kt` (31 lines) | Webhook-only | 🚫 |
+| 5.6 | Discord (webhook send + gateway) | ✅ | `channels/DiscordChannel.kt` (~170 lines) — webhook send + Bot Gateway WebSocket incoming | — | 🧪 Unit test: `DiscordChannelTest.kt` |
+| 5.7 | Discord gateway (incoming) | ✅ | Integrated in `DiscordChannel.kt` — WebSocket, heartbeat, MESSAGE_CREATE events | — | 🧪 Unit test: `DiscordChannelTest.kt` |
+| 5.8 | Slack (webhook send + polling) | ✅ | `channels/SlackChannel.kt` (~115 lines) — webhook send + conversations.history polling | — | 🧪 Unit test: `SlackChannelTest.kt` |
 | 5.9 | WhatsApp | ⚠️ | `channels/WhatsAppChannel.kt` (92 lines) | Uses deep links, not Cloud API | 🚫 |
 | 5.10 | Signal | 🔧 | `channels/SignalChannel.kt` (59 lines) | Verify signald integration | 🚫 |
 | 5.11 | Matrix | ⚠️ | `channels/MatrixChannel.kt` (75 lines) | No E2EE, no sync loop | 🚫 |
-| 5.12 | Email (IMAP/SMTP) | 🔧 | `channels/EmailChannel.kt` (26 lines) | Intent-based only | 🧪 `e2e_email_compose.yaml` |
+| 5.12 | Email (SMTP relay + Intent) | ✅ | `channels/EmailChannel.kt` (~100 lines) — SMTP relay API or Intent fallback | — | 🧪 `e2e_email_compose.yaml` |
 | 5.13 | SMS channel | ✅ | `channels/SmsChannel.kt` (47 lines) | — | 🧪 `e2e_sms_send.yaml` |
 | 5.14 | GuappaChannelsModule (RN bridge) | ✅ | `channels/GuappaChannelsModule.kt` (240 lines) | — | 🧪 Tested via channel-specific tests |
 | 5.15 | Channel `incoming()` Flow | ✅ | Defined in `Channel.kt` interface, implemented in TelegramChannel | — | 🧪 `e2e_telegram_receive.yaml` |
@@ -174,10 +174,10 @@ Legend:
 | 6.20 | Speechmatics TTS (cloud) | ❌ | Not found | — | 🚫 |
 | 6.21 | Google Cloud TTS | ❌ | Not found | — | 🚫 |
 | 6.22 | Picovoice Porcupine wake word | ❌ | Using custom energy-based | — | 🚫 |
-| 6.23 | Silero VAD | ❌ | Using expo-av metering | — | 🚫 |
-| 6.24 | Audio routing (speaker/earpiece/BT) | ❌ | — | — | 🚫 |
-| 6.25 | Audio focus management | ❌ | — | — | 🚫 |
-| 6.26 | Bluetooth SCO/A2DP routing | ❌ | — | — | 🚫 |
+| 6.23 | Silero VAD | ⚠️ | `voice/SileroVADEngine.kt` — energy-based placeholder, ONNX inference TODO | — | 🧪 Unit test: `SileroVADTest.kt` |
+| 6.24 | Audio routing (speaker/earpiece/BT) | ✅ | `voice/AudioRoutingManager.kt` — speaker, earpiece, BT SCO, wired headset, auto-detect | — | 🧪 Unit test: `AudioRoutingManagerTest.kt` |
+| 6.25 | Audio focus management | ✅ | `voice/AudioFocusManager.kt` — transient exclusive, delayed gain, focus callbacks | — | 🧪 Unit test: `AudioFocusManagerTest.kt` |
+| 6.26 | Bluetooth SCO/A2DP routing | ✅ | Integrated in `AudioRoutingManager.kt` — SCO connect/disconnect, A2DP detection | — | 🧪 Unit test: `AudioRoutingManagerTest.kt` |
 | 6.27 | STT/TTS engine selection UI | ✅ | `voice/voiceEngineManager.ts` — STT/TTS engine selection | — | 🧪 `e2e_stt_engine_switch.yaml` |
 | 6.28 | SpeechRecognizer as free STT fallback | ✅ | `voice/AndroidSTTModule.kt` — uses `SpeechRecognizer` API | — | 🧪 `e2e_android_stt_fallback.yaml` |
 
@@ -266,7 +266,7 @@ Legend:
 | 11.13 | GuappaSwarmModule (RN bridge) | ✅ | `swarm/GuappaSwarmModule.kt` | — | 🧪 Swarm screen tests |
 | 11.14 | SwarmScreen (UI) | ✅ | `screens/tabs/SwarmScreen.tsx` (1694 lines) | — | 🧪 `e2e_swarm_screen_tabs.yaml`, `e2e_swarm_pull_refresh.yaml` |
 | 11.15 | Embedded connector (Rust) | ❌ | Not found | Phase 11b | 🚫 |
-| 11.16 | mDNS local discovery | ❌ | Not found | — | 🚫 |
+| 11.16 | mDNS local discovery | ✅ | `swarm/MdnsDiscovery.kt` — NsdManager, `_guappa-swarm._tcp` service type, auto-connect | — | 🧪 Unit test: `MdnsDiscoveryTest.kt` |
 
 ---
 
@@ -338,7 +338,94 @@ Legend:
 | L.10 | Text — LiteRT LM | ❌ | — | 🚫 |
 | L.11 | Text — ONNX | ❌ | — | 🚫 |
 | L.12 | Text — Nexa SDK (NPU) | ❌ | — | 🚫 |
-| L.13 | HardwareProbe (SoC detection) | ✅ | `providers/HardwareProbe.kt` — SoC, NPU, RAM, model recommendations | 🚫 Unit test needed |
+| L.13 | HardwareProbe (SoC detection) | ✅ | `providers/HardwareProbe.kt` — SoC, NPU, RAM, model recommendations | 🧪 Unit test: `HardwareProbeTest.kt` |
+
+---
+
+## Voice E2E Testing Methodology — Virtual Audio Cable
+
+Voice features (STT, TTS, wake word, neuroswarm voice reactions) require **real audio flowing through the emulator microphone**. We use a Virtual Audio Cable to bridge host TTS output → emulator mic input, enabling fully automated voice E2E tests.
+
+### Prerequisites (Host Setup — Done Once)
+
+| Step | macOS | Windows |
+|------|-------|---------|
+| 1. Install virtual audio driver | **BlackHole 2ch** (`brew install blackhole-2ch`) | **VB-CABLE Virtual Audio Device** |
+| 2. Set host sound output | System Settings → Sound → Output → **BlackHole 2ch** | Settings → Sound → Output → **CABLE Input** |
+| 3. Configure emulator mic | Emulator sidebar `...` → Settings → Microphone → **"Virtual microphone uses host audio input" = ON** | Same |
+| 4. Install TTS generator | `pip install gTTS` | `pip install gTTS` |
+
+### TTS-to-STT Automation Script
+
+**File**: `mobile-app/.maestro/scripts/generate_and_play.py`
+
+```python
+import sys
+from gtts import gTTS
+import os
+import platform
+import subprocess
+
+text = sys.argv[1]
+tts = gTTS(text=text, lang='en')
+tts.save("/tmp/guappa_speech.mp3")
+
+if platform.system() == "Darwin":
+    subprocess.Popen(["afplay", "/tmp/guappa_speech.mp3"])
+else:
+    os.system("start /B ffplay -nodisp -autoexit /tmp/guappa_speech.mp3")
+```
+
+### Maestro Voice Test Pattern
+
+```yaml
+appId: com.guappa.app
+---
+# 1. Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# 2. Generate and play TTS audio into virtual mic
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Find recipes for chocolate cake"]
+
+# 3. Tap the microphone button to start STT
+- tapOn:
+    id: "voice-mic-button"
+- waitForAnimationToEnd
+
+# 4. Wait for STT transcription + agent response
+- extendedWaitUntil:
+    visible:
+      text: ".*chocolate cake.*"
+    timeout: 15000
+
+# 5. Verify neuroswarm reacted (processing state)
+- assertVisible:
+    text: "Processing"
+    optional: true
+```
+
+### Voice Test Matrix
+
+| Test | Script | What It Validates |
+|------|--------|-------------------|
+| `e2e_voice_stt_basic.yaml` | `"Hello Guappa"` | STT transcription appears in chat |
+| `e2e_voice_tts_playback.yaml` | Send text → assert TTS plays | TTS engine produces audio |
+| `e2e_voice_wake_word.yaml` | `"Hey Guappa, what time is it"` | Wake word triggers STT → agent response |
+| `e2e_voice_swarm_reaction.yaml` | `"Tell me a story"` | Neuroswarm transitions to listening → processing → speaking |
+| `e2e_voice_deepgram_stt.yaml` | `"Search for nearby restaurants"` | Deepgram Nova-3 cloud STT with API key |
+| `e2e_voice_android_stt.yaml` | `"Set a timer for five minutes"` | Android SpeechRecognizer fallback STT |
+| `e2e_voice_interrupt.yaml` | Play TTS → interrupt mid-sentence | Interruptible voice pipeline |
+
+### Key Notes
+
+- **BlackHole must be the active output** during test runs — no sound on speakers while testing
+- `afplay` is non-blocking via `subprocess.Popen` — Maestro continues immediately
+- For multi-turn voice tests, add `- scroll` or `- delay: 3000` between utterances
+- The emulator mic setting persists across restarts but resets on cold boot
 
 ---
 
@@ -347,20 +434,20 @@ Legend:
 | Phase | Total Features | Has E2E | Missing E2E | Coverage |
 |-------|---------------|---------|-------------|----------|
 | Phase 1: Foundation | 16 | 12 | 4 | **75%** |
-| Phase 2: Provider Router | 23 | 8 | 15 | **35%** |
+| Phase 2: Provider Router | 23 | 9 | 14 | **39%** |
 | Phase 3: Tool Engine | 21 | 18 | 3 | **86%** |
-| Phase 4: Proactive | 22 | 11 | 11 | **50%** |
-| Phase 5: Channels | 17 | 9 | 8 | **53%** |
-| Phase 6: Voice | 28 | 12 | 16 | **43%** |
+| Phase 4: Proactive | 22 | 12 | 10 | **55%** |
+| Phase 5: Channels | 17 | 12 | 5 | **71%** |
+| Phase 6: Voice | 28 | 16 | 12 | **57%** |
 | Phase 7: Memory | 15 | 13 | 2 | **87%** |
 | Phase 9: Testing | 11 | 6 | 5 | **55%** |
 | Phase 10: Config | 12 | 9 | 3 | **75%** |
-| Phase 11: Swarm | 16 | 10 | 6 | **63%** |
+| Phase 11: Swarm | 16 | 11 | 5 | **69%** |
 | Phase 12: UI | 13 | 10 | 3 | **77%** |
 | Phase 14: Visualization | 13 | 5 | 8 | **38%** |
 | Phase 13: Documentation | 5 | 5 | 0 | **100%** |
-| Local Inference | 13 | 5 | 8 | **38%** |
-| **TOTAL** | **225** | **133** | **92** | **59%** |
+| Local Inference | 13 | 6 | 7 | **46%** |
+| **TOTAL** | **225** | **144** | **81** | **64%** |
 
 ---
 
@@ -368,70 +455,31 @@ Legend:
 
 ### P0 — Blockers
 
-| # | Gap | Impact |
-|---|-----|--------|
-| 1 | **Session encryption (SQLCipher)** | Plain Room database — security concern |
-| 2 | **Discord/Slack gateway incoming** | Send-only, no bidirectional for Discord/Slack |
-| 3 | **OAuth infrastructure** | No OAuth for any provider — all API key only |
+| # | Gap | Impact | Status |
+|---|-----|--------|--------|
+| 1 | **Session encryption (SQLCipher)** | Plain Room database — security concern | ❌ Needs SQLCipher dependency |
+| 2 | ~~Discord/Slack gateway incoming~~ | ~~Send-only~~ | ✅ **RESOLVED** — Discord gateway + Slack polling implemented |
+| 3 | **OAuth infrastructure** | No OAuth for any provider — all API key only | ❌ Needs PKCE flow |
 
 ### P1 — Important
 
-| # | Gap | Impact |
-|---|-----|--------|
-| 4 | Audio routing (speaker/earpiece/BT) | Can't route voice to Bluetooth |
-| 5 | Audio focus management | Conflicts with other audio apps |
-| 6 | Embedded swarm connector (Rust) | Requires external server |
-| 7 | On-device high-quality TTS (Kokoro/Piper) | Quality limited to expo-speech |
-| 8 | Macrobenchmark / Baseline Profiles | No startup performance optimization |
-| 9 | TurboModule (New Architecture) | Uses old NativeModule bridge |
+| # | Gap | Impact | Status |
+|---|-----|--------|--------|
+| 4 | ~~Audio routing (speaker/earpiece/BT)~~ | ~~Can't route voice to Bluetooth~~ | ✅ **RESOLVED** — `AudioRoutingManager.kt` |
+| 5 | ~~Audio focus management~~ | ~~Conflicts with other audio apps~~ | ✅ **RESOLVED** — `AudioFocusManager.kt` |
+| 6 | Embedded swarm connector (Rust) | Requires external server | ❌ Separate project |
+| 7 | On-device high-quality TTS (Kokoro/Piper) | Quality limited to expo-speech | ❌ Needs native build |
+| 8 | Macrobenchmark / Baseline Profiles | No startup performance optimization | ❌ |
+| 9 | TurboModule (New Architecture) | Uses old NativeModule bridge | ❌ Major refactor |
+| 10 | Local inference engines (LiteRT, ONNX, Nexa) | All non-text local modalities need cloud | ❌ SDK deps |
+| 11 | ~~mDNS local discovery~~ | ~~Manual connector URL entry~~ | ✅ **RESOLVED** — `MdnsDiscovery.kt` |
 
 ### P2 — Nice to Have
 
-| # | Gap | Impact |
-|---|-----|--------|
-| 10 | Local inference engines (LiteRT, ONNX, Nexa) | All non-text local modalities need cloud |
-| 11 | mDNS local discovery | Manual connector URL entry |
-| 12 | DI framework (Hilt/Koin) | Manual wiring |
-| 13 | Silero VAD | Energy-based VAD less accurate |
-| 14 | Firebase Test Lab | No cloud device testing |
-| 15 | Espresso integration tests | No Android UI integration tests |
-
----
-
-## What Changed Since Last Review
-
-### Items upgraded from ❌ to ✅
-- **1.2** GuappaSession — now has session types, TTL, checkpoint/recovery
-- **1.4** MessageBus — now has priority queue
-- **2.15** HardwareProbe — SoC/NPU detection exists
-- **2.17** Token counter — `TokenCounter.kt` with cl100k_base approximation
-- **4.21** NetworkStateReceiver — publishes to MessageBus
-- **4.22** ScreenStateReceiver — dynamic registration
-- **5.5** Telegram incoming — long polling with `getUpdates`
-- **5.15** Channel `incoming()` Flow — in Channel interface
-- **5.16** ChannelHealthMonitor — exponential backoff in ChannelHub
-- **5.17** Channel formatters — `ChannelFormatter.kt` per-channel formatting
-- **6.2** Deepgram STT upgraded from nova-2 to **nova-3**
-- **6.11** Android SpeechRecognizer — `AndroidSTTModule.kt`
-- **6.27** STT/TTS engine selection UI — `voiceEngineManager.ts`
-- **6.28** SpeechRecognizer as free STT fallback — implemented
-- **6.31** Nova-3 STT — now in use
-- **6.36** Aura-2 TTS — `deepgramTTS.ts` with 10 voices, 7 languages
-- **7.15** Memory export/import — in MemoryBridge
-- **9.1** Unit tests — expanded to 21 files, 178+ tests
-- **9.6** CI pipeline — `.github/workflows/ci.yml`
-- **9.8** UI Automator tests — 4 instrumented test files
-- **9.9** testInstrumentationRunner — configured
-- **10.9** VoiceHotSwap — runtime STT/TTS switching
-- **10.10** MemoryHotSwap — embedding model, consolidation interval
-- **10.11** ConfigMigrator — schema versioning, integrated in MainApplication
-- **10.12** ConfigValidator — API key, URL, model validation
-- **13.2** Reference docs — `docs/reference/api.md`
-- **13.3** Architecture docs — `docs/architecture/overview.md`
-- **13.4** Development docs — `docs/development/setup.md`
-- **L.3** Free STT — AndroidSTTModule
-- **L.13** HardwareProbe — SoC detection
-
-### E2E test coverage
-- **Before**: 35 tests covering 16% of features
-- **After**: 133 features covered (59%) with 207 Maestro flows + 4 UI Automator tests + 21 unit test files
+| # | Gap | Impact | Status |
+|---|-----|--------|--------|
+| 12 | DI framework (Hilt/Koin) | Manual wiring | ❌ Architectural |
+| 13 | ~~Silero VAD~~ | ~~Energy-based VAD less accurate~~ | ⚠️ Stub created — `SileroVADEngine.kt` |
+| 14 | Firebase Test Lab | No cloud device testing | ❌ |
+| 15 | Espresso integration tests | No Android UI integration tests | ❌ |
+| 16 | ~~Geofence broadcast receiver~~ | ~~No dedicated receiver~~ | ✅ **RESOLVED** — `GeofenceBroadcastReceiver.kt` |

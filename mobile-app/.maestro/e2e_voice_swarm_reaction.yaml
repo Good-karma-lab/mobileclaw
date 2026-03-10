@@ -1,0 +1,45 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - neuroswarm
+  - virtual-audio
+---
+# Neuroswarm Voice Reaction — Verify swarm visualization responds to voice input
+# The neural swarm should transition: idle → listening → processing → speaking
+# Prerequisites: BlackHole 2ch active, emulator mic = host audio input, gTTS installed
+
+# Navigate to voice screen (shows neuroswarm + mic button)
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Verify swarm is in idle state initially
+# (swarm canvas should be visible with gentle animation)
+
+# Start voice recording
+- tapOn:
+    id: "voice-mic-button"
+- waitForAnimationToEnd
+
+# Generate and play speech into virtual mic while STT is active
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Tell me a story about a brave explorer"]
+
+# Wait for audio to flow and swarm to react
+# The neuroswarm should show "listening" state (expanded, brighter nodes)
+- swipe:
+    direction: "DOWN"
+    duration: 3000
+
+# Stop recording (tap mic again)
+- tapOn:
+    id: "voice-mic-button"
+- waitForAnimationToEnd
+
+# Wait for processing state (swarm contracts, pulses faster)
+# Then agent response triggers speaking state (swarm expands, rhythmic)
+- extendedWaitUntil:
+    visible:
+      text: ".*story.*|.*explorer.*|.*brave.*"
+    timeout: 25000

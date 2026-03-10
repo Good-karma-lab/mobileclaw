@@ -610,6 +610,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
               options={providerModelOptions}
               onValueChange={(v) => updateConfig("model", v)}
               placeholder={providerModelsLoading ? "Loading models..." : "Select model"}
+              testID="config-model-dropdown"
             />
           ) : (
             <GlassInput

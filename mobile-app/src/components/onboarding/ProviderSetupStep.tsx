@@ -98,6 +98,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
             onChangeText={setApiKey}
             placeholder="sk-..."
             secureTextEntry
+            testID="wizard-api-key-input"
           />
           <GlassButton
             title="Continue"

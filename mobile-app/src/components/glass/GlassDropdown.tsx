@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
+  TextInput,
   Pressable,
+  FlatList,
   LayoutAnimation,
   Platform,
   UIManager,
@@ -38,6 +40,8 @@ type Props = {
   testID?: string;
 };
 
+const SEARCH_THRESHOLD = 10; // Show search box when more than 10 options
+
 export function GlassDropdown({
   label,
   value,
@@ -48,13 +52,27 @@ export function GlassDropdown({
   testID,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const selectedOption = options.find((o) => o.value === value);
   const displayText = selectedOption?.label ?? placeholder;
 
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const q = searchQuery.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        o.value.toLowerCase().includes(q),
+    );
+  }, [options, searchQuery]);
+
   const handleToggle = useCallback(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded((prev) => !prev);
+    setExpanded((prev) => {
+      if (prev) setSearchQuery(""); // Clear search on close
+      return !prev;
+    });
   }, []);
 
   const handleSelect = useCallback(
@@ -62,8 +80,44 @@ export function GlassDropdown({
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       onValueChange(optionValue);
       setExpanded(false);
+      setSearchQuery("");
     },
     [onValueChange],
+  );
+
+  const showSearch = options.length > SEARCH_THRESHOLD;
+
+  const renderItem = useCallback(
+    ({ item }: { item: Option }) => {
+      const isSelected = item.value === value;
+      return (
+        <Pressable
+          onPress={() => handleSelect(item.value)}
+          style={[
+            styles.optionItem,
+            isSelected && styles.optionItemSelected,
+          ]}
+        >
+          <Text
+            style={[
+              styles.optionText,
+              isSelected && styles.optionTextSelected,
+            ]}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+          {isSelected && (
+            <Ionicons
+              name="checkmark"
+              size={16}
+              color={colors.accent.cyan}
+            />
+          )}
+        </Pressable>
+      );
+    },
+    [value, handleSelect],
   );
 
   return (
@@ -87,35 +141,48 @@ export function GlassDropdown({
       </Pressable>
       {expanded && (
         <View style={styles.optionsList}>
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => handleSelect(option.value)}
-                style={[
-                  styles.optionItem,
-                  isSelected && styles.optionItemSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    isSelected && styles.optionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                {isSelected && (
+          {showSearch && (
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={16}
+                color={colors.text.tertiary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search models..."
+                placeholderTextColor={colors.text.tertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                testID="model-search-input"
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery("")}>
                   <Ionicons
-                    name="checkmark"
+                    name="close-circle"
                     size={16}
-                    color={colors.accent.cyan}
+                    color={colors.text.tertiary}
                   />
-                )}
-              </Pressable>
-            );
-          })}
+                </Pressable>
+              )}
+            </View>
+          )}
+          <FlatList
+            data={filteredOptions}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.value}
+            style={styles.flatList}
+            keyboardShouldPersistTaps="handled"
+            initialNumToRender={20}
+            maxToRenderPerBatch={30}
+            windowSize={5}
+          />
+          {filteredOptions.length === 0 && (
+            <Text style={styles.noResults}>No models found</Text>
+          )}
         </View>
       )}
     </View>
@@ -162,6 +229,28 @@ const styles = StyleSheet.create({
     borderColor: "rgba(40, 70, 90, 0.12)",
     borderRadius: 12,
     overflow: "hidden",
+    maxHeight: 350,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(40, 70, 90, 0.2)",
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text.primary,
+    fontSize: 14,
+    fontFamily: typography.body.fontFamily,
+    paddingVertical: 4,
+  },
+  flatList: {
+    maxHeight: 300,
   },
   optionItem: {
     flexDirection: "row",
@@ -177,8 +266,16 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 15,
     fontFamily: typography.body.fontFamily,
+    flex: 1,
   },
   optionTextSelected: {
     color: colors.accent.cyan,
+  },
+  noResults: {
+    color: colors.text.tertiary,
+    fontSize: 14,
+    fontFamily: typography.body.fontFamily,
+    textAlign: "center",
+    paddingVertical: 16,
   },
 });

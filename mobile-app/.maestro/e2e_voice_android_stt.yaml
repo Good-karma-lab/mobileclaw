@@ -1,0 +1,53 @@
+appId: com.guappa.app
+tags:
+  - voice
+  - android-stt
+  - virtual-audio
+  - no-api-key
+---
+# Android SpeechRecognizer STT — Free, zero-download, no API key needed
+# Uses built-in Android SpeechRecognizer via AndroidSTTModule
+# Prerequisites: BlackHole 2ch, emulator mic = host audio
+
+# Navigate to config and select Android STT engine
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- tapOn:
+    text: "How GUAPPA Speaks & Listens"
+- waitForAnimationToEnd
+
+# Select Android built-in STT
+- tapOn:
+    text: "Android Built-in"
+    optional: true
+- waitForAnimationToEnd
+
+# Apply config
+- tapOn:
+    text: "Apply"
+- waitForAnimationToEnd
+
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Start recording
+- tapOn:
+    id: "voice-mic-button"
+
+# Play speech via virtual audio cable
+- runScript:
+    file: scripts/generate_and_play.py
+    args: ["Set a timer for five minutes"]
+
+# Wait for Android STT to transcribe
+- extendedWaitUntil:
+    visible:
+      text: ".*timer.*|.*five minutes.*"
+    timeout: 15000
+
+# Stop recording
+- tapOn:
+    id: "voice-mic-button"
