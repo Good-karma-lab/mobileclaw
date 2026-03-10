@@ -1,0 +1,40 @@
+appId: com.guappa.app
+name: "E2E: Provider Hot Swap Mid-Chat"
+---
+# Switch provider in config, return to chat, verify it still works
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Send a message in chat first
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Hi, just testing"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 20000
+- takeScreenshot: screenshots/hot_swap_before
+
+# Go to config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/hot_swap_config
+
+# Return to chat and send another message
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Are you still there?"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 20000
+- takeScreenshot: screenshots/hot_swap_after

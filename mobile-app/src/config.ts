@@ -50,12 +50,12 @@ export const config = {
   logLevel: requireEnv("EXPO_PUBLIC_LOG_LEVEL", "info"),
   demoMode: optionalEnv("EXPO_PUBLIC_DEMO_MODE") === "true",
   theme: {
-    primary: requireEnv("EXPO_PUBLIC_THEME_PRIMARY", "#D4F49C"),
-    secondary: requireEnv("EXPO_PUBLIC_THEME_SECONDARY", "#C69CF4"),
-    accent: requireEnv("EXPO_PUBLIC_THEME_ACCENT", "#8B5CF6"),
-    background: requireEnv("EXPO_PUBLIC_THEME_BG", "#05050A"),
-    text: requireEnv("EXPO_PUBLIC_THEME_TEXT", "#F5F0E6"),
-    border: requireEnv("EXPO_PUBLIC_THEME_BORDER", "#FFFFFF"),
-    textMuted: requireEnv("EXPO_PUBLIC_THEME_TEXT_MUTED", "#A3A3B2")
+    primary: requireEnv("EXPO_PUBLIC_THEME_PRIMARY", "#5DD4E8"),
+    secondary: requireEnv("EXPO_PUBLIC_THEME_SECONDARY", "#A880D0"),
+    accent: requireEnv("EXPO_PUBLIC_THEME_ACCENT", "#80E8F8"),
+    background: requireEnv("EXPO_PUBLIC_THEME_BG", "#020408"),
+    text: requireEnv("EXPO_PUBLIC_THEME_TEXT", "#D2E6F0"),
+    border: requireEnv("EXPO_PUBLIC_THEME_BORDER", "#1A3040"),
+    textMuted: requireEnv("EXPO_PUBLIC_THEME_TEXT_MUTED", "#A0BEC8")
   }
 };

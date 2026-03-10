@@ -21,6 +21,7 @@ appId: com.guappa.app
 - tapOn:
     id: "chat-input"
 - inputText: "Test after config"
+- hideKeyboard
 - tapOn:
     id: "chat-send-button"
 - waitForAnimationToEnd

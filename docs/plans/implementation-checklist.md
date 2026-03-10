@@ -1,821 +1,805 @@
 # Guappa Implementation Checklist — Plan vs Reality
 
-**Date**: 2026-03-09
-**Purpose**: Map every planned feature to actual implementation status, identify gaps, and define E2E test coverage.
+**Date**: 2026-03-10
+**Purpose**: Map every planned feature to actual implementation status, identify gaps, define E2E test coverage, and track icon/branding and palette conformance.
 
 Legend:
 - ✅ Implemented — code exists and appears functional
 - ⚠️ Partial — code exists but incomplete or missing key features
 - ❌ Missing — no implementation found
 - 🔧 Stub — file exists but minimal/skeleton implementation
+- 🧪 E2E test exists (Maestro or UI Automator)
+- 🚫 No E2E test
+
+---
+
+## 🎨 Storm Palette — "Dramatic Night Sky"
+
+Derived from reference: dark cyan/blue dramatic storm clouds over night sky.
+
+### Palette Definition
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| **abyss** | `#020408` | Deepest background, status bar |
+| **stormBlack** | `#060D14` | Primary background |
+| **deepNight** | `#0B1A26` | Secondary background, screen fills |
+| **midnightStorm** | `#102638` | Card backgrounds, glass fill |
+| **darkCyanStorm** | `#16334A` | Elevated surfaces, active areas |
+| **stormCyan** | `#1C4A5E` | **Primary accent** — buttons, active indicators, links |
+| **cyanGlow** | `#247080` | Bright accent — selected state, glow |
+| **lightningCyan** | `#2E90A5` | Highlight, sparingly — important CTAs |
+| **cloudShadow** | `#0E2030` | Glass fill, overlays |
+| **rainBlue** | `#1A3040` | Borders, dividers |
+| **paleStorm** | `#8AA0B0` | **Primary text** |
+| **mist** | `#5A7585` | Secondary text |
+| **distantStorm** | `#3A5060` | Tertiary text, disabled |
+| **thunderGray** | `#1A2A35` | Inactive elements, dock bg |
+| **stormWarning** | `#6A2030` | Error / danger |
+| **moss** | `#2A5A4A` | Success |
+| **amberStorm** | `#6A5020` | Warning |
+| **deepViolet** | `#3A2A5A` | Violet accent (swarm, identity) |
+
+### Current `colors.ts` vs Storm Palette — Delta
+
+| Current Token | Current Value | Storm Replacement | Delta |
+|---------------|---------------|-------------------|-------|
+| `base.spaceBlack` | `#030608` | `#020408` (abyss) | Minor — slightly cooler |
+| `base.midnightBlue` | `#06101A` | `#060D14` (stormBlack) | Minor — less blue, more neutral |
+| `glass.fill` | `rgba(255,255,255,0.05)` | `rgba(14,32,48,0.65)` (cloudShadow-based) | **Major** — switch from white-alpha to storm blue-alpha |
+| `glass.fillActive` | `rgba(255,255,255,0.08)` | `rgba(22,51,74,0.70)` (darkCyanStorm-based) | **Major** |
+| `glass.border` | `rgba(255,255,255,0.08)` | `rgba(26,48,64,0.50)` (rainBlue-based) | **Major** — cyan-tinted borders |
+| `glass.borderSubtle` | `rgba(255,255,255,0.05)` | `rgba(26,48,64,0.30)` | **Major** |
+| `accent.cyan` | `#1A5C6A` | `#1C4A5E` (stormCyan) | Moderate — darker, stormier |
+| `accent.cyanGlow` | `#2A8090` | `#247080` (cyanGlow) | Moderate — slightly darker |
+| `accent.cyanBright` | `#4AA0B0` | `#2E90A5` (lightningCyan) | Moderate — darker, more saturated |
+| `accent.violet` | `#5A3A8A` | `#3A2A5A` (deepViolet) | Moderate — darker |
+| `accent.rose` | `#8A2040` | `#6A2030` (stormWarning) | Moderate — darker |
+| `accent.amber` | `#8A6A20` | `#6A5020` (amberStorm) | Moderate — darker |
+| `semantic.success` | `#1A7A6A` | `#2A5A4A` (moss) | Moderate — mossier |
+| `semantic.error` | `#8A2020` | `#6A2030` (stormWarning) | Moderate — bluer red |
+| `semantic.warning` | `#7A6020` | `#6A5020` (amberStorm) | Minor |
+| `semantic.info` | `#2A5080` | `#1C4A5E` (stormCyan) | Minor |
+| `text.primary` | `rgba(180,200,210,0.85)` | `rgba(138,160,176,0.90)` (paleStorm) | **Major** — cooler, less white |
+| `text.secondary` | `rgba(140,165,180,0.55)` | `rgba(90,117,133,0.70)` (mist) | Major — darker, more opaque |
+| `text.tertiary` | `rgba(100,130,150,0.35)` | `rgba(58,80,96,0.50)` (distantStorm) | Major — darker |
+
+### Hardcoded Colors in Components — Must Update
+
+| File | Current | Storm Replacement |
+|------|---------|-------------------|
+| `FloatingDock.tsx` line 91 | `color="#D0E8F5"` (active icon) | `#8AA0B0` (paleStorm) — active icons should be muted, not bright white |
+| `FloatingDock.tsx` line 91 | `color="rgba(160,190,210,0.75)"` (idle icon) | `rgba(90,117,133,0.60)` (mist) |
+| `FloatingDock.tsx` line 159 | `backgroundColor: "rgba(10,22,35,0.92)"` (dock bg) | `rgba(6,13,20,0.94)` (stormBlack) |
+| `FloatingDock.tsx` line 162 | `borderColor: "rgba(80,130,160,0.2)"` | `rgba(26,48,64,0.35)` (rainBlue) |
+| `FloatingDock.tsx` line 182 | `backgroundColor: "rgba(50,100,130,0.3)"` (active glow) | `rgba(28,74,94,0.25)` (stormCyan glow) |
+| `RootNavigator.tsx` line 130 | `backgroundColor: "#020206"` | `#020408` (abyss) |
+| `SideRail.tsx` line 97 | `backgroundColor: "rgba(10,10,30,0.65)"` | `rgba(6,13,20,0.80)` (stormBlack) |
+| `SideRail.tsx` line 100 | `borderRightColor: "rgba(255,255,255,0.12)"` | `rgba(26,48,64,0.40)` (rainBlue) |
+
+### Implementation Task
+
+| # | Task | File(s) | Priority |
+|---|------|---------|----------|
+| P.1 | Update `colors.ts` with storm palette tokens | `src/theme/colors.ts` | P0 |
+| P.2 | Replace all hardcoded hex/rgba in FloatingDock | `src/components/dock/FloatingDock.tsx` | P0 |
+| P.3 | Replace all hardcoded hex/rgba in SideRail | `src/components/dock/SideRail.tsx` | P0 |
+| P.4 | Replace hardcoded color in RootNavigator | `src/navigation/RootNavigator.tsx` | P0 |
+| P.5 | Audit & update all glass components | `src/components/glass/*.tsx` | P1 |
+| P.6 | Audit & update all screen files | `src/screens/tabs/*.tsx` | P1 |
+| P.7 | Update SwarmCanvas / EmotionPalette | `src/swarm/emotion/EmotionPalette.ts` | P1 |
+| P.8 | Update onboarding components | `src/components/onboarding/*.tsx` | P1 |
+
+---
+
+## 🖼️ In-App Icons Audit — BROKEN / INVISIBLE
+
+### Root Cause: Dual Theme System Conflict
+
+The app has **two competing theme systems** that are out of sync. This likely causes icons to render with wrong/invisible colors:
+
+| Theme System | File | Used By | Icon Colors |
+|-------------|------|---------|-------------|
+| **Config theme** (`ui/theme.ts`) | `src/config.ts` → `ui/theme.ts` | DeviceScreen, MemoryScreen, SettingsScreen, IntegrationsScreen, glass components | `theme.colors.base.textMuted` = `#A3A3B2`, `theme.colors.base.accent` = `#8B5CF6`, `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` |
+| **Neural swarm theme** (`src/theme/colors.ts`) | `src/theme/colors.ts` | FloatingDock, SideRail, ChatScreen, ChatInputBar, CommandScreen, ConfigScreen, SwarmScreen | `colors.accent.cyan` = `#1A5C6A`, `colors.text.secondary` = `rgba(140,165,180,0.55)`, `colors.text.tertiary` = `rgba(100,130,150,0.35)` |
+
+**The config theme defaults** (`src/config.ts`):
+```
+primary:    #D4F49C   (lime green)
+secondary:  #C69CF4   (lavender)
+accent:     #8B5CF6   (violet)
+background: #05050A   (near-black)
+text:       #F5F0E6   (warm cream)
+border:     #FFFFFF   (pure white)
+textMuted:  #A3A3B2   (gray)
+```
+
+**The neural swarm theme** (`src/theme/colors.ts`):
+```
+accent.cyan:      #1A5C6A   (dark teal)
+accent.cyanGlow:  #2A8090   (brighter teal)
+text.primary:     rgba(180,200,210,0.85)  (cool blue-gray)
+text.secondary:   rgba(140,165,180,0.55)  (muted steel)
+text.tertiary:    rgba(100,130,150,0.35)  (very dim)
+```
+
+**Conflict impact on icons**:
+- Components using `colors.text.tertiary` = `rgba(100,130,150,0.35)` → **35% opacity** — nearly invisible on dark backgrounds
+- Components using `colors.accent.cyan` = `#1A5C6A` → very dark teal, borderline visible on `#030608` background
+- `FloatingDock` idle icons use `rgba(160,190,210,0.75)` — should be visible
+- `FloatingDock` active icons use `#D0E8F5` — bright, should be visible
+- Some glass components use `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` — warm cream
+
+### Complete In-App Icon Inventory
+
+**22 files** use Ionicons. **35 unique static icon names** + **12 dynamic icon references** (from config maps).
+
+#### Dock Navigation Icons (MOST VISIBLE)
+
+| Location | Icon (active) | Icon (inactive) | Active Color | Inactive Color | Visibility Issue |
+|----------|--------------|-----------------|-------------|----------------|-----------------|
+| FloatingDock → Voice | `mic` | `mic-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
+| FloatingDock → Chat | `chatbubble` | `chatbubble-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
+| FloatingDock → Command | `flash` | `flash-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
+| FloatingDock → Swarm | `globe` | `globe-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
+| FloatingDock → Config | `options` | `options-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
+| SideRail → all tabs | Same as above | Same | `colors.accent.cyan` = `#1A5C6A` | `colors.text.secondary` = `rgba(140,165,180,0.55)` | ⚠️ Active = very dark teal on dark bg, could be hard to see |
+
+#### Chat Input Bar Icons
+
+| Location | Icon | Color | Size | Visibility Issue |
+|----------|------|-------|------|-----------------|
+| `ChatInputBar.tsx` → clear attachment | `close-circle` | `rgba(255,100,100,0.9)` | 20 | OK ✅ |
+| `ChatInputBar.tsx` → image picker | `image-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
+| `ChatInputBar.tsx` → camera | `camera-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
+| `ChatInputBar.tsx` → document picker | `document-outline` | `colors.accent.cyan` = `#1A5C6A` | 20 | ⚠️ Dark teal on dark bg |
+| `ChatInputBar.tsx` → send button | `arrow-up` | `colors.base.spaceBlack` = `#030608` | 20 | ⚠️ Near-black icon — only visible if button has contrasting bg |
+| `ChatInputBar.tsx` → mic button | `mic-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
+
+#### Command Screen Icons
+
+| Location | Icon | Color | Size | Visibility Issue |
+|----------|------|-------|------|-----------------|
+| Task status `running` | `play-circle` | `colors.accent.cyan` `#1A5C6A` | 12 | ⚠️ 12px dark teal — very hard to see |
+| Task status `queued` | `time-outline` | `colors.semantic.warning` `#7A6020` | 12 | ⚠️ 12px dark amber |
+| Task status `completed` | `checkmark-circle` | `colors.semantic.success` `#1A7A6A` | 12 | ⚠️ 12px dark teal |
+| Task status `failed` | `close-circle` | `colors.semantic.error` `#8A2020` | 12 | ⚠️ 12px dark red |
+| Trigger `event` | `flash-outline` | `colors.accent.cyan` | 12 | ⚠️ Same |
+| Trigger `condition` | `git-branch-outline` | `colors.semantic.warning` | 12 | ⚠️ Same |
+| Trigger `schedule` | `calendar-outline` | `colors.accent.violet` `#5A3A8A` | 12 | ⚠️ 12px dark violet |
+| Trigger `webhook` | `globe-outline` | `colors.accent.rose` `#8A2040` | 12 | ⚠️ 12px dark rose |
+| Empty state (tasks) | `list-outline` | `colors.text.tertiary` = 35% opacity | 36 | ❌ **Nearly invisible** |
+| Empty state (schedules) | `calendar-outline` | `colors.text.tertiary` | 36 | ❌ **Nearly invisible** |
+| Empty state (triggers) | `flash-outline` | `colors.text.tertiary` | 36 | ❌ **Nearly invisible** |
+| Section headers | Various `-outline` icons | `colors.accent.cyan` | 14 | ⚠️ Small + dark |
+| Memory stats | `document-text-outline`, `library-outline`, `film-outline`, `trash-outline` | Various accent colors | 14 | ⚠️ Small + dark |
+| Session `time-outline` | `time-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
+| Session `chatbubble-outline` | `chatbubble-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
+| `hardware-chip-outline` | `hardware-chip-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
+
+#### Config Screen Icons (CollapsibleSection headers)
+
+| Section Title | Icon | Color | Visibility Issue |
+|---------------|------|-------|-----------------|
+| "How GUAPPA Thinks" | `sparkles-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "How GUAPPA Sees" | `eye-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "How GUAPPA Speaks & Listens" | `mic-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "How GUAPPA Connects" | `globe-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "What GUAPPA Can Do" | `build-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "What GUAPPA Remembers" | `server-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "How GUAPPA Acts on Her Own" | `flash-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "Local Intelligence" | `hardware-chip-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+| "Permissions" | `shield-checkmark-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
+
+#### Swarm Screen Icons
+
+| Location | Icon | Color | Size | Visibility Issue |
+|----------|------|-------|------|-----------------|
+| Empty state globe | `globe-outline` | `colors.accent.violet` `#5A3A8A` | 56 | ⚠️ Dark violet on dark bg |
+| Tab badges | Various (`chatbubble`, `briefcase`, `people`, `star`) | Per-tab accent colors | 14 | ⚠️ Small + dark |
+| Peer tier icons | `leaf-outline`, `shield-checkmark-outline`, `ribbon-outline`, `diamond-outline` | Per-tier colors | 14 | ⚠️ Small |
+| Connection status | `checkmark-outline`, `close-outline` | accent colors | — | ⚠️ |
+| Identity | `globe-outline`, `finger-print-outline`, `key-outline` | `colors.accent.cyan` | — | ⚠️ Dark teal |
+| Peer details | `star`, `link-outline`, `people-outline`, `time-outline`, `radio-outline` | accent colors | — | ⚠️ |
+
+#### Device Screen Icons (uses config theme)
+
+| Location | Icon | Color | Visibility Issue |
+|----------|------|-------|-----------------|
+| Categories (active) | `accessibility`, `camera`, `call`, `radio`, `person` | `theme.colors.base.secondary` = `#C69CF4` | OK ✅ (lavender is visible) |
+| Categories (inactive) | Same | `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` | OK ✅ |
+| Warning | `warning` | `theme.colors.base.primary` = `#D4F49C` | OK ✅ (lime green) |
+| Close button | `close` | `theme.colors.base.textMuted` = `#A3A3B2` | OK ✅ |
+
+#### Memory Screen Icons (uses config theme)
+
+| Location | Icon | Color | Size | Visibility Issue |
+|----------|------|-------|------|-----------------|
+| Delete action | `trash-outline` | `theme.colors.base.accent` = `#8B5CF6` | 18 | OK ✅ |
+| Empty state | `cube-outline` | `theme.colors.base.textMuted` = `#A3A3B2` | 48 | OK ✅ |
+
+#### Settings/Integrations Screen Icons (uses config theme)
+
+| Location | Icon | Color | Visibility Issue |
+|----------|------|-------|-----------------|
+| Dropdowns | `chevron-down` | `theme.colors.base.textMuted` = `#A3A3B2` | OK ✅ |
+| Integration enabled | `checkmark-circle` | `theme.colors.base.secondary` = `#C69CF4` | OK ✅ |
+| Integration toggle | `checkmark-circle` / `radio-button-off` | `theme.colors.base.secondary` | OK ✅ |
+| Close modal | `close` | `theme.colors.base.textMuted` | OK ✅ |
+
+#### Glass Components Icons
+
+| Component | Icon(s) | Color Source | Visibility Issue |
+|-----------|---------|-------------|-----------------|
+| `CollapsibleSection.tsx` | Dynamic `icon` prop + `chevron-up`/`chevron-down` | Varies by caller | Depends on which theme the parent uses |
+| `GlassButton.tsx` | Optional icon prop | Varies | Depends on parent |
+| `GlassChip.tsx` | Optional icon prop | Varies | Depends on parent |
+| `GlassTabBar.tsx` | Tab icon prop | Varies | Depends on parent |
+| `GlassDropdown.tsx` | `chevron-down` | `theme.colors.base.textMuted` | OK ✅ |
+| `GlassModal.tsx` | `close` | `theme.colors.base.textMuted` | OK ✅ |
+
+### Diagnosis: Why Icons May Be Invisible
+
+| Severity | Issue | Affected Components | Fix |
+|----------|-------|---------------------|-----|
+| 🔴 **Critical** | `colors.text.tertiary` = `rgba(100,130,150,0.35)` used for empty state icons (36px) and inline metadata icons — **35% opacity on near-black bg is invisible** | CommandScreen empty states, session metadata, hardware-chip | Increase to `rgba(100,130,150,0.60)` minimum, or use storm palette `distantStorm` at higher alpha |
+| 🔴 **Critical** | `colors.accent.cyan` = `#1A5C6A` is very dark teal — poor contrast ratio (~1.5:1) against `#030608` background, especially at 12-14px sizes | All CollapsibleSection headers in ConfigScreen, status badges in CommandScreen, ChatInputBar action buttons, SideRail active icons | Brighten to `#247080` (cyanGlow) or `#2E90A5` (lightningCyan) for icons |
+| 🟡 **Major** | All `colors.semantic.*` values are very dark (`#1A7A6A`, `#8A2020`, `#7A6020`) — used for 12px status badges | CommandScreen task/trigger status indicators | Brighten semantic colors or add glow/bg behind tiny icons |
+| 🟡 **Major** | `colors.accent.violet` = `#5A3A8A` at 12-14px — dark violet on dark bg | SwarmScreen tier badges, trigger indicators | Brighten to `#7A5AAA` |
+| 🟢 **OK** | Config theme icons (`theme.colors.base.*`) use bright colors (`#D4F49C`, `#C69CF4`, `#A3A3B2`) | DeviceScreen, MemoryScreen, SettingsScreen, IntegrationsScreen | Visible but **wrong palette** — lime/lavender doesn't match storm aesthetic |
+| 🟢 **OK** | FloatingDock uses hardcoded bright colors (`#D0E8F5`, `rgba(160,190,210,0.75)`) | FloatingDock (phone layout) | Visible, but should use storm palette tokens |
+
+### Icon Fixes — Implementation Plan
+
+| # | Task | Files | Priority |
+|---|------|-------|----------|
+| I.1 | **Unify theme systems** — merge `src/config.ts` defaults + `src/theme/colors.ts` into one storm palette; or make config defaults match storm palette | `src/config.ts`, `src/theme/colors.ts`, `ui/theme.ts` | **P0** |
+| I.2 | **Fix `colors.text.tertiary` opacity** — raise from 0.35 to 0.55+ for all icon usages | `src/theme/colors.ts` | **P0** |
+| I.3 | **Brighten `colors.accent.cyan` for icon use** — either brighten the token or create `colors.accent.cyanIcon` at `#2E90A5` for small icon contexts | `src/theme/colors.ts` + all icon color references | **P0** |
+| I.4 | **Brighten semantic colors** for small icon contexts — success, error, warning all need more luminance at 12px | `src/theme/colors.ts` | **P0** |
+| I.5 | **Fix ChatInputBar icon colors** — `image-outline`, `camera-outline`, `document-outline`, `mic-outline` should use brighter accent | `src/components/chat/ChatInputBar.tsx` | **P0** |
+| I.6 | **Fix CommandScreen empty state icons** — 36px at 35% opacity is invisible | `src/screens/tabs/CommandScreen.tsx` | **P0** |
+| I.7 | **Fix ConfigScreen section header icons** — all CollapsibleSection icons use dark cyan | `src/screens/tabs/ConfigScreen.tsx` | **P1** |
+| I.8 | **Fix SwarmScreen icon colors** — globe empty state, tier badges, connection status | `src/screens/tabs/SwarmScreen.tsx` | **P1** |
+| I.9 | **Align config theme defaults to storm palette** — change `EXPO_PUBLIC_THEME_*` defaults from lime/lavender to storm colors | `src/config.ts` | **P1** |
+| I.10 | **Replace hardcoded colors in FloatingDock/SideRail** with theme tokens | `FloatingDock.tsx`, `SideRail.tsx` | **P1** |
+
+### Android-Side Icons (Launcher, Notification, Splash)
+
+| Asset | Location | Current State | Issue |
+|-------|----------|---------------|-------|
+| **App launcher icon** | `res/mipmap-*/ic_launcher.webp` | ❌ **Default Android robot** (green droid) | No Guappa branding |
+| **Round launcher icon** | `res/mipmap-*/ic_launcher_round.webp` | ❌ **Default Android robot** | Same |
+| **Splash screen logo** | `res/drawable-*/splashscreen_logo.png` | ❌ **Generic concentric circles placeholder** (Expo default) | No branding |
+| **Adaptive icon** | `res/drawable/ic_launcher_foreground.xml` | ❌ **Does not exist** | No adaptive icon |
+| **Monochrome icon** (Android 13+) | — | ❌ **Missing** | Themed icons won't work |
+| **Notification icons** | 14 Kotlin files | ❌ All use `android.R.drawable.ic_dialog_info` etc. | System defaults |
+
+#### Notification Icons — Per-File Inventory
+
+| File | Line(s) | Current Icon | Should Be |
+|------|---------|-------------|-----------|
+| `GeofenceTool.kt` | 224 | `android.R.drawable.ic_dialog_map` | Custom `R.drawable.ic_notif_location` |
+| `CronJobTool.kt` | 235 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_schedule` |
+| `ReminderTool.kt` | 193 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_reminder` |
+| `RuntimeBridge.kt` | 973 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_agent` |
+| `GuappaAgentService.kt` | 141 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_agent` |
+| `GuappaNotificationManager.kt` | 90,101 | `ic_menu_send` / `ic_dialog_info` | Custom `R.drawable.ic_notif_message` |
+| `GuappaNotificationManager.kt` | 138 | `ic_menu_manage` | Custom `R.drawable.ic_notif_task` |
+| `GuappaNotificationManager.kt` | 186,197 | `ic_menu_send` / `ic_menu_help` | Custom `R.drawable.ic_notif_action` |
+| `GuappaNotificationManager.kt` | 229 | `ic_dialog_alert` | Custom `R.drawable.ic_notif_alert` |
+| `GuappaNotificationManager.kt` | 266 | `ic_popup_reminder` | Custom `R.drawable.ic_notif_reminder` |
+| `GuappaNotificationManager.kt` | 308 | `ic_menu_info_details` | Custom `R.drawable.ic_notif_info` |
+| `NotificationActionReceiver.kt` | 175 | `ic_dialog_info` | Custom `R.drawable.ic_notif_reply` |
+| `AndroidAgentToolsModule.kt` | 415 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_agent` |
+| `RuntimeAlwaysOnService.kt` | 43 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_service` |
+
+#### Android Icon Implementation Plan
+
+| # | Task | Deliverables | Priority |
+|---|------|-------------|----------|
+| I.11 | **Design Guappa app icon** — storm-themed, neural swarm motif | Adaptive icon XML + all density webps | **P0** |
+| I.12 | **Create notification icon set** — 24dp white-on-transparent vector drawables | 11 `ic_notif_*.xml` files | **P0** |
+| I.13 | **Replace all system icon references** in Kotlin | Update 14 `.setSmallIcon()` calls | **P0** |
+| I.14 | **Design splash screen logo** | Replace `splashscreen_logo.png` in all densities | **P0** |
+| I.15 | **Add monochrome icon** (Android 13+) | `<monochrome>` in adaptive icon XML | P1 |
+| I.16 | **Update Expo config** (`app.json`) | Set `icon`, `splash.image`, `android.adaptiveIcon` | P1 |
+| I.17 | **Add app shortcuts** | `res/xml/shortcuts.xml` + manifest | P2 |
+
+### E2E Tests for Icons
+
+| Test | What It Validates | Type |
+|------|-------------------|------|
+| `e2e_dock_icons_visible.yaml` | Screenshot dock → verify all 5 tab icons render (not blank squares) | Maestro |
+| `e2e_config_section_icons.yaml` | Open Config screen → screenshot → verify section header icons visible | Maestro |
+| `e2e_command_empty_states.yaml` | Open Command screen with no tasks → screenshot → verify empty state icons visible | Maestro |
+| `e2e_chat_input_icons.yaml` | Open Chat screen → screenshot input bar → verify attachment/send/mic icons | Maestro |
+| `e2e_icon_launcher_not_default.yaml` | Screenshot launcher → verify not default Android robot | Maestro |
+| `e2e_notification_icon_check.yaml` | Trigger notification → screenshot shade → verify custom icon | Maestro |
+| `e2e_splash_screen_check.yaml` | Cold launch → screenshot splash → verify branded logo | Maestro |
+| `IconRegressionTest.kt` | Verify `R.drawable.ic_notif_*` resources exist | UI Automator |
 
 ---
 
 ## Phase 1: Foundation — Agent Core
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 1.1 | GuappaOrchestrator (ReAct loop) | ✅ | `agent/GuappaOrchestrator.kt` (516 lines) | — |
-| 1.2 | GuappaSession (conversation state) | ⚠️ | `agent/GuappaSession.kt` (67 lines) | Very thin — no session type enum (CHAT/BACKGROUND_TASK/TRIGGER/SYSTEM), no TTL, no checkpoint/recovery |
-| 1.3 | GuappaPlanner (ReAct, task decomposition) | ✅ | `agent/GuappaPlanner.kt` (356 lines) | — |
-| 1.4 | MessageBus (SharedFlow pub/sub) | ✅ | `agent/MessageBus.kt` (74 lines) | No priority queue for urgent events as planned |
-| 1.5 | TaskManager | ✅ | `agent/TaskManager.kt` (262 lines) | — |
-| 1.6 | GuappaConfig | ✅ | `agent/GuappaConfig.kt` | — |
-| 1.7 | GuappaPersona (system prompt, personality) | ✅ | `agent/GuappaPersona.kt` | — |
-| 1.8 | Foreground service (DATA_SYNC) | ✅ | `RuntimeAlwaysOnService.kt` (48 lines) + `GuappaAgentService.kt` (129 lines) | Both exist — verify no duplication |
-| 1.9 | Boot receiver (auto-start) | ✅ | `RuntimeBootReceiver.kt` (24 lines), manifest registered | — |
-| 1.10 | Room database (sessions, messages, tasks) | ✅ | `memory/GuappaDatabase.kt`, `Entities.kt`, `Daos.kt` | Full schema with sessions, messages, tasks, facts, episodes, embeddings |
-| 1.11 | Context Manager / budget allocation | ✅ | `memory/ContextCompactor.kt` (343 lines) | — |
-| 1.12 | Streaming responses | ✅ | All providers implement `streamChat()` | — |
-| 1.13 | Retry with exponential backoff | ⚠️ | Logic in orchestrator | Verify fallback provider chain works |
-| 1.14 | Multi-session concurrency | ⚠️ | Session entity exists | Unclear if concurrent CHAT + BACKGROUND_TASK tested |
-| 1.15 | Session encryption (SQLCipher / Keystore) | ❌ | No encryption layer found | Plain Room database, no SQLCipher |
-| 1.16 | Dependency injection (Hilt/Koin) | ❌ | No DI framework | Manual wiring via service classes |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 1.1 | GuappaOrchestrator (ReAct loop) | ✅ | `agent/GuappaOrchestrator.kt` (516 lines) | — | 🧪 `e2e_full_agent_scenario.yaml` |
+| 1.2 | GuappaSession (conversation state) | ⚠️ | `agent/GuappaSession.kt` (67 lines) | Very thin — no session type enum, no TTL, no checkpoint/recovery | 🚫 Needs: `e2e_session_persistence.yaml` — send message → kill app → reopen → verify conversation intact |
+| 1.3 | GuappaPlanner (ReAct, task decomposition) | ✅ | `agent/GuappaPlanner.kt` (356 lines) | — | 🧪 `e2e_full_agent_scenario.yaml` (indirect) |
+| 1.4 | MessageBus (SharedFlow pub/sub) | ✅ | `agent/MessageBus.kt` (74 lines) | No priority queue for urgent events | 🚫 Internal — no direct E2E needed |
+| 1.5 | TaskManager | ✅ | `agent/TaskManager.kt` (262 lines) | — | 🧪 `e2e_phase2_call_hook_setup.yaml` (creates task) |
+| 1.6 | GuappaConfig | ✅ | `agent/GuappaConfig.kt` | — | 🧪 Config screen tests |
+| 1.7 | GuappaPersona (system prompt, personality) | ✅ | `agent/GuappaPersona.kt` | — | 🚫 Needs: `e2e_persona_tone.yaml` — verify agent responds with persona traits |
+| 1.8 | Foreground service (DATA_SYNC) | ✅ | `RuntimeAlwaysOnService.kt` + `GuappaAgentService.kt` | Verify no duplication | 🚫 Needs: `e2e_service_survives_background.yaml` — minimize app → wait 60s → send intent → verify response |
+| 1.9 | Boot receiver (auto-start) | ✅ | `RuntimeBootReceiver.kt` (24 lines) | — | 🚫 Needs: `BootReceiverTest.kt` (UI Automator — reboot emulator) |
+| 1.10 | Room database (sessions, messages, tasks) | ✅ | `memory/GuappaDatabase.kt`, `Entities.kt`, `Daos.kt` | — | 🧪 `test_scenario_memory_persistence.yaml` |
+| 1.11 | Context Manager / budget allocation | ✅ | `memory/ContextCompactor.kt` (343 lines) | — | 🚫 Needs: `e2e_long_conversation_context.yaml` — 50+ messages then recall early details |
+| 1.12 | Streaming responses | ✅ | All providers implement `streamChat()` | — | 🧪 `live_openrouter_chat.yaml` |
+| 1.13 | Retry with exponential backoff | ⚠️ | Logic in orchestrator | Verify fallback provider chain | 🚫 Needs: `e2e_provider_failover.yaml` — configure bad key → verify fallback |
+| 1.14 | Multi-session concurrency | ⚠️ | Session entity exists | Unclear if concurrent sessions tested | 🚫 Needs: `MultiSessionTest.kt` (UI Automator) |
+| 1.15 | Session encryption (SQLCipher / Keystore) | ❌ | No encryption layer found | Plain Room database | 🚫 Needs: `e2e_encrypted_db_check.yaml` — verify DB file not plaintext readable |
+| 1.16 | Dependency injection (Hilt/Koin) | ❌ | No DI framework | Manual wiring | 🚫 N/A — architectural, no E2E |
 
 ---
 
 ## Phase 2: Provider Router — Dynamic Model Discovery
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 2.1 | ProviderRouter (capability-based routing) | ✅ | `providers/ProviderRouter.kt` (114 lines) | — |
-| 2.2 | Provider interface | ✅ | `providers/Provider.kt` | `chat()`, `streamChat()`, `listModels()` |
-| 2.3 | AnthropicProvider | ✅ | `providers/AnthropicProvider.kt` (310 lines) | Full implementation |
-| 2.4 | OpenAI-compatible provider (base) | ✅ | `providers/OpenAICompatibleProvider.kt` (307 lines) | Covers OpenAI, OpenRouter, DeepSeek, Mistral, xAI, Groq, Together, etc. |
-| 2.5 | Google Gemini provider | ✅ | `providers/GoogleGeminiProvider.kt` | — |
-| 2.6 | Dynamic model fetching (list models API) | ✅ | `listModels()` in all providers | Verified in Anthropic, OpenAI-compat, Gemini |
-| 2.7 | CapabilityInferrer (detect model capabilities) | ✅ | `providers/CapabilityInferrer.kt` | Infers from model ID patterns |
-| 2.8 | CapabilityType enum | ✅ | `providers/CapabilityType.kt` | TEXT, VISION, IMAGE_GEN, etc. |
-| 2.9 | CostTracker | ✅ | `providers/CostTracker.kt` | — |
-| 2.10 | ProviderFactory (create from name) | ✅ | `providers/ProviderFactory.kt` | Covers 20+ provider endpoints via defaults |
-| 2.11 | Local inference — text (llama.rn via GGUF) | ✅ | `localLlmServer.ts` uses `llama.rn` (initLlama) + NanoHTTPD proxy server | Full flow: download GGUF → load via llama.rn → expose as OpenAI-compat `/v1/chat/completions` on localhost:8888 |
-| 2.12 | LiteRT-LM (Gemini Nano) | ❌ | Not found | — |
-| 2.13 | Qualcomm GENIE (NPU) | ❌ | Not found | — |
-| 2.14 | ONNX Runtime Mobile | ❌ | Not found | Only referenced in EmbeddingService |
-| 2.15 | HardwareProbe (SoC/NPU detection) | ❌ | Not found | — |
-| 2.16 | ModelDownloadManager | ✅ | `ModelDownloaderModule.kt` (91 lines) + `whisperModelManager.ts` + `modelDownloader.ts` | Downloads GGUF + Whisper models |
-| 2.17 | Token counter (tiktoken) | ❌ | Not found | Token counting may be approximate |
-| 2.18 | Separate model per capability (text/vision/image) | ⚠️ | ConfigStore has fields for this | UI supports it but routing needs verification |
-| 2.19 | **OAuth — OpenAI Codex (ChatGPT Plus/Pro)** | ❌ | Only API key auth | Pi implements full OAuth: PKCE authorization code flow → local callback server on `:1455` → exchange code → JWT decode for `accountId` → auto-refresh. Client ID: `app_EMoamEEZ73f0CkXaXp7hrann`. Allows ChatGPT subscribers to use models without API key billing. |
-| 2.20 | **OAuth — Anthropic (Claude Pro/Max)** | ❌ | Only API key auth | Pi implements PKCE flow: authorize at `claude.ai/oauth/authorize` → user pastes `code#state` → exchange at `console.anthropic.com/v1/oauth/token` → auto-refresh. Scopes: `org:create_api_key user:profile user:inference`. Allows Claude Pro/Max subscribers to use without API key. |
-| 2.21 | **OAuth — GitHub Copilot** | ❌ | `copilot` endpoint exists in ProviderFactory but uses API key (won't work) | Pi implements GitHub device code flow (RFC 8628): `POST /login/device/code` → user enters code at `github.com/login/device` → poll `access_token` → exchange for Copilot token at `/copilot_internal/v2/token` → auto-refresh. Supports GitHub Enterprise (`company.ghe.com`). After login, enables all Copilot models via policy API. Dynamic `baseUrl` from proxy-ep in token. |
-| 2.22 | **OAuth — Google Gemini CLI (Cloud Code Assist)** | ❌ | Only API key auth | Pi implements Google OAuth: PKCE + local callback server on `:8085` → exchange code → discover/provision Cloud project → auto-refresh. Supports free/standard/enterprise tiers. |
-| 2.23 | **OAuth infrastructure (PKCE, token refresh, credential storage)** | ❌ | No OAuth code anywhere | **Required components** (from pi reference implementation): |
-
-#### OAuth Implementation Plan (Based on Pi Architecture)
-
-Pi's OAuth system (`@mariozechner/pi-ai/oauth`) provides a clean reference. The Guappa Android adaptation needs:
-
-**1. Core OAuth Types** (`providers/oauth/OAuthTypes.kt`)
-```
-OAuthCredentials { refresh, access, expires, [extra fields] }
-OAuthProviderInterface { id, name, login(), refreshToken(), getApiKey(), modifyModels?() }
-OAuthLoginCallbacks { onAuth(url, instructions), onPrompt(message) → String, onProgress(msg) }
-```
-
-**2. PKCE Utility** (`providers/oauth/PKCE.kt`)
-- Generate code verifier (32 random bytes → base64url)
-- Compute SHA-256 challenge
-- Use `java.security.MessageDigest` + `SecureRandom`
-
-**3. Provider Implementations** (each ~100-300 lines):
-
-| Provider | Flow Type | Key Details |
-|----------|-----------|-------------|
-| **OpenAI Codex** | Authorization Code + PKCE | Local HTTP server on device for callback; fallback to manual code paste. Extracts `accountId` from JWT. |
-| **Anthropic** | Authorization Code + PKCE | User opens URL in browser, pastes `code#state` back. No local server needed. |
-| **GitHub Copilot** | Device Code (RFC 8628) | Show user code → poll for token → exchange for Copilot token. Supports GH Enterprise. Auto-enables models via policy API. |
-| **Google Gemini CLI** | Authorization Code + PKCE | Local HTTP server for callback. Discovers/provisions Cloud project. Supports free/enterprise tiers. |
-
-**4. Android-Specific Adaptations:**
-- Replace `http.createServer` with Android's NanoHTTPD (already in deps) for local OAuth callback
-- Use Chrome Custom Tabs (`androidx.browser`) to open auth URLs (better UX than WebView)
-- Store credentials encrypted via `SecurePrefs.kt` (Android Keystore)
-- Background token refresh via `CoroutineScope` (not file locking as in CLI)
-- In-app login UI: show URL + code, open browser, handle callback
-
-**5. Credential Storage** (`providers/oauth/OAuthCredentialStore.kt`)
-- Persist `OAuthCredentials` per provider in encrypted SharedPreferences
-- Priority chain: OAuth token > API key > env var
-- Auto-refresh on expiry with 5-min buffer
-- Thread-safe refresh (mutex, not file lock)
-
-**6. UI Integration:**
-- Config screen: "Login with ChatGPT" / "Login with Claude" / "Login with Copilot" / "Login with Google" buttons
-- Login flow: Chrome Custom Tab → callback → store credentials → show success
-- Status indicator: "Authenticated via OAuth" vs "API Key"
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 2.1 | ProviderRouter (capability-based routing) | ✅ | `providers/ProviderRouter.kt` (114 lines) | — | 🧪 `live_openrouter_chat.yaml` (indirect) |
+| 2.2 | Provider interface | ✅ | `providers/Provider.kt` | `chat()`, `streamChat()`, `listModels()` | 🚫 N/A — interface |
+| 2.3 | AnthropicProvider | ✅ | `providers/AnthropicProvider.kt` (310 lines) | — | 🚫 Needs: `e2e_anthropic_chat.yaml` |
+| 2.4 | OpenAI-compatible provider (base) | ✅ | `providers/OpenAICompatibleProvider.kt` (307 lines) | — | 🧪 `live_openrouter_chat.yaml` |
+| 2.5 | Google Gemini provider | ✅ | `providers/GoogleGeminiProvider.kt` | — | 🚫 Needs: `e2e_gemini_chat.yaml` |
+| 2.6 | Dynamic model fetching | ✅ | `listModels()` in all providers | — | 🚫 Needs: `e2e_model_list_fetch.yaml` — open config → verify model dropdown populates |
+| 2.7 | CapabilityInferrer | ✅ | `providers/CapabilityInferrer.kt` | — | 🚫 Unit test only |
+| 2.8 | CapabilityType enum | ✅ | `providers/CapabilityType.kt` | — | 🚫 N/A — enum |
+| 2.9 | CostTracker | ✅ | `providers/CostTracker.kt` | — | 🚫 Needs: `e2e_cost_display.yaml` — send messages → verify cost shown in UI |
+| 2.10 | ProviderFactory | ✅ | `providers/ProviderFactory.kt` | — | 🚫 N/A — factory |
+| 2.11 | Local inference (llama.rn GGUF) | ✅ | `localLlmServer.ts` + NanoHTTPD | — | 🚫 Needs: `e2e_local_llm_chat.yaml` — download GGUF → chat → verify response |
+| 2.12 | LiteRT-LM (Gemini Nano) | ❌ | Not found | — | 🚫 |
+| 2.13 | Qualcomm GENIE (NPU) | ❌ | Not found | — | 🚫 |
+| 2.14 | ONNX Runtime Mobile | ❌ | Not found | — | 🚫 |
+| 2.15 | HardwareProbe (SoC/NPU detection) | ❌ | Not found | — | 🚫 |
+| 2.16 | ModelDownloadManager | ✅ | `ModelDownloaderModule.kt` + `modelDownloader.ts` | — | 🚫 Needs: `e2e_model_download.yaml` — trigger download → verify progress → verify usable |
+| 2.17 | Token counter (tiktoken) | ❌ | Not found | — | 🚫 |
+| 2.18 | Separate model per capability | ⚠️ | ConfigStore has fields | UI supports but routing unverified | 🚫 Needs: `e2e_vision_model_routing.yaml` — send image → verify vision model used |
+| 2.19 | OAuth — OpenAI Codex | ❌ | Only API key auth | — | 🚫 Needs: `e2e_openai_oauth.yaml` |
+| 2.20 | OAuth — Anthropic | ❌ | Only API key auth | — | 🚫 Needs: `e2e_anthropic_oauth.yaml` |
+| 2.21 | OAuth — GitHub Copilot | ❌ | Endpoint exists but API key won't work | — | 🚫 Needs: `e2e_copilot_oauth_flow.yaml` |
+| 2.22 | OAuth — Google Gemini CLI | ❌ | Only API key auth | — | 🚫 Needs: `e2e_google_oauth.yaml` |
+| 2.23 | OAuth infrastructure (PKCE, token refresh) | ❌ | No OAuth code anywhere | — | 🚫 |
 
 ---
 
 ## Phase 3: Tool Engine — 65+ Tools
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 3.1 | ToolEngine (registry, dispatch) | ✅ | `tools/ToolEngine.kt` (62 lines) | Thin dispatcher |
-| 3.2 | ToolRegistry | ✅ | `tools/ToolRegistry.kt` (153 lines) | — |
-| 3.3 | ToolResult (structured result) | ✅ | `tools/ToolResult.kt` | — |
-| 3.4 | ToolPermissions (Android permission checking) | ✅ | `tools/ToolPermissions.kt` | — |
-| 3.5 | ToolRateLimiter | ✅ | `tools/ToolRateLimiter.kt` | — |
-| 3.6 | ToolAuditLog | ✅ | `tools/ToolAuditLog.kt` | — |
-| 3.7 | Tool implementations | ✅ | **78 tools** in `tools/impl/` | Exceeds plan target of 65 |
-| 3.8 | Device tools (SMS, call, contacts, calendar, camera, location, sensors) | ✅ | SendSmsTool, ReadSmsTool, PlaceCallTool, ReadCallLogTool, GetContactsTool, AddContactTool, CalendarTool, CameraTool, LocationTool, SensorTool, BatteryInfoTool | — |
-| 3.9 | App tools (launch, list, alarm, timer, reminder, email, browser, maps, music) | ✅ | LaunchAppTool, ListAppsTool, SetAlarmTool, SetTimerTool, ReminderTool, EmailComposeTool, OpenBrowserTool, MapsTool, MusicControlTool | — |
-| 3.10 | Web tools (web_fetch, web_search, web_scrape) | ✅ | WebFetchTool, WebSearchTool, WebScrapeTool, WebApiTool | — |
-| 3.11 | File tools (read, write, search, list, delete) | ✅ | ReadFileTool, WriteFileTool, FileSearchTool, ListFilesTool, DeleteFileTool | — |
-| 3.12 | Social tools (Twitter, Instagram, Telegram, WhatsApp) | ✅ | TwitterPostTool, InstagramShareTool, TelegramSendTool, WhatsAppSendTool, SocialShareTool | — |
-| 3.13 | AI tools (image analyze, OCR, code interpreter, calculator, translation) | ✅ | ImageAnalyzeTool, OCRTool, CodeInterpreterTool, CalculatorTool, TranslationTool | — |
-| 3.14 | System tools (shell, package info, system info) | ✅ | ShellTool, PackageInfoTool, SystemInfoTool, ProcessListTool | — |
-| 3.15 | **Android AppFunctions API** | ❌ | No implementation | **NOW AVAILABLE** — `androidx.appfunctions:appfunctions-common:0.1.0-alpha01`. See [developer.android.com/ai/appfunctions](https://developer.android.com/ai/appfunctions), [AppFunctionsPilot](https://github.com/FilipFan/AppFunctionsPilot). Allows structured app-to-agent communication. Requires `AppFunctionManagerCompat` + declaring `AppFunctionService`. |
-| 3.15b | Android UI Automation Framework | ❌ | `AgentAccessibilityService.kt` exists but uses accessibility, not new framework | Google-sanctioned agent automation API — still in preview |
-| 3.16 | ScreenshotTool (MediaProjection) | ✅ | `ScreenshotTool.kt` | — |
-| 3.17 | CronJobTool (scheduled execution) | ✅ | `CronJobTool.kt` (241 lines) | — |
-| 3.18 | GeofenceTool | ✅ | `GeofenceTool.kt` (230 lines) | — |
-| 3.19 | Additional tools (NFC, Bluetooth, QR, PDF, RSS, barcode, etc.) | ✅ | NFCReadTool, BluetoothTool, QRCodeTool, PdfReaderTool, RssReaderTool, BarcodeScanTool | — |
-| 3.20 | Hook incoming call tool | ✅ | `RuntimeBridge.kt` → `hook_incoming_call`, `AndroidAgentToolsModule.kt` | Agent can register call hooks |
-| 3.21 | Browser session tool (headless WebView) | ⚠️ | `AgentBrowserActivity.kt` exists | Not a headless browser session as planned — uses activity |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 3.1 | ToolEngine (registry, dispatch) | ✅ | `tools/ToolEngine.kt` (62 lines) | Thin dispatcher | 🧪 All tool tests exercise this |
+| 3.2 | ToolRegistry | ✅ | `tools/ToolRegistry.kt` (153 lines) | — | 🚫 N/A — internal |
+| 3.3 | ToolResult | ✅ | `tools/ToolResult.kt` | — | 🚫 N/A — data class |
+| 3.4 | ToolPermissions | ✅ | `tools/ToolPermissions.kt` | — | 🚫 Needs: `PermissionFlowTest.kt` (UI Automator — `watchFor(PermissionDialog)`) |
+| 3.5 | ToolRateLimiter | ✅ | `tools/ToolRateLimiter.kt` | — | 🚫 Needs: `e2e_rate_limit_feedback.yaml` — rapid tool calls → verify rate limit message |
+| 3.6 | ToolAuditLog | ✅ | `tools/ToolAuditLog.kt` | — | 🚫 Needs: `e2e_audit_log_visible.yaml` — execute tool → verify log entry in Command screen |
+| 3.7 | Tool implementations (78 tools) | ✅ | `tools/impl/` | Exceeds 65 target | 🧪 Multiple Maestro flows |
+| 3.8 | Device tools | ✅ | SMS, call, contacts, calendar, camera, location, sensors | — | 🧪 `test_scenario_incoming_call_telegram.yaml`, `e2e_phase2_call_hook_setup.yaml` |
+| 3.9 | App tools | ✅ | Launch, list, alarm, timer, reminder, email, browser, maps, music | — | 🚫 Needs: `e2e_set_alarm.yaml`, `e2e_launch_app.yaml` |
+| 3.10 | Web tools | ✅ | WebFetch, WebSearch, WebScrape, WebApi | — | 🚫 Needs: `e2e_brave_web_search.yaml` |
+| 3.11 | File tools | ✅ | Read, write, search, list, delete | — | 🚫 Needs: `e2e_file_read_write.yaml` |
+| 3.12 | Social tools | ✅ | Twitter, Instagram, Telegram, WhatsApp, SocialShare | — | 🧪 `e2e_call_telegram.sh` (Telegram) |
+| 3.13 | AI tools | ✅ | ImageAnalyze, OCR, CodeInterpreter, Calculator, Translation | — | 🚫 Needs: `e2e_calculator_tool.yaml`, `e2e_image_analyze.yaml` |
+| 3.14 | System tools | ✅ | Shell, PackageInfo, SystemInfo, ProcessList | — | 🚫 Needs: `e2e_system_info.yaml` |
+| 3.15 | Android AppFunctions API | ❌ | Not implemented | `androidx.appfunctions:0.1.0-alpha01` now available | 🚫 Needs: `e2e_appfunctions_control.yaml` |
+| 3.15b | Android UI Automation Framework | ❌ | `AgentAccessibilityService.kt` exists but uses accessibility | — | 🚫 |
+| 3.16 | ScreenshotTool (MediaProjection) | ✅ | `ScreenshotTool.kt` | — | 🚫 Needs: `e2e_screenshot_tool.yaml` |
+| 3.17 | CronJobTool | ✅ | `CronJobTool.kt` (241 lines) | — | 🚫 Needs: `e2e_cron_schedule.yaml` — schedule task → wait → verify execution |
+| 3.18 | GeofenceTool | ✅ | `GeofenceTool.kt` (230 lines) | — | 🚫 Needs: `e2e_geofence_setup.yaml` |
+| 3.19 | Additional tools (NFC, BT, QR, PDF, RSS) | ✅ | 6+ tools | — | 🚫 Needs: `e2e_qr_scan.yaml` |
+| 3.20 | Hook incoming call tool | ✅ | `RuntimeBridge.kt` → `hook_incoming_call` | — | 🧪 `e2e_phase2_call_hook_setup.yaml` + `e2e_phase3_call_emulate_verify.yaml` |
+| 3.21 | Browser session tool | ⚠️ | `AgentBrowserActivity.kt` | Not headless as planned | 🚫 Needs: `e2e_browser_session.yaml` |
 
 ---
 
 ## Phase 4: Proactive Agent & Push Notifications
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 4.1 | ProactiveEngine (decision engine) | ✅ | `proactive/ProactiveEngine.kt` (118 lines) | — |
-| 4.2 | GuappaNotificationManager | ✅ | `proactive/GuappaNotificationManager.kt` | — |
-| 4.3 | NotificationChannels (IDs, importance) | ✅ | `proactive/NotificationChannels.kt` | — |
-| 4.4 | TriggerManager (register trigger sources) | ✅ | `proactive/TriggerManager.kt` (274 lines) | — |
-| 4.5 | IncomingCallReceiver | ✅ | `IncomingCallReceiver.kt` | Full: emits to RN + publishes to MessageBus |
-| 4.6 | IncomingSmsReceiver | ✅ | `IncomingSmsReceiver.kt` | — |
-| 4.7 | BatteryReceiver | ✅ | `proactive/BatteryReceiver.kt` | — |
-| 4.8 | CalendarObserver | ✅ | `proactive/CalendarObserver.kt` | — |
-| 4.9 | EventReactor | ✅ | `proactive/EventReactor.kt` | — |
-| 4.10 | SmartTiming (DND, night) | ✅ | `proactive/SmartTiming.kt` | — |
-| 4.11 | ProactiveRules (configurable rules) | ✅ | `proactive/ProactiveRules.kt` | — |
-| 4.12 | TaskCompletionReporter | ✅ | `proactive/TaskCompletionReporter.kt` | — |
-| 4.13 | NotificationActionReceiver (button clicks) | ✅ | `proactive/NotificationActionReceiver.kt` | — |
-| 4.14 | NotificationDeduplicator | ✅ | `proactive/NotificationDeduplicator.kt` | — |
-| 4.15 | NotificationHistory | ✅ | `proactive/NotificationHistory.kt` | — |
-| 4.16 | MorningBriefingWorker | ✅ | `proactive/MorningBriefingWorker.kt` | — |
-| 4.17 | DailySummaryWorker | ✅ | `proactive/DailySummaryWorker.kt` | — |
-| 4.18 | MessagingStyle notifications (conversation bubbles) | ⚠️ | NotificationManager exists | Need to verify MessagingStyle is used |
-| 4.19 | Inline reply from notification | ⚠️ | NotificationActionReceiver exists | Need to verify direct reply input |
-| 4.20 | LocationGeofenceReceiver | ⚠️ | GeofenceTool exists | No dedicated broadcast receiver for geofence transitions |
-| 4.21 | Network state receiver | ❌ | Not found | — |
-| 4.22 | Screen state receiver | ❌ | Not found | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 4.1 | ProactiveEngine | ✅ | `proactive/ProactiveEngine.kt` (118 lines) | — | 🚫 Needs: `e2e_proactive_trigger.yaml` — trigger event → verify agent proactively responds |
+| 4.2 | GuappaNotificationManager | ✅ | `proactive/GuappaNotificationManager.kt` | — | 🚫 Needs: `NotificationTest.kt` (UI Automator — reads notification shade) |
+| 4.3 | NotificationChannels | ✅ | `proactive/NotificationChannels.kt` | — | 🚫 N/A — config |
+| 4.4 | TriggerManager | ✅ | `proactive/TriggerManager.kt` (274 lines) | — | 🧪 `e2e_phase2_call_hook_setup.yaml` |
+| 4.5 | IncomingCallReceiver | ✅ | `IncomingCallReceiver.kt` | Emits to RN + MessageBus | 🧪 `test_scenario_incoming_call_telegram.yaml` |
+| 4.6 | IncomingSmsReceiver | ✅ | `IncomingSmsReceiver.kt` | — | 🚫 Needs: `e2e_incoming_sms_trigger.yaml` — send SMS via ADB → verify agent reacts |
+| 4.7 | BatteryReceiver | ✅ | `proactive/BatteryReceiver.kt` | — | 🚫 Needs: `e2e_battery_low_trigger.yaml` — ADB set battery low → verify notification |
+| 4.8 | CalendarObserver | ✅ | `proactive/CalendarObserver.kt` | — | 🚫 Needs: `e2e_calendar_reminder.yaml` |
+| 4.9 | EventReactor | ✅ | `proactive/EventReactor.kt` | — | 🚫 Tested via trigger tests |
+| 4.10 | SmartTiming | ✅ | `proactive/SmartTiming.kt` | — | 🚫 Needs: `e2e_dnd_respects_timing.yaml` — set DND → verify no notification |
+| 4.11 | ProactiveRules | ✅ | `proactive/ProactiveRules.kt` | — | 🚫 Needs: `e2e_proactive_rules_config.yaml` |
+| 4.12 | TaskCompletionReporter | ✅ | `proactive/TaskCompletionReporter.kt` | — | 🚫 Covered by task completion tests |
+| 4.13 | NotificationActionReceiver | ✅ | `proactive/NotificationActionReceiver.kt` | — | 🚫 Needs: `NotificationActionTest.kt` (UI Automator — tap notification button) |
+| 4.14 | NotificationDeduplicator | ✅ | `proactive/NotificationDeduplicator.kt` | — | 🚫 Unit test sufficient |
+| 4.15 | NotificationHistory | ✅ | `proactive/NotificationHistory.kt` | — | 🚫 Needs: `e2e_notification_history.yaml` |
+| 4.16 | MorningBriefingWorker | ✅ | `proactive/MorningBriefingWorker.kt` | — | 🚫 Needs: `e2e_morning_briefing.yaml` (hard to time — use WorkManager test utils) |
+| 4.17 | DailySummaryWorker | ✅ | `proactive/DailySummaryWorker.kt` | — | 🚫 Same as above |
+| 4.18 | MessagingStyle notifications | ⚠️ | NotificationManager exists | Verify MessagingStyle used | 🚫 Needs: `NotificationStyleTest.kt` (UI Automator) |
+| 4.19 | Inline reply from notification | ⚠️ | NotificationActionReceiver exists | Verify direct reply input | 🚫 Needs: `NotificationReplyTest.kt` (UI Automator — type in notification) |
+| 4.20 | LocationGeofenceReceiver | ⚠️ | GeofenceTool exists | No dedicated broadcast receiver | 🚫 Needs: `e2e_geofence_transition.yaml` |
+| 4.21 | Network state receiver | ❌ | Not found | — | 🚫 |
+| 4.22 | Screen state receiver | ❌ | Not found | — | 🚫 |
 
 ---
 
 ## Phase 5: Channel Hub — Messenger Integrations
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 5.1 | Channel interface | ✅ | `channels/Channel.kt` | `send()`, `healthCheck()`, `configure()`, `reset()` |
-| 5.2 | ChannelHub (manage all channels) | ✅ | `channels/ChannelHub.kt` (153 lines) | — |
-| 5.3 | ChannelFactory | ✅ | `channels/ChannelFactory.kt` (52 lines) | — |
-| 5.4 | Telegram (send via Bot API) | ✅ | `channels/TelegramChannel.kt` (49 lines) | Send-only, uses `/sendMessage` |
-| 5.5 | Telegram incoming (long polling) | ❌ | No `getUpdates` or webhook | Can't receive messages FROM Telegram |
-| 5.6 | Discord (webhook send) | 🔧 | `channels/DiscordChannel.kt` (31 lines) | Webhook-only, no gateway WebSocket, no incoming |
-| 5.7 | Discord gateway (incoming, slash commands) | ❌ | Not found | — |
-| 5.8 | Slack (webhook send) | 🔧 | `channels/SlackChannel.kt` (31 lines) | Webhook-only, no Socket Mode, no incoming |
-| 5.9 | WhatsApp | ⚠️ | `channels/WhatsAppChannel.kt` (92 lines) | Uses deep links, not Cloud API |
-| 5.10 | Signal | 🔧 | `channels/SignalChannel.kt` (59 lines) | Need to verify if signald integration works |
-| 5.11 | Matrix | ⚠️ | `channels/MatrixChannel.kt` (75 lines) | Exists but no E2EE, no sync loop |
-| 5.12 | Email (IMAP/SMTP) | 🔧 | `channels/EmailChannel.kt` (26 lines) | Intent-based only — no IMAP receive, no SMTP send |
-| 5.13 | SMS channel | ✅ | `channels/SmsChannel.kt` (47 lines) | Uses SmsManager |
-| 5.14 | GuappaChannelsModule (RN bridge) | ✅ | `channels/GuappaChannelsModule.kt` (240 lines) | — |
-| 5.15 | Channel `incoming()` Flow (receive messages) | ❌ | Not in Channel interface | Interface only has `send()` — no bidirectional |
-| 5.16 | ChannelHealthMonitor (auto-reconnect) | ❌ | Not found | — |
-| 5.17 | Channel formatters (Markdown adaptation) | ❌ | Not found | Each channel gets raw text |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 5.1 | Channel interface | ✅ | `channels/Channel.kt` | — | 🚫 N/A — interface |
+| 5.2 | ChannelHub | ✅ | `channels/ChannelHub.kt` (153 lines) | — | 🚫 N/A — manager |
+| 5.3 | ChannelFactory | ✅ | `channels/ChannelFactory.kt` (52 lines) | — | 🚫 N/A — factory |
+| 5.4 | Telegram (send via Bot API) | ✅ | `channels/TelegramChannel.kt` (49 lines) | Send-only | 🧪 `e2e_call_telegram.sh` |
+| 5.5 | Telegram incoming (long polling) | ❌ | No `getUpdates` or webhook | Can't receive FROM Telegram | 🚫 Needs: `e2e_telegram_receive.yaml` |
+| 5.6 | Discord (webhook send) | 🔧 | `channels/DiscordChannel.kt` (31 lines) | Webhook-only, no incoming | 🚫 Needs: `e2e_discord_send.yaml` |
+| 5.7 | Discord gateway (incoming) | ❌ | Not found | — | 🚫 |
+| 5.8 | Slack (webhook send) | 🔧 | `channels/SlackChannel.kt` (31 lines) | Webhook-only | 🚫 Needs: `e2e_slack_send.yaml` |
+| 5.9 | WhatsApp | ⚠️ | `channels/WhatsAppChannel.kt` (92 lines) | Uses deep links, not Cloud API | 🚫 Needs: `e2e_whatsapp_send.yaml` |
+| 5.10 | Signal | 🔧 | `channels/SignalChannel.kt` (59 lines) | Verify signald integration | 🚫 |
+| 5.11 | Matrix | ⚠️ | `channels/MatrixChannel.kt` (75 lines) | No E2EE, no sync loop | 🚫 |
+| 5.12 | Email (IMAP/SMTP) | 🔧 | `channels/EmailChannel.kt` (26 lines) | Intent-based only | 🚫 Needs: `e2e_email_compose.yaml` |
+| 5.13 | SMS channel | ✅ | `channels/SmsChannel.kt` (47 lines) | — | 🚫 Needs: `e2e_sms_send.yaml` |
+| 5.14 | GuappaChannelsModule (RN bridge) | ✅ | `channels/GuappaChannelsModule.kt` (240 lines) | — | 🧪 Tested via channel-specific tests |
+| 5.15 | Channel `incoming()` Flow | ❌ | Not in Channel interface | No bidirectional | 🚫 |
+| 5.16 | ChannelHealthMonitor | ❌ | Not found | — | 🚫 |
+| 5.17 | Channel formatters | ❌ | Not found | Raw text to all channels | 🚫 |
 
 ---
 
 ## Phase 6: Voice Pipeline — STT, TTS, Wake Word
 
-### Current Implementation
-
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 6.1 | useVoiceRecording (STT hook) | ✅ | `hooks/useVoiceRecording.ts` | Deepgram WebSocket + Whisper.rn |
-| 6.2 | Deepgram STT (cloud, streaming) | ✅ | WebSocket to `api.deepgram.com` in hook | Uses nova-2 — should upgrade to nova-3 or flux |
-| 6.3 | Whisper STT (on-device, via whisper.rn) | ✅ | Uses `whisper.rn` npm package + GGML model download | tiny/base/small variants |
-| 6.4 | WhisperModelManager (download GGML models) | ✅ | `voice/whisperModelManager.ts` + `native/modelDownloader.ts` | — |
-| 6.5 | useTTS (text-to-speech hook) | ✅ | `hooks/useTTS.ts` | Uses `expo-speech` → wraps Android's built-in `TextToSpeech` engine |
-| 6.6 | useVAD (voice activity detection) | ✅ | `hooks/useVAD.ts` | Energy-based with configurable thresholds |
-| 6.7 | useWakeWord ("Hey Guappa") | ✅ | `hooks/useWakeWord.ts` | Energy + STT keyword matching |
-| 6.8 | VoiceAmplitude (for swarm visualization) | ✅ | `swarm/audio/VoiceAmplitude.ts` | — |
-| 6.9 | VoiceScreen UI | ✅ | `screens/tabs/VoiceScreen.tsx` (338 lines) | Neural swarm + mic button |
-| 6.10 | Streaming TTS (read LLM output real-time) | ⚠️ | useTTS has sentence-level queue | Sentence-level streaming works; not word-level |
-
-### Android Built-In STT — Research & Gaps
-
-Android provides **two built-in STT** paths. Neither is currently used by Guappa:
-
-| # | Engine | Status | Details |
-|---|--------|--------|---------|
-| 6.11 | **`android.speech.SpeechRecognizer`** (on-device) | ❌ | Android's built-in speech recognizer. Uses Google's on-device speech model (auto-downloaded, ~50MB). **Zero API cost, zero latency for short commands.** Available on all Google Play devices. Supports `EXTRA_PREFER_OFFLINE` for fully offline use. Streaming via `onPartialResults()`. Languages: 50+. Quality: good for commands, weaker for long-form dictation vs Deepgram. |
-| 6.12 | **Google ML Kit Speech Recognition** (GenAI) | ❌ | Newer on-device STT via ML Kit GenAI SDK (`com.google.mlkit:genai-speech`). No download needed — uses pre-installed model. Better accuracy than legacy SpeechRecognizer for modern devices (Pixel 6+, Samsung S22+). |
-| 6.13 | **Google Cloud Speech-to-Text** (cloud) | ❌ | Best accuracy for noisy environments, 125+ languages, streaming. Requires API key + billing. |
-
-**Recommendation**: Implement `SpeechRecognizer` as zero-cost fallback when Deepgram key is not configured. Use `EXTRA_PREFER_OFFLINE=true` for fully on-device. This gives voice mode to ALL users without any API key.
-
-### Android Built-In TTS — Research & Gaps
-
-| # | Engine | Status | Details |
-|---|--------|--------|---------|
-| 6.14 | **Android `TextToSpeech`** (built-in) | ✅ (via expo-speech) | `expo-speech` wraps `android.speech.tts.TextToSpeech`. Already works. Supports all device-installed voices (Google, Samsung, etc.). Quality varies by device — Pixel/Samsung have neural voices. |
-| 6.15 | **Picovoice Orca TTS** (on-device, <50ms) | ❌ | Planned as PRIMARY. Commercial license. Sub-50ms latency, streaming. |
-| 6.16 | **Kokoro TTS** (on-device, Apache 2.0) | ❌ | 82M params, best open-source quality/size ratio. ONNX-based, runs on Android CPU. |
-| 6.17 | **Piper TTS** (on-device, MIT) | ❌ | 100+ voices, ONNX. Good quality, lightweight (~15MB per voice model). |
-| 6.18 | **ElevenLabs TTS** (cloud) | ❌ | Ultra-realistic. Requires API key + billing. |
-| 6.19 | **OpenAI TTS** (cloud) | ❌ | 6 voices, streaming via API. |
-| 6.20 | **Speechmatics TTS** (cloud) | ❌ | 27x cheaper than ElevenLabs, streaming. |
-| 6.21 | **Google Cloud TTS** (cloud) | ❌ | 380+ voices, Neural2/Studio/Chirp3-HD quality. |
-
-**Recommendation**: Current expo-speech (Android TextToSpeech) is adequate for MVP. Prioritize Kokoro or Piper for higher-quality on-device TTS without commercial licensing.
-
-### Voice Infrastructure Gaps
-
-| # | Feature | Status | Notes |
-|---|---------|--------|-------|
-| 6.22 | Picovoice Porcupine wake word | ❌ | Using custom energy-based approach instead |
-| 6.23 | Silero VAD | ❌ | Using expo-av metering-based approach (less accurate) |
-| 6.24 | Audio routing (speaker/earpiece/BT) | ❌ | — |
-| 6.25 | Audio focus management | ❌ | — |
-| 6.26 | Bluetooth SCO/A2DP routing | ❌ | — |
-| 6.27 | STT/TTS engine selection UI (auto-select best) | ❌ | Hardcoded to Deepgram/Whisper + expo-speech |
-| 6.28 | **`SpeechRecognizer` as free STT fallback** | ❌ | **HIGH PRIORITY** — enables voice mode without any API key |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 6.1 | useVoiceRecording (STT hook) | ✅ | `hooks/useVoiceRecording.ts` | — | 🧪 `guappa_voice_full_flow.yaml` |
+| 6.2 | Deepgram STT (cloud, streaming) | ✅ | WebSocket to `api.deepgram.com` | Uses nova-2 — upgrade to nova-3/flux | 🧪 `voice_interruptible_smoke.yaml` |
+| 6.3 | Whisper STT (on-device) | ✅ | `whisper.rn` + GGML download | — | 🚫 Needs: `e2e_local_whisper_stt.yaml` |
+| 6.4 | WhisperModelManager | ✅ | `voice/whisperModelManager.ts` | — | 🚫 Needs: `e2e_whisper_download.yaml` |
+| 6.5 | useTTS (text-to-speech) | ✅ | `hooks/useTTS.ts` | Uses `expo-speech` | 🚫 Needs: `e2e_builtin_tts_response.yaml` |
+| 6.6 | useVAD (voice activity detection) | ✅ | `hooks/useVAD.ts` | Energy-based | 🚫 Tested via voice flow |
+| 6.7 | useWakeWord ("Hey Guappa") | ✅ | `hooks/useWakeWord.ts` | Energy + STT keyword | 🚫 Needs: `e2e_wake_word.yaml` — play "Hey Guappa" via BlackHole → verify activation |
+| 6.8 | VoiceAmplitude | ✅ | `swarm/audio/VoiceAmplitude.ts` | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
+| 6.9 | VoiceScreen UI | ✅ | `screens/tabs/VoiceScreen.tsx` (338 lines) | — | 🧪 `guappa_voice_full_flow.yaml` |
+| 6.10 | Streaming TTS | ⚠️ | Sentence-level queue | Not word-level | 🚫 |
+| 6.11 | Android `SpeechRecognizer` (built-in) | ❌ | Not implemented | **P1** — zero cost, zero API key | 🚫 Needs: `e2e_android_stt_fallback.yaml` |
+| 6.12 | Google ML Kit Speech | ❌ | Not found | — | 🚫 |
+| 6.13 | Google Cloud Speech-to-Text | ❌ | Not found | — | 🚫 |
+| 6.14 | Android TextToSpeech (built-in) | ✅ | Via `expo-speech` | — | 🧪 Via TTS tests |
+| 6.15 | Picovoice Orca TTS | ❌ | Not found | Commercial | 🚫 |
+| 6.16 | Kokoro TTS (on-device) | ❌ | Not found | Apache 2.0, best quality/size | 🚫 Needs: `e2e_kokoro_tts.yaml` |
+| 6.17 | Piper TTS (on-device) | ❌ | Not found | MIT, 100+ voices | 🚫 |
+| 6.18 | ElevenLabs TTS (cloud) | ❌ | Not found | — | 🚫 |
+| 6.19 | OpenAI TTS (cloud) | ❌ | Not found | — | 🚫 |
+| 6.20 | Speechmatics TTS (cloud) | ❌ | Not found | — | 🚫 |
+| 6.21 | Google Cloud TTS | ❌ | Not found | — | 🚫 |
+| 6.22 | Picovoice Porcupine wake word | ❌ | Using custom energy-based | — | 🚫 |
+| 6.23 | Silero VAD | ❌ | Using expo-av metering | — | 🚫 |
+| 6.24 | Audio routing (speaker/earpiece/BT) | ❌ | — | — | 🚫 |
+| 6.25 | Audio focus management | ❌ | — | — | 🚫 |
+| 6.26 | Bluetooth SCO/A2DP routing | ❌ | — | — | 🚫 |
+| 6.27 | STT/TTS engine selection UI | ❌ | Hardcoded | — | 🚫 Needs: `e2e_stt_engine_switch.yaml` |
+| 6.28 | SpeechRecognizer as free STT fallback | ❌ | **HIGH PRIORITY** | — | 🚫 Needs: `e2e_android_stt_fallback.yaml` |
 
 ### Deepgram Full Product Catalog
 
-Guappa currently uses Deepgram for STT only (nova-2 via WebSocket). Deepgram offers a comprehensive voice AI platform with STT, TTS, and audio intelligence — all accessible with the **same API key** already configured.
-
-#### Deepgram STT Models
-
-| # | Model | Status | Description | Languages | Guappa Status |
-|---|-------|--------|-------------|-----------|---------------|
-| 6.30 | **Flux** (`flux-general-en`) | 🆕 | **Voice agent STT** — first model with built-in end-of-turn detection. Ultra-low latency, knows when to listen/think/speak. Designed for real-time conversational agents. | English only | ❌ Not integrated — **P0 for voice agent mode** |
-| 6.31 | **Nova-3** (`nova-3`) | 🆕 | Best general ASR — 54% WER reduction vs competitors. Real-time multilingual, self-serve vocabulary customization. | 50+ languages (multi, ar, bn, cs, da, de, el, en, es, et, fa, fi, fr, he, hi, hu, id, it, ja, kn, ko, lv, lt, mk, mr, ms, nl, no, pl, pt, ro, ru, sk, sl, sr, sv, ta, te, tl, tr, uk, ur, vi + more) | ❌ Not integrated — **P0 upgrade from nova-2** |
-| 6.32 | **Nova-3 Medical** (`nova-3-medical`) | 🆕 | Medical terminology optimized | English | ❌ |
-| 6.33 | **Nova-2** (`nova-2`) | Current | Good general ASR, filler word identification | 40+ languages | ✅ Currently used |
-| 6.34 | Nova-2 domain variants | — | `nova-2-meeting`, `nova-2-phonecall`, `nova-2-finance`, `nova-2-conversationalai`, `nova-2-voicemail`, `nova-2-video`, `nova-2-medical`, `nova-2-drivethru`, `nova-2-automotive`, `nova-2-atc` | English | ❌ Could be useful for call analysis |
-| 6.35 | **Deepgram Whisper Cloud** (`whisper-tiny/base/small/medium/large`) | — | Managed OpenAI Whisper — limited to 15 concurrent requests, max 20min audio | 97 languages | ❌ Not needed (have local whisper.rn) |
-
-#### Deepgram TTS Models (Aura)
-
-| # | Model | Status | Description | Voices | Guappa Status |
-|---|-------|--------|-------------|--------|---------------|
-| 6.36 | **Aura-2** (`aura-2-{voice}-{lang}`) | 🆕 | Latest gen TTS — natural, expressive, streaming. Multiple accents (American, British, Australian, Irish, Filipino). | 40+ English voices, Spanish, Dutch, French, German, Italian, Japanese | ❌ **P1** — significant quality upgrade over Android built-in TTS |
-| 6.37 | **Aura 1** (`aura-{voice}-en`) | — | Previous gen, English only | ~10 voices | ❌ Skip — go straight to Aura-2 |
-
-**Featured Aura-2 voices** (best for agent persona):
-
-| Voice | Model String | Gender | Accent | Character | Best For |
-|-------|-------------|--------|--------|-----------|----------|
-| Thalia | `aura-2-thalia-en` | F | American | Clear, Confident, Energetic | Default agent voice |
-| Apollo | `aura-2-apollo-en` | M | American | Confident, Comfortable, Casual | Male alternative |
-| Draco | `aura-2-draco-en` | M | British | Warm, Approachable, Baritone | Character voice |
-| Pandora | `aura-2-pandora-en` | F | British | Smooth, Calm, Melodic | Calm agent voice |
-| Luna | `aura-2-luna-en` | F | American | Friendly, Natural, Engaging | Casual assistant |
-| Hyperion | `aura-2-hyperion-en` | M | Australian | Caring, Warm, Empathetic | Supportive agent |
-
-**TTS API**: `POST https://api.deepgram.com/v1/speak?model=aura-2-thalia-en` with `{"text": "..."}` → streams MP3/WAV.
-
-#### Deepgram Audio Intelligence
-
-| # | Feature | Status | Description | Guappa Status |
-|---|---------|--------|-------------|---------------|
-| 6.38 | **Summarization** | 🆕 | Auto-summarize transcribed audio | ❌ — useful for call summaries |
-| 6.39 | **Topic Detection** | 🆕 | Extract topics from audio | ❌ — useful for memory categorization |
-| 6.40 | **Intent Recognition** | 🆕 | Detect user intents from speech | ❌ — could enhance voice command routing |
-| 6.41 | **Sentiment Analysis** | 🆕 | Analyze emotional tone | ❌ — useful for agent emotional awareness |
-
-**Key insight**: All Audio Intelligence features are add-on parameters to the STT request (e.g., `sentiment=true`, `topics=true`). Zero additional setup — just add query params. Returns structured JSON alongside the transcript.
-
-#### Deepgram Integration Plan
-
-| Priority | What | Impact | Effort |
-|----------|------|--------|--------|
-| **P0** | Upgrade STT from `nova-2` → `nova-3` | 54% better accuracy, 50+ languages, self-serve customization | 1 line change: `model=nova-3` |
-| **P0** | Add **Flux** model for voice agent mode | Built-in turn detection — eliminates need for custom VAD/end-of-turn logic | Change model + handle `is_final` events differently |
-| **P1** | Add **Aura-2 TTS** as cloud TTS option | Natural voices, streaming, 7 languages — massive quality upgrade over Android TTS | ~150 lines: HTTP POST to `/v1/speak`, stream MP3 to `ExoPlayer` |
-| **P1** | Add STT model selector to UI | Let users pick: Flux (agent), Nova-3 (general), Whisper (offline) | UI dropdown + config |
-| **P1** | Add TTS engine selector: Android built-in / Deepgram Aura-2 / Whisper | Choose quality vs cost vs offline | UI + engine abstraction |
-| **P2** | Audio Intelligence (summarization, topics, sentiment) | Auto-categorize memories from voice, detect user mood | Add query params to existing STT requests |
-| **P2** | Domain-specific STT models (phonecall, meeting) | Better accuracy for incoming call analysis | Config-driven model selection |
+| # | Feature | Status | Description | E2E Test |
+|---|---------|--------|-------------|----------|
+| 6.30 | Flux STT (voice agent) | ❌ | Built-in end-of-turn detection | 🚫 Needs: `e2e_deepgram_flux.yaml` |
+| 6.31 | Nova-3 STT | ❌ | 54% WER reduction, 50+ langs | 🚫 Needs: `e2e_deepgram_nova3.yaml` |
+| 6.32 | Nova-3 Medical | ❌ | Medical terminology | 🚫 |
+| 6.33 | Nova-2 STT | ✅ | Currently used | 🧪 `voice_interruptible_smoke.yaml` |
+| 6.36 | Aura-2 TTS | ❌ | Natural streaming TTS | 🚫 Needs: `e2e_deepgram_aura2_tts.yaml` |
+| 6.38 | Audio Intelligence (summarize, topics, sentiment) | ❌ | Add-on query params to STT | 🚫 Needs: `e2e_audio_intelligence.yaml` |
 
 ---
 
 ## Phase 7: Memory & Context
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 7.1 | MemoryManager (5-tier memory) | ✅ | `memory/MemoryManager.kt` (627 lines) | — |
-| 7.2 | Tier 1: Working memory (context window) | ✅ | ContextCompactor manages | — |
-| 7.3 | Tier 2: Short-term memory (session history) | ✅ | Room SessionEntity, MessageEntity | — |
-| 7.4 | Tier 3: Long-term memory (facts, preferences) | ✅ | `MemoryFactEntity` with category, tier, key | — |
-| 7.5 | Tier 4: Episodic memory (task outcomes) | ✅ | `EpisodeEntity` | — |
-| 7.6 | Tier 5: Semantic memory (embeddings, RAG) | ✅ | `EmbeddingEntity` + `EmbeddingService.kt` | — |
-| 7.7 | ContextCompactor (auto-summarization) | ✅ | `memory/ContextCompactor.kt` (343 lines) | — |
-| 7.8 | SummarizationService | ✅ | `memory/SummarizationService.kt` | — |
-| 7.9 | MemoryConsolidationWorker (background) | ✅ | `memory/MemoryConsolidationWorker.kt` | — |
-| 7.10 | EmbeddingService (vector search) | ✅ | `memory/EmbeddingService.kt` | — |
-| 7.11 | MemoryBridge (RN native module) | ✅ | `memory/MemoryBridge.kt` + `MemoryBridgePackage.kt` | — |
-| 7.12 | MemoryScreen (UI) | ✅ | `screens/tabs/MemoryScreen.tsx` (363 lines) | — |
-| 7.13 | On-device embedding model | ⚠️ | EmbeddingService exists | May use cloud API instead of on-device ONNX |
-| 7.14 | Recursive summarization (multi-level) | ⚠️ | SummarizationService exists | Need to verify hierarchical summary chain |
-| 7.15 | Memory export/import | ❌ | Not found | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 7.1 | MemoryManager (5-tier) | ✅ | `memory/MemoryManager.kt` (627 lines) | — | 🧪 `test_scenario_memory_persistence.yaml` |
+| 7.2 | Tier 1: Working memory | ✅ | ContextCompactor manages | — | 🧪 `e2e_phase1_memory_store.yaml` |
+| 7.3 | Tier 2: Short-term memory | ✅ | Room SessionEntity, MessageEntity | — | 🧪 `e2e_phase4_memory_recall.yaml` |
+| 7.4 | Tier 3: Long-term memory (facts) | ✅ | `MemoryFactEntity` | — | 🧪 `e2e_phase4_memory_recall.yaml` |
+| 7.5 | Tier 4: Episodic memory | ✅ | `EpisodeEntity` | — | 🚫 Needs: `e2e_episodic_recall.yaml` — "what task did you do yesterday?" |
+| 7.6 | Tier 5: Semantic memory (embeddings) | ✅ | `EmbeddingEntity` + `EmbeddingService.kt` | — | 🚫 Needs: `e2e_semantic_search.yaml` — store 10 facts → query by meaning |
+| 7.7 | ContextCompactor | ✅ | `memory/ContextCompactor.kt` (343 lines) | — | 🚫 Needs: `e2e_long_conversation_context.yaml` |
+| 7.8 | SummarizationService | ✅ | `memory/SummarizationService.kt` | — | 🚫 Tested via context compaction |
+| 7.9 | MemoryConsolidationWorker | ✅ | `memory/MemoryConsolidationWorker.kt` | — | 🚫 Needs: `e2e_memory_consolidation.yaml` — add facts → trigger consolidation → verify merged |
+| 7.10 | EmbeddingService | ✅ | `memory/EmbeddingService.kt` | — | 🚫 Tested via semantic search |
+| 7.11 | MemoryBridge (RN module) | ✅ | `memory/MemoryBridge.kt` | — | 🧪 Via memory screen tests |
+| 7.12 | MemoryScreen (UI) | ✅ | `screens/tabs/MemoryScreen.tsx` (363 lines) | — | 🚫 Needs: `e2e_memory_screen_browse.yaml` |
+| 7.13 | On-device embedding model | ⚠️ | EmbeddingService exists | May use cloud API | 🚫 Needs: `e2e_offline_embedding.yaml` |
+| 7.14 | Recursive summarization | ⚠️ | SummarizationService exists | Verify hierarchical chain | 🚫 |
+| 7.15 | Memory export/import | ❌ | Not found | — | 🚫 Needs: `e2e_memory_export_import.yaml` |
 
 ---
 
 ## Phase 9: Testing & QA
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 9.1 | Unit tests (JUnit + MockK) | ⚠️ | 16 test files found | Only for swarm, tools, providers, channels — no agent/memory/proactive tests |
-| 9.2 | Maestro E2E flows | ✅ | **100+ YAML flows** in `.maestro/` | Extensive coverage |
-| 9.3 | Integration tests (Espresso) | ❌ | Not found | — |
-| 9.4 | Performance benchmarks | ❌ | Not found | — |
-| 9.5 | Firebase Test Lab config | ❌ | Not found | — |
-| 9.6 | CI pipeline (.github/workflows) | ❌ | No workflows directory | — |
-| 9.7 | Resilience tests (chaos engineering) | ⚠️ | Some Maestro flows cover restart/background | No systematic chaos testing |
-| 9.8 | **UI Automator 2.4 instrumented tests** | ❌ | No `androidTest/` directory exists | See UI Automator 2.4 section below |
-| 9.9 | `testInstrumentationRunner` configured | ❌ | Missing from `defaultConfig` in `build.gradle` | Required for any androidTest |
-| 9.10 | UI Automator Shell (shell commands as shell user) | ❌ | Not found | `uiautomator-shell:1.0.0-alpha03` — backports `executeShellCommandRwe` |
-| 9.11 | Macrobenchmark / Baseline Profiles | ❌ | Not found | UI Automator 2.4 enables TTFD measurement + jank benchmarks |
-
-### UI Automator 2.4 — Recommended Testing Upgrade
-
-**Current status**: The project has zero `androidTest/` instrumented tests. All E2E testing relies on Maestro (external YAML flows). There is no `testInstrumentationRunner` configured in `build.gradle`.
-
-**Why UI Automator 2.4 over Maestro for key scenarios**:
-
-| Capability | Maestro | UI Automator 2.4 |
-|-----------|---------|-------------------|
-| **Cross-app testing** (notifications, calls, system dialogs) | Limited — relies on ADB workarounds | Native — `onElement` works across app boundaries |
-| **Permission dialogs** | Manual `tapOn` coordinates | Built-in `watchFor(PermissionDialog) { clickAllow() }` |
-| **Multi-window** (PiP, split-screen) | Not supported | `windows().first { it.isInPictureInPictureMode }` |
-| **Compose + View interop** | Works (accessibility tree) | Native — `onElement` renamed from `onView` specifically for Compose compat |
-| **Wait/stability** | `waitForAnimationToEnd` + `extendedWaitUntil` | `onElement` has built-in timeout; `waitForStable()` for accessibility tree |
-| **Screenshots in test results** | External (manual screenshots) | Built-in `takeScreenshot()` + `ResultsReporter` for Android Studio integration |
-| **Performance testing** | Not supported | Direct Macrobenchmark integration (TTFD, jank benchmarks) |
-| **Baseline Profile generation** | Not supported | CUJ automation generates Baseline Profiles for AOT compilation |
-| **Shell commands** | Via orchestrator script | `uiautomator-shell` library — `executeShellCommandRwe` from test code |
-| **Kotlin DSL** | YAML only | Native Kotlin, type-safe, IDE autocomplete |
-| **CI integration** | Needs Maestro CLI installed | Standard `./gradlew connectedAndroidTest` |
-| **Firebase Test Lab** | Needs Maestro-specific setup | Native support — just upload APK + test APK |
-
-**Key API patterns (UI Automator 2.4 DSL)**:
-
-```kotlin
-// Modern Kotlin DSL — clean, predicate-based
-@Test
-fun agentMemoryStoreAndRecall() = uiAutomator {
-    startApp("com.guappa.app")
-    watchFor(PermissionDialog) { clickAllow() }
-
-    // Type a message to store a memory
-    onElement { viewIdResourceName == "chat_input" }.setText("Remember: my cat is named Luna")
-    onElement { viewIdResourceName == "send_button" }.click()
-
-    // Wait for agent response
-    onElement(15_000) { textAsString().contains("Luna") }
-
-    // Ask for recall
-    onElement { viewIdResourceName == "chat_input" }.setText("What is my cat's name?")
-    onElement { viewIdResourceName == "send_button" }.click()
-
-    // Verify recall
-    onElement(15_000) { textAsString().contains("Luna") }
-
-    // Screenshot for test report
-    val reporter = ResultsReporter("MemoryTest")
-    val file = reporter.addNewFile("memory_recall", "Memory recall verification")
-    activeWindow().takeScreenshot().saveToFile(file)
-    reporter.reportToInstrumentation()
-}
-```
-
-**Implementation plan**:
-
-| Step | What | Size |
-|------|------|------|
-| 1. Add dependencies | `androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.0-beta01")` + `uiautomator-shell:1.0.0-alpha03` + `androidx.test:runner` + `androidx.test:rules` | build.gradle only |
-| 2. Configure runner | Add `testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"` to `defaultConfig` | 1 line |
-| 3. Create `androidTest/` directory | `mobile-app/android/app/src/androidTest/java/com/guappa/app/` | Directory structure |
-| 4. Port critical Maestro flows | Memory store/recall, call hook, voice STT, provider switching — as Kotlin `uiAutomator { }` tests | ~500 lines |
-| 5. Add Macrobenchmark module | Separate `:benchmark` module for startup time + jank measurements | ~200 lines |
-| 6. Generate Baseline Profile | Automate CUJs (app launch → first message → response) to generate AOT compilation profile | ~150 lines |
-| 7. Firebase Test Lab config | `gcloud firebase test android run` with test APK | CI config |
-
-**Priority**: **P1** — UI Automator 2.4 is the modern Android-native testing framework. Maestro remains useful for quick smoke tests, but UI Automator is needed for:
-- CI/CD (`connectedAndroidTest` is standard Gradle)
-- Firebase Test Lab (native support)
-- Performance testing (Macrobenchmark/Baseline Profiles)
-- Multi-window and cross-app scenarios (incoming calls, notifications, permission dialogs)
-- Screenshot-based visual regression in Android Studio
-
-**Dependency**: `2.4.0-beta01` (released 2026-02-11) — stable enough for adoption. The modern DSL (`uiAutomator { }`, `onElement`, `watchFor`) replaces the legacy `UiDevice.getInstance()` pattern.
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 9.1 | Unit tests (JUnit + MockK) | ⚠️ | 16 test files | No agent/memory/proactive tests | 🚫 Expand unit test coverage |
+| 9.2 | Maestro E2E flows | ✅ | **100+ YAML flows** in `.maestro/` | — | 🧪 Extensive |
+| 9.3 | Integration tests (Espresso) | ❌ | Not found | — | 🚫 |
+| 9.4 | Performance benchmarks | ❌ | Not found | — | 🚫 Needs: `StartupBenchmark.kt`, `ChatJankBenchmark.kt` |
+| 9.5 | Firebase Test Lab config | ❌ | Not found | — | 🚫 |
+| 9.6 | CI pipeline (.github/workflows) | ❌ | No workflows directory | — | 🚫 |
+| 9.7 | Resilience tests | ⚠️ | Some Maestro flows | No systematic chaos testing | 🚫 |
+| 9.8 | UI Automator 2.4 instrumented tests | ❌ | No `androidTest/` directory | — | 🚫 Needs full `androidTest/` setup |
+| 9.9 | `testInstrumentationRunner` | ❌ | Missing from `defaultConfig` | — | 🚫 |
+| 9.10 | UI Automator Shell | ❌ | Not found | — | 🚫 |
+| 9.11 | Macrobenchmark / Baseline Profiles | ❌ | Not found | — | 🚫 Needs: `BaselineProfileGenerator.kt` |
 
 ---
 
 ## Phase 10: Live Config — Hot Reload
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 10.1 | GuappaConfigStore (DataStore + StateFlow) | ✅ | `config/GuappaConfigStore.kt` (413 lines) | — |
-| 10.2 | ConfigBridge (RN native module) | ✅ | `config/ConfigBridge.kt` + `ConfigBridgePackage.kt` | — |
-| 10.3 | ConfigChangeDispatcher | ✅ | `config/ConfigChangeDispatcher.kt` | — |
-| 10.4 | ProviderHotSwap | ✅ | `config/ProviderHotSwap.kt` | — |
-| 10.5 | ChannelHotSwap | ✅ | `config/ChannelHotSwap.kt` | — |
-| 10.6 | ToolHotSwap | ✅ | `config/ToolHotSwap.kt` | — |
-| 10.7 | SecurePrefs (API key storage) | ✅ | `config/SecurePrefs.kt` | — |
-| 10.8 | TurboModule (New Architecture, Codegen) | ❌ | Uses old NativeModule bridge | No TurboModule spec, no Codegen |
-| 10.9 | VoiceHotSwap | ❌ | Not found | — |
-| 10.10 | MemoryHotSwap | ❌ | Not found | — |
-| 10.11 | ConfigMigrator (cross-version migration) | ❌ | Not found | — |
-| 10.12 | ConfigValidator | ❌ | Not found | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 10.1 | GuappaConfigStore | ✅ | `config/GuappaConfigStore.kt` (413 lines) | — | 🧪 Config screen Maestro tests |
+| 10.2 | ConfigBridge (RN module) | ✅ | `config/ConfigBridge.kt` | — | 🧪 Config screen tests |
+| 10.3 | ConfigChangeDispatcher | ✅ | `config/ConfigChangeDispatcher.kt` | — | 🚫 Tested indirectly |
+| 10.4 | ProviderHotSwap | ✅ | `config/ProviderHotSwap.kt` | — | 🚫 Needs: `e2e_provider_hot_swap.yaml` — switch provider mid-chat → verify continues |
+| 10.5 | ChannelHotSwap | ✅ | `config/ChannelHotSwap.kt` | — | 🚫 |
+| 10.6 | ToolHotSwap | ✅ | `config/ToolHotSwap.kt` | — | 🚫 |
+| 10.7 | SecurePrefs | ✅ | `config/SecurePrefs.kt` | — | 🚫 Needs: `e2e_api_key_persists.yaml` — set key → restart → verify still there |
+| 10.8 | TurboModule (New Architecture) | ❌ | Uses old NativeModule | — | 🚫 |
+| 10.9 | VoiceHotSwap | ❌ | Not found | — | 🚫 |
+| 10.10 | MemoryHotSwap | ❌ | Not found | — | 🚫 |
+| 10.11 | ConfigMigrator | ❌ | Not found | — | 🚫 |
+| 10.12 | ConfigValidator | ❌ | Not found | — | 🚫 Needs: `e2e_invalid_config_feedback.yaml` — enter bad API key → verify error message |
 
 ---
 
 ## Phase 11: World Wide Swarm
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 11.1 | SwarmManager | ✅ | `swarm/SwarmManager.kt` (261 lines) | — |
-| 11.2 | SwarmConnectorClient (HTTP/WebSocket) | ✅ | `swarm/SwarmConnectorClient.kt` (185 lines) | Remote connector mode |
-| 11.3 | SwarmConfig | ✅ | `swarm/SwarmConfig.kt` | — |
-| 11.4 | SwarmIdentity (Ed25519, DID) | ✅ | `swarm/SwarmIdentity.kt` | — |
-| 11.5 | SwarmChallengeSolver (anti-bot) | ✅ | `swarm/SwarmChallengeSolver.kt` | — |
-| 11.6 | SwarmTask | ✅ | `swarm/SwarmTask.kt` | — |
-| 11.7 | SwarmTaskPoller | ✅ | `swarm/SwarmTaskPoller.kt` | — |
-| 11.8 | SwarmTaskExecutor | ✅ | `swarm/SwarmTaskExecutor.kt` | — |
-| 11.9 | SwarmMessage | ✅ | `swarm/SwarmMessage.kt` | — |
-| 11.10 | SwarmHolonParticipant (voting, proposals) | ✅ | `swarm/SwarmHolonParticipant.kt` | — |
-| 11.11 | SwarmReputationTracker | ✅ | `swarm/SwarmReputationTracker.kt` | — |
-| 11.12 | PeerInfo | ✅ | `swarm/PeerInfo.kt` | — |
-| 11.13 | GuappaSwarmModule (RN bridge) | ✅ | `swarm/GuappaSwarmModule.kt` + `GuappaSwarmPackage.kt` | — |
-| 11.14 | SwarmScreen (UI) | ✅ | `screens/tabs/SwarmScreen.tsx` (1694 lines) | Rich UI with identity, peers, feed |
-| 11.15 | Embedded connector (Rust cross-compile) | ❌ | Not found | Phase 11b — future |
-| 11.16 | mDNS local discovery | ❌ | Not found | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 11.1 | SwarmManager | ✅ | `swarm/SwarmManager.kt` (261 lines) | — | 🚫 Needs: `e2e_swarm_connect.yaml` |
+| 11.2 | SwarmConnectorClient | ✅ | `swarm/SwarmConnectorClient.kt` (185 lines) | — | 🚫 Needs: `e2e_swarm_send_message.yaml` |
+| 11.3 | SwarmConfig | ✅ | `swarm/SwarmConfig.kt` | — | 🚫 |
+| 11.4 | SwarmIdentity (Ed25519, DID) | ✅ | `swarm/SwarmIdentity.kt` | — | 🚫 Needs: `e2e_swarm_identity_gen.yaml` — verify DID generated on swarm screen |
+| 11.5 | SwarmChallengeSolver | ✅ | `swarm/SwarmChallengeSolver.kt` | — | 🚫 |
+| 11.6–11.12 | SwarmTask, Poller, Executor, Message, Holon, Reputation, PeerInfo | ✅ | All exist | — | 🚫 Needs: `e2e_swarm_task_lifecycle.yaml` |
+| 11.13 | GuappaSwarmModule (RN bridge) | ✅ | `swarm/GuappaSwarmModule.kt` | — | 🧪 Swarm screen tests |
+| 11.14 | SwarmScreen (UI) | ✅ | `screens/tabs/SwarmScreen.tsx` (1694 lines) | — | 🚫 Needs: `e2e_swarm_screen_tabs.yaml` — navigate identity/peers/feed tabs |
+| 11.15 | Embedded connector (Rust) | ❌ | Not found | Phase 11b | 🚫 |
+| 11.16 | mDNS local discovery | ❌ | Not found | — | 🚫 |
 
 ---
 
 ## Phase 12: Android UI
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 12.1 | 5-screen app (Voice, Chat, Command, Swarm, Config) | ✅ | All 5 screens + RootNavigator | — |
-| 12.2 | FloatingDock (morphing pill navigation) | ✅ | `components/dock/FloatingDock.tsx` | — |
-| 12.3 | SideRail (tablet layout) | ✅ | `components/dock/SideRail.tsx` | — |
-| 12.4 | Glass design system | ✅ | 15 glass components in `components/glass/` | GlassCard, GlassButton, GlassInput, GlassModal, GlassSlider, GlassToggle, etc. |
-| 12.5 | PlasmaOrb component | ✅ | `components/plasma/PlasmaOrb.tsx` | — |
-| 12.6 | ChatScreen (streaming bubbles) | ✅ | `screens/tabs/ChatScreen.tsx` (342 lines) + ChatInputBar, MessageBubble, StreamingBubble | — |
-| 12.7 | CommandScreen (tasks, schedules, triggers, memory) | ✅ | `screens/tabs/CommandScreen.tsx` (1497 lines) | — |
-| 12.8 | ConfigScreen (provider, tools, permissions) | ✅ | `screens/tabs/ConfigScreen.tsx` (1373 lines) | — |
-| 12.9 | OnboardingScreen | ✅ | `screens/OnboardingScreen.tsx` + 4 step components | Welcome, Permissions, ProviderSetup, ModelDownload |
-| 12.10 | Color system (liquid futurism) | ✅ | `theme/colors.ts` | — |
-| 12.11 | Typography (Orbitron, Exo 2, JetBrains Mono) | ✅ | `theme/typography.ts` | — |
-| 12.12 | Animations (spring physics) | ✅ | `theme/animations.ts` + Reanimated | — |
-| 12.13 | Gyroscope parallax on glass | ⚠️ | Camera3D uses Accelerometer | SwarmCanvas only — not on glass cards |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 12.1 | 5-screen app | ✅ | All 5 screens + RootNavigator | — | 🧪 `smoke_all_screens.yaml` (if exists) |
+| 12.2 | FloatingDock | ✅ | `components/dock/FloatingDock.tsx` | Hardcoded colors — needs storm palette | 🧪 `floating_dock_navigation.yaml` (if exists) |
+| 12.3 | SideRail (tablet) | ✅ | `components/dock/SideRail.tsx` | Hardcoded colors — needs storm palette | 🚫 Needs: `e2e_tablet_side_rail.yaml` (tablet emulator) |
+| 12.4 | Glass design system | ✅ | 15 glass components | **Needs storm palette glass fills** | 🚫 Needs: `e2e_glass_components_visual.yaml` — screenshot each glass variant |
+| 12.5 | PlasmaOrb | ✅ | `components/plasma/PlasmaOrb.tsx` | — | 🚫 |
+| 12.6 | ChatScreen | ✅ | `screens/tabs/ChatScreen.tsx` (342 lines) | — | 🧪 `live_openrouter_chat.yaml` |
+| 12.7 | CommandScreen | ✅ | `screens/tabs/CommandScreen.tsx` (1497 lines) | — | 🚫 Needs: `e2e_command_screen_sections.yaml` |
+| 12.8 | ConfigScreen | ✅ | `screens/tabs/ConfigScreen.tsx` (1373 lines) | — | 🧪 Config Maestro tests |
+| 12.9 | OnboardingScreen | ✅ | `screens/OnboardingScreen.tsx` + 4 steps | — | 🚫 Needs: `e2e_onboarding_flow.yaml` — fresh install → complete all steps |
+| 12.10 | Color system | ✅ | `theme/colors.ts` | **NEEDS STORM PALETTE UPDATE** | 🚫 Needs: `e2e_theme_consistency.yaml` — screenshot all screens |
+| 12.11 | Typography | ✅ | `theme/typography.ts` | — | 🚫 |
+| 12.12 | Animations | ✅ | `theme/animations.ts` + Reanimated | — | 🚫 |
+| 12.13 | Gyroscope parallax | ⚠️ | Camera3D uses Accelerometer | SwarmCanvas only | 🚫 |
 
 ---
 
 ## Phase 14: Neural Swarm Visualization
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 14.1 | SwarmCanvas (Skia canvas, 420 neurons) | ✅ | `swarm/SwarmCanvas.tsx` (585 lines) | — |
-| 14.2 | NeuronSystem (3D physics, spring animation) | ✅ | `swarm/neurons/NeuronSystem.ts` (329 lines) | — |
-| 14.3 | Camera3D (3D projection + accelerometer) | ✅ | `swarm/camera/Camera3D.ts` (130 lines) | — |
-| 14.4 | SwarmController (state machine: idle/listen/think/speak) | ✅ | `swarm/SwarmController.ts` (73 lines) | — |
-| 14.5 | SwarmDirector (separate LLM for emotion/intent) | ✅ | `swarm/SwarmDirector.ts` (190 lines) | — |
-| 14.6 | EmotionPalette (20 emotions) | ✅ | `swarm/emotion/EmotionPalette.ts` (63 lines) | — |
-| 14.7 | EmotionBlender (smooth HSL transitions) | ✅ | `swarm/emotion/EmotionBlender.ts` (41 lines) | — |
-| 14.8 | ShapeLibrary (18 shapes + 12 emoji faces) | ✅ | `swarm/formations/ShapeLibrary.ts` (620 lines) | — |
-| 14.9 | TextRenderer (pixel font → point cloud) | ✅ | `swarm/formations/TextRenderer.ts` (105 lines) | — |
-| 14.10 | HarmonicWaves (voice-reactive deformation) | ✅ | `swarm/waves/HarmonicWaves.ts` (138 lines) | — |
-| 14.11 | VoiceAmplitude (microphone energy extraction) | ✅ | `swarm/audio/VoiceAmplitude.ts` (78 lines) | — |
-| 14.12 | Neural swarm background on all screens | ✅ | RootNavigator: opacity per screen (voice=1, chat=0.15, etc.) | — |
-| 14.13 | Swarm state ↔ voice pipeline integration | ✅ | VoiceScreen, useVoiceRecording, useTTS all set swarm state | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 14.1 | SwarmCanvas (Skia, 420 neurons) | ✅ | `swarm/SwarmCanvas.tsx` (585 lines) | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
+| 14.2 | NeuronSystem (3D physics) | ✅ | `swarm/neurons/NeuronSystem.ts` (329 lines) | — | 🚫 |
+| 14.3 | Camera3D | ✅ | `swarm/camera/Camera3D.ts` (130 lines) | — | 🚫 |
+| 14.4 | SwarmController (state machine) | ✅ | `swarm/SwarmController.ts` (73 lines) | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
+| 14.5 | SwarmDirector | ✅ | `swarm/SwarmDirector.ts` (190 lines) | — | 🚫 |
+| 14.6 | EmotionPalette (20 emotions) | ✅ | `swarm/emotion/EmotionPalette.ts` (63 lines) | **Needs storm palette update** | 🚫 Needs: `e2e_emotion_palette_colors.yaml` — trigger each emotion → screenshot |
+| 14.7 | EmotionBlender | ✅ | `swarm/emotion/EmotionBlender.ts` (41 lines) | — | 🚫 |
+| 14.8 | ShapeLibrary | ✅ | `swarm/formations/ShapeLibrary.ts` (620 lines) | — | 🚫 |
+| 14.9 | TextRenderer | ✅ | `swarm/formations/TextRenderer.ts` (105 lines) | — | 🚫 |
+| 14.10 | HarmonicWaves | ✅ | `swarm/waves/HarmonicWaves.ts` (138 lines) | — | 🚫 |
+| 14.11 | VoiceAmplitude | ✅ | `swarm/audio/VoiceAmplitude.ts` (78 lines) | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
+| 14.12 | Neural swarm background on all screens | ✅ | RootNavigator: opacity per screen | — | 🚫 |
+| 14.13 | Swarm ↔ voice integration | ✅ | VoiceScreen, useVoiceRecording, useTTS | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
 
 ---
 
 ## Phase 13: Documentation
 
-| # | Feature | Status | Evidence | Gap |
-|---|---------|--------|----------|-----|
-| 13.1 | Guides (providers, tools, channels, voice, memory, swarm, troubleshooting) | ✅ | 7 guide files in `docs/guides/` | — |
-| 13.2 | Reference docs (all providers, tools, channels, etc.) | ❌ | Not found | Plan called for `docs/reference/` directory |
-| 13.3 | Architecture docs | ❌ | Not found | Plan called for `docs/architecture/` directory |
-| 13.4 | Development docs (setup, building, testing) | ❌ | Not found | Plan called for `docs/development/` directory |
-| 13.5 | AGENTS.md | ✅ | Root `AGENTS.md` | — |
+| # | Feature | Status | Evidence | Gap | E2E Test |
+|---|---------|--------|----------|-----|----------|
+| 13.1 | Guides | ✅ | 7 guide files in `docs/guides/` | — | 🚫 N/A |
+| 13.2 | Reference docs | ❌ | Not found | — | 🚫 N/A |
+| 13.3 | Architecture docs | ❌ | Not found | — | 🚫 N/A |
+| 13.4 | Development docs | ❌ | Not found | — | 🚫 N/A |
+| 13.5 | AGENTS.md | ✅ | Root `AGENTS.md` | — | 🚫 N/A |
 
 ---
 
 ## Local Inference — Full Inventory
 
-### Current Guappa Implementation
-
-| # | Modality | Status | Engine | Details |
-|---|----------|--------|--------|---------|
-| L.1 | **Text (LLM) — GGUF** | ✅ | `llama.rn` (llama.cpp) | Full flow: download GGUF → `initLlama()` → NanoHTTPD OpenAI-compat server on `localhost:8888`. Any GGUF model. Configurable GPU layers, CPU threads, context length. |
-| L.2 | **STT (on-device)** | ✅ | `whisper.rn` (Whisper GGML) | Download tiny/base/small models → on-device transcription. |
-| L.3 | **STT (free, zero-download)** | ❌ | `android.speech.SpeechRecognizer` | Android built-in. Pre-installed. **Should be default fallback when no Deepgram key.** |
-| L.4 | **TTS (on-device)** | ✅ (basic) | `expo-speech` → Android `TextToSpeech` | Uses device-installed voices. Quality varies. |
-| L.5 | **TTS (high-quality on-device)** | ❌ | Kokoro / Piper | Neural TTS, significantly better than built-in. |
-| L.6 | **Embeddings (on-device)** | ⚠️ | `EmbeddingService.kt` exists | Need to verify if on-device ONNX model or cloud API |
-| L.7 | **Vision (on-device)** | ❌ | — | No local vision model. |
-| L.8 | **Image generation (on-device)** | ❌ | — | No local diffusion model. |
-| L.9 | **Text (LLM) — MediaPipe/LiteRT Task** | ❌ | — | Not supported |
-| L.10 | **Text (LLM) — LiteRT LM** | ❌ | — | Not supported |
-| L.11 | **Text (LLM) — ONNX** | ❌ | — | Not supported |
-| L.12 | **Text (LLM) — Nexa SDK (GGUF+NPU)** | ❌ | — | Not supported |
-| L.13 | **HardwareProbe (SoC/NPU detection)** | ❌ | — | No device capability detection |
-
-### Reference: LLM-Hub Local Inference Architecture
-
-[LLM-Hub](https://github.com/timmyy123/LLM-Hub) is a production Android app with comprehensive local inference. Their architecture provides a proven reference for what Guappa should support:
-
-#### Inference Engines (4 backends, unified routing)
-
-| Engine | Format | Acceleration | Library | Guappa Status |
-|--------|--------|-------------|---------|---------------|
-| **MediaPipe LlmInference** | `.task`, `.litertlm` | GPU (OpenCL/Metal) | `com.google.mediapipe:tasks-genai:0.10.32` | ❌ Missing |
-| **Nexa SDK** | `.gguf` (+ NPU) | CPU + Qualcomm NPU (HTP) | `ai.nexa:core:0.0.24` | ❌ Missing — Guappa uses `llama.rn` (JS) for GGUF instead |
-| **ONNX Runtime** | `.onnx` | CPU + NNAPI | `com.microsoft.onnxruntime:onnxruntime-android:1.24.1` | ❌ Missing |
-| **MNN** | `.mnn` | CPU | MNN framework | ❌ Missing (used for image gen only) |
-
-**Key insight**: LLM-Hub uses a `UnifiedInferenceService` that auto-routes by `modelFormat`:
-- `"task"` / `"litertlm"` → MediaPipe
-- `"gguf"` → Nexa SDK
-- `"onnx"` → ONNX Runtime
-
-Guappa currently only supports GGUF via `llama.rn` (React Native JS layer), missing native Kotlin inference.
-
-#### Model Families Supported
-
-| Family | Params | Formats | Vision | Audio | Guappa Status |
-|--------|--------|---------|--------|-------|---------------|
-| **Gemma-3** | 1B, 4B, 12B | `.task` (INT4/INT8) | ❌ | ❌ | ❌ Not in model catalog |
-| **Gemma-3n** | E2B, E4B | `.litertlm` (INT4) | ✅ | ✅ | ❌ Not in model catalog |
-| **Llama-3.2** | 1B, 3B | `.task`, `.gguf` (Q3–Q8) | ❌ | ❌ | ⚠️ GGUF works via llama.rn, no .task |
-| **Phi-4 Mini** | 3.8B | `.litertlm` (INT4/INT8) | ❌ | ❌ | ❌ Not in model catalog |
-| **LFM-2.5** (LiquidAI) | 1.2B, 1.6B | `.gguf` | ✅ (VL) | ❌ | ❌ Not in model catalog |
-| **LFM2-24B-A2B** | 24B (2B active MoE) | `.gguf` | ❌ | ❌ | ❌ Not in model catalog |
-| **Ministral-3** | 3B | `.gguf` (Q4–Q6) | ❌ | ❌ | ⚠️ Would work via llama.rn |
-| **Granite 4.0** | Tiny, Small | `.gguf` (Q4–Q8) | ❌ | ❌ | ⚠️ Would work via llama.rn |
-| **GPT-OSS** | 20B (3.6B active MoE) | `.gguf` (Q4–Q8) | ❌ | ❌ | ⚠️ Would work via llama.rn (needs 14GB+ RAM) |
-| **Qwen3.5** | 0.8B, 2B, 4B, 9B, 27B, 35B-A3B (MoE), 122B-A10B (MoE), 397B-A17B (MoE) | `.gguf` (Q2–Q8, BF16) | ✅ (all sizes, early-fusion) | ❌ | ⚠️ GGUF works via llama.rn — **recommended default** |
-
-#### Model Categories
-
-| Category | Formats | Example | Guappa Status |
-|----------|---------|---------|---------------|
-| **text** | `.task`, `.litertlm`, `.gguf`, `.onnx` | Gemma-3 1B, Llama 3.2 | ⚠️ GGUF only |
-| **multimodal** (vision+text) | `.gguf` (+ mmproj), `.litertlm` | Gemma-3n E2B, LFM-2.5 VL | ❌ |
-| **embedding** | `.tflite` | Gecko-110M (64–1024 dim), EmbeddingGemma 300M | ❌ |
-| **image_generation** | `.mnn` (CPU), `.qnn_npu` (Qualcomm NPU) | Stable Diffusion 1.5 (Absolute Reality) | ❌ |
-
-#### Qwen3.5 Family — Recommended Local Models
-
-Qwen3.5 is Alibaba/Qwen's latest model family. **All sizes are natively multimodal** (vision+text) via early-fusion training — no separate VL variant needed. Key features:
-- **Unified Vision-Language**: Every model includes a vision encoder; text-only and image+text use the same weights
-- **Gated Delta Networks + MoE**: Hybrid architecture for efficient inference (linear attention + sparse MoE)
-- **201 languages** supported
-- **262K native context** window
-- **Thinking mode** (reasoning) supported on all sizes
-- **Apache 2.0** license
-- **mmproj file required** for vision (~200–900MB depending on model size)
-
-| Model | Total Params | Active Params | GGUF Q4_K_M Size | Min RAM | Vision | Mobile Feasible? |
-|-------|-------------|---------------|-----------------|---------|--------|-----------------|
-| **Qwen3.5-0.8B** | 0.8B | 0.8B | 533 MB | 2 GB | ✅ (+207MB mmproj) | ✅ Excellent — smallest multimodal model |
-| **Qwen3.5-2B** | 2B | 2B | 1.3 GB | 3 GB | ✅ (+671MB mmproj) | ✅ Good — best quality/size for mobile |
-| **Qwen3.5-4B** | 4B | 4B | 2.7 GB | 5 GB | ✅ (+676MB mmproj) | ⚠️ Flagship phones only (8GB+ RAM) |
-| **Qwen3.5-9B** | 9B | 9B | ~5 GB | 8 GB | ✅ | ❌ Too large for most phones |
-| **Qwen3.5-35B-A3B** | 35B | 3B (MoE) | 22 GB | 14 GB | ✅ (+903MB mmproj) | ❌ Desktop/server only |
-| **Qwen3.5-122B-A10B** | 122B | 10B (MoE) | ~60 GB | 40 GB | ✅ | ❌ Server only |
-| **Qwen3.5-397B-A17B** | 397B | 17B (MoE) | ~200 GB | 100 GB | ✅ | ❌ Server only |
-
-**Recommended for Guappa model catalog**:
-- **Default**: Qwen3.5-0.8B Q4_K_M (533MB text-only, 740MB with vision) — runs on any modern phone
-- **Quality pick**: Qwen3.5-2B Q4_K_M (1.3GB + 671MB mmproj) — significantly smarter, needs 3GB+ RAM
-- **Power user**: Qwen3.5-4B Q4_K_M (2.7GB) — comparable to GPT-3.5 quality, needs flagship phone
-
-**Key advantage over Gemma-3**: Qwen3.5 has vision built into every model (early fusion), while Gemma-3 requires separate VL models. Qwen3.5 also supports 262K context vs Gemma-3's 4K. GGUF format works with existing `llama.rn` infrastructure — no new engine needed.
-
-**GGUF sources**: `unsloth/Qwen3.5-*-GGUF`, `bartowski/Qwen_Qwen3.5-*-GGUF`, `lmstudio-community/Qwen3.5-*-GGUF`
-
-#### Hardware Detection
-
-LLM-Hub implements `DeviceInfo` with SoC detection to:
-- Auto-select optimal model variants
-- Enable/disable NPU acceleration
-- Route to correct Qualcomm HTP library version
-
-```
-SM8450 → 8gen1, SM8550 → 8gen2, SM8650 → 8gen3, SM8750 → 8gen4, SM8850 → 8gen5
-NPU option shown only for 8 Gen 4+ devices
-```
-
-#### Embedding Models (for RAG)
-
-LLM-Hub uses **Google AI Edge RAG SDK** with Gecko models:
-- `Gecko-110M` (64/256/512/1024 dimensions, quantized + f32)
-- `EmbeddingGemma-300M` (256/512/1024/2048 sequence length)
-- All `.tflite` format, GPU-accelerated via `GeckoEmbeddingModel`
-
-Guappa's `EmbeddingService.kt` exists but lacks a proven on-device embedding model.
-
-### Implementation Plan — Local Inference Gaps
-
-| Priority | Gap | What to Implement | Size Estimate |
-|----------|-----|-------------------|---------------|
-| **P0** | MediaPipe/LiteRT inference backend | Add `com.google.mediapipe:tasks-genai` dependency. Create `MediaPipeInferenceEngine.kt`. Support `.task` and `.litertlm` formats. This enables Gemma-3, Gemma-3n (vision+audio), Phi-4 Mini. | ~500 lines |
-| **P0** | Model catalog with download UI | Create `ModelCatalog.kt` with curated list of recommended models (Gemma-3 1B INT4 as default — only 529MB). Add download screen or integrate into onboarding. | ~400 lines |
-| **P0** | HardwareProbe (SoC detection) | Port LLM-Hub's `DeviceInfo` — detect Snapdragon SoC, available RAM, GPU type. Use to auto-recommend models and acceleration backends. | ~100 lines |
-| **P1** | ONNX Runtime inference backend | Add `com.microsoft.onnxruntime:onnxruntime-android` dependency. Support `.onnx` models (Ministral, etc.). | ~300 lines |
-| **P1** | On-device embedding model (Gecko/EmbeddingGemma) | Add `com.google.ai.edge.localagents:rag` dependency. Use Gecko-110M tflite for RAG embeddings instead of cloud API. | ~200 lines |
-| **P1** | Unified inference routing | Create `UnifiedInferenceEngine.kt` that routes by model format: `.task`/`.litertlm` → MediaPipe, `.gguf` → llama.rn, `.onnx` → ONNX Runtime. | ~200 lines |
-| **P1** | Vision model support (multimodal) | Enable vision-capable models: Gemma-3n (`.litertlm` with built-in vision) and LFM-2.5 VL (`.gguf` + mmproj file). Feed camera/gallery images to local model. | ~300 lines |
-| **P2** | Nexa SDK (GGUF + NPU acceleration) | Add `ai.nexa:core` dependency for Qualcomm NPU acceleration on Snapdragon 8 Gen 4+ devices. Significant speedup over CPU-only llama.rn. | ~400 lines |
-| **P2** | Image generation (Stable Diffusion) | MNN framework for CPU, QNN SDK for Qualcomm NPU. SD 1.5 at 512x512. ~1.2GB model. | ~600 lines |
-| **P2** | Audio input models | Gemma-3n supports audio natively via LiteRT LM. Enable microphone → model for audio understanding. | ~200 lines |
-| **P3** | HuggingFace model browser | Allow users to search and download any compatible model from HuggingFace (with HF_TOKEN for gated models). | ~400 lines |
-
-### Local Inference E2E Test Requirements
-
-All local inference paths must be validated by E2E tests running on the Android emulator:
-
-| Test | Validates | How |
-|------|-----------|-----|
-| Chat with local GGUF LLM | L.1 | Download small GGUF → configure as local provider → send message → verify response |
-| Chat with MediaPipe model | L.9 | Download Gemma-3 1B .task → load via MediaPipe → chat test |
-| Voice with local Whisper | L.2 | Download whisper-tiny → speak via BlackHole → verify transcription |
-| Voice with Android STT | L.3 | No API key configured → speak via BlackHole → verify `SpeechRecognizer` fallback |
-| TTS with built-in | L.4 | Send message → verify expo-speech speaks response |
-| Embedding with Gecko | L.6 | Download Gecko-110M tflite → store fact → RAG recall |
-| Vision with local model | L.7 | Load Gemma-3n → send image → verify description (when implemented) |
+| # | Modality | Status | Engine | E2E Test |
+|---|----------|--------|--------|----------|
+| L.1 | Text (LLM) — GGUF | ✅ | `llama.rn` + NanoHTTPD | 🚫 Needs: `e2e_local_llm_chat.yaml` |
+| L.2 | STT (on-device Whisper) | ✅ | `whisper.rn` GGML | 🚫 Needs: `e2e_local_whisper_stt.yaml` |
+| L.3 | STT (free, zero-download) | ❌ | `SpeechRecognizer` | 🚫 Needs: `e2e_android_stt_fallback.yaml` |
+| L.4 | TTS (built-in) | ✅ | `expo-speech` | 🚫 Needs: `e2e_builtin_tts_response.yaml` |
+| L.5 | TTS (high-quality on-device) | ❌ | Kokoro / Piper | 🚫 |
+| L.6 | Embeddings (on-device) | ⚠️ | `EmbeddingService.kt` | 🚫 Needs: `e2e_offline_embedding.yaml` |
+| L.7 | Vision (on-device) | ❌ | — | 🚫 |
+| L.8 | Image generation (on-device) | ❌ | — | 🚫 |
+| L.9 | Text — MediaPipe/LiteRT | ❌ | — | 🚫 |
+| L.10 | Text — LiteRT LM | ❌ | — | 🚫 |
+| L.11 | Text — ONNX | ❌ | — | 🚫 |
+| L.12 | Text — Nexa SDK (NPU) | ❌ | — | 🚫 |
+| L.13 | HardwareProbe (SoC detection) | ❌ | — | 🚫 |
 
 ---
 
-## Summary — Critical Gaps for E2E Test Readiness
+## Summary — E2E Coverage Stats
 
-### 🔴 Blockers for E2E Tests
-
-| Priority | Gap | Impact on Tests |
-|----------|-----|-----------------|
-| P0 | **Session persistence thinness** — `GuappaSession.kt` is 67 lines, no session types | Memory recall across turns may not persist reliably |
-| P0 | **Channel incoming messages missing** — Telegram/Discord/Slack can only SEND, not RECEIVE | Can't test bidirectional messenger interaction |
-| P0 | **No CI pipeline** — no GitHub Actions | Can't automate test runs |
-
-### 🟡 Important Gaps
-
-| Priority | Gap | Impact |
-|----------|-----|--------|
-| P1 | **OAuth for all subscription providers** — Copilot (device flow), OpenAI Codex (PKCE), Anthropic (PKCE), Google Gemini CLI (PKCE) — none implemented | Copilot is unusable; other providers work with API keys but OAuth enables subscription-based access (ChatGPT Plus, Claude Pro, etc.) |
-| P1 | **Android SpeechRecognizer as free STT fallback** | Voice mode requires Deepgram API key — should work without any key |
-| P1 | **AppFunctions API integration** | Now available (`androidx.appfunctions:0.1.0-alpha01`) — enables structured app control |
-| P1 | No TurboModule bridge (still old NativeModule) | Performance, type safety — functional but suboptimal |
-| P1 | No high-quality on-device TTS (Kokoro/Piper) | Built-in TTS quality varies wildly by device |
-| P1 | **Deepgram Aura-2 TTS not integrated** | Same API key, streaming, 40+ natural voices — massive quality upgrade |
-| P1 | **Deepgram STT still on nova-2** (nova-3 + Flux available) | 54% better accuracy (nova-3), built-in turn detection (Flux) |
-| P1 | **Qwen3.5 not in model catalog** | Best local multimodal model family — vision built in, 0.8B–4B for mobile, Apache 2.0 |
-| P1 | No STT/TTS engine selection UI | Users can't switch voice engines |
-| P1 | No session encryption (SQLCipher) | Security concern for sensitive data |
-| P1 | No audio routing / Bluetooth support | Voice mode only works on speaker |
-| P1 | Limited unit test coverage | Only swarm/tools/providers/channels — no agent/memory tests |
-| P1 | **No UI Automator 2.4 instrumented tests** | No `androidTest/`, no `testInstrumentationRunner`, can't run on Firebase Test Lab or CI |
-| P1 | **No Macrobenchmark / Baseline Profile** | No TTFD measurement, no AOT compilation profile, suboptimal startup |
-
-### 🟢 Nice-to-Have Gaps
-
-| Priority | Gap | Impact |
-|----------|-----|--------|
-| P2 | Google Antigravity OAuth (Gemini 3, Claude, GPT via Google Cloud) | Pi supports this as additional Google OAuth variant |
-| P2 | No local inference engines (LiteRT, GENIE, ONNX) for non-text modalities | All vision/image-gen requires cloud |
-| P2 | No embedded swarm connector (Rust cross-compile) | Requires external wws-connector server |
-| P2 | No token counter (tiktoken) | Approximate context management |
-| P2 | No channel formatters | Raw text sent to all channels |
-| P2 | No memory export/import | — |
-| P2 | No DI framework (Hilt/Koin) | Manual wiring, works but less maintainable |
-| P2 | Cloud TTS engines (ElevenLabs, OpenAI TTS, Google Cloud TTS, Speechmatics) | Deepgram Aura-2 is P1 (same API key); others are P2 |
+| Phase | Total Features | Has E2E | Missing E2E | Coverage |
+|-------|---------------|---------|-------------|----------|
+| Phase 1: Foundation | 16 | 5 | 11 | 31% |
+| Phase 2: Provider Router | 23 | 2 | 21 | 9% |
+| Phase 3: Tool Engine | 21 | 4 | 17 | 19% |
+| Phase 4: Proactive | 22 | 2 | 20 | 9% |
+| Phase 5: Channels | 17 | 2 | 15 | 12% |
+| Phase 6: Voice | 28 | 4 | 24 | 14% |
+| Phase 7: Memory | 15 | 5 | 10 | 33% |
+| Phase 9: Testing | 11 | 1 | 10 | 9% |
+| Phase 10: Config | 12 | 2 | 10 | 17% |
+| Phase 11: Swarm | 16 | 1 | 15 | 6% |
+| Phase 12: UI | 13 | 3 | 10 | 23% |
+| Phase 14: Visualization | 13 | 4 | 9 | 31% |
+| Local Inference | 13 | 0 | 13 | 0% |
+| **Icons & Branding** | **9** | **0** | **9** | **0%** |
+| **TOTAL** | **219** | **35** | **184** | **16%** |
 
 ---
 
-## E2E Test Files (Created)
+## 🔴 Critical Gaps — Prioritized
 
-The following Maestro tests were created to validate the critical user scenarios end-to-end:
+### P0 — Blockers
 
-| File | What It Tests |
-|------|---------------|
-| `e2e_agent_memory_call_voice.yaml` | Full 5-phase test: memory store → call hook → call emulation → memory recall → voice STT |
-| `e2e_agent_memory_call_voice.sh` | Orchestrator script: coordinates Maestro + ADB call emulation + TTS audio injection |
-| `e2e_phase1_memory_store.yaml` | Standalone: tell agent "My wife's name is Kate" |
-| `e2e_phase2_call_hook_setup.yaml` | Standalone: ask agent to set up incoming call notification |
-| `e2e_phase3_call_emulate_verify.yaml` | Standalone: verify agent received call from 5551234567 |
-| `e2e_phase4_memory_recall.yaml` | Standalone: ask "What is my wife's name?" → assert "Kate" |
-| `e2e_phase5_voice_stt_blackhole.yaml` | Standalone: voice STT via BlackHole virtual audio cable |
-| `play_tts.sh` | Helper: macOS TTS → 16kHz WAV → BlackHole → emulator mic |
-| `README_voice_e2e.md` | Setup guide for BlackHole audio routing + prerequisites |
+| # | Gap | Impact | E2E Test Needed |
+|---|-----|--------|-----------------|
+| 1 | **In-app icons invisible** — `colors.text.tertiary` at 35% opacity, `colors.accent.cyan` = `#1A5C6A` has ~1.5:1 contrast ratio on dark bg. Empty states, status badges, section headers, ChatInputBar actions all nearly invisible | Users can't see UI controls | `e2e_dock_icons_visible.yaml`, `e2e_config_section_icons.yaml`, `e2e_command_empty_states.yaml`, `e2e_chat_input_icons.yaml` |
+| 2 | **Dual theme system conflict** — `src/config.ts` uses lime/lavender/violet palette, `src/theme/colors.ts` uses dark storm teal. Components mix both, creating visual inconsistency and icon color mismatches | Incoherent visual language, some icons bright (DeviceScreen) while others invisible (CommandScreen) | `e2e_theme_consistency.yaml` |
+| 3 | **Storm palette not applied** — neither theme matches the dramatic night sky target. Config theme is lime/lavender, neural swarm theme is too dark | Visual identity doesn't match design intent | `e2e_storm_palette_visual.yaml` |
+| 4 | **All Android icons are placeholders** — default Android robot launcher, generic Expo splash, system notification icons | App looks unbranded | `e2e_icon_launcher_not_default.yaml`, `e2e_notification_icon_check.yaml` |
+| 5 | **No CI pipeline** — no GitHub Actions | Can't automate test runs | N/A — infra |
+| 6 | **Channel incoming messages missing** — Telegram/Discord/Slack send-only | Can't test bidirectional | `e2e_telegram_receive.yaml` |
+| 7 | **Session persistence thin** — 67 lines, no session types | Memory may not survive restarts | `e2e_session_persistence.yaml` |
 
-### E2E Tests Needed (To Create)
+### P1 — Important
 
-**Maestro flows** (quick smoke tests, developer iteration):
+| # | Gap | Impact | E2E Test Needed |
+|---|-----|--------|-----------------|
+| 8 | OAuth for all subscription providers | Copilot unusable; others need API keys | `e2e_copilot_oauth_flow.yaml` |
+| 9 | Android SpeechRecognizer as free STT | Voice requires Deepgram key | `e2e_android_stt_fallback.yaml` |
+| 10 | No UI Automator 2.4 tests | Can't test notifications, permissions, multi-window, performance | Full `androidTest/` setup |
+| 11 | Deepgram STT on nova-2 (nova-3 available) | 54% worse accuracy | `e2e_deepgram_nova3.yaml` |
+| 12 | No session encryption (SQLCipher) | Security concern | `e2e_encrypted_db_check.yaml` |
+| 13 | E2E coverage at 16% | Most features untested end-to-end | All tests listed above |
 
-| File | What It Tests | Priority |
-|------|---------------|----------|
-| `e2e_local_llm_chat.yaml` | Download small GGUF model → configure local provider → send chat message → verify response | P0 |
-| `e2e_local_whisper_stt.yaml` | Download whisper-tiny → switch STT to whisper → speak via BlackHole → verify transcription | P1 |
-| `e2e_android_stt_fallback.yaml` | No Deepgram key → voice mode → speak → verify `SpeechRecognizer` fallback works | P1 |
-| `e2e_builtin_tts_response.yaml` | Send chat message → verify TTS speaks the response (expo-speech / Android TextToSpeech) | P1 |
-| `e2e_telegram_send_channel.yaml` | Configure Telegram bot → ask agent to send message to Telegram → verify via Bot API | P1 |
-| `e2e_brave_web_search.yaml` | Configure Brave API key → ask agent to search → verify search results in chat | P1 |
-| `e2e_copilot_oauth_flow.yaml` | Test GitHub OAuth device flow for Copilot provider (when implemented) | P2 |
-| `e2e_appfunctions_control.yaml` | Test AppFunctions API integration for cross-app control (when implemented) | P2 |
+### P2 — Nice to Have
 
-**UI Automator 2.4 instrumented tests** (CI/CD, Firebase Test Lab, performance, cross-app):
+| # | Gap | Impact |
+|---|-----|--------|
+| 12 | Local inference engines (LiteRT, ONNX, Nexa) | All non-text modalities need cloud |
+| 13 | No embedded swarm connector | Requires external server |
+| 14 | No token counter | Approximate context management |
+| 15 | No channel formatters | Raw text to all channels |
+| 16 | No DI framework | Manual wiring |
+| 17 | Cloud TTS engines | Quality varies by device |
 
-| File | What It Tests | Priority |
-|------|---------------|----------|
-| `AgentMemoryTest.kt` | Store fact → recall fact, using `uiAutomator { onElement { ... } }` DSL with screenshots | P0 |
-| `IncomingCallHookTest.kt` | Setup call hook → emulate call via shell → verify agent response. Uses `uiautomator-shell` for ADB commands from test code | P0 |
-| `PermissionFlowTest.kt` | First-launch permission grants using `watchFor(PermissionDialog) { clickAllow() }` | P0 |
-| `ProviderSwitchingTest.kt` | Switch between providers (local/cloud) mid-conversation, verify continuity | P1 |
-| `VoiceSTTTest.kt` | Voice input → STT → agent response. Cross-app: interacts with microphone permission + system audio | P1 |
-| `NotificationTest.kt` | Verify agent notifications appear correctly. Cross-app: reads notification shade | P1 |
-| `MultiWindowTest.kt` | Agent in split-screen with another app, verify tool interactions | P2 |
-| `StartupBenchmark.kt` | Macrobenchmark: cold/warm/hot start TTFD measurement | P1 |
-| `ChatJankBenchmark.kt` | Macrobenchmark: scroll chat history, measure frame timings | P2 |
-| `BaselineProfileGenerator.kt` | Generate Baseline Profile from: launch → configure provider → first message → response | P1 |
+---
 
-### Pre-existing Relevant Tests
+## Execution Plan — Next Steps
+
+### Sprint 1: Branding & Palette (1-2 days)
+1. Design and generate Guappa app icon (storm-themed, adaptive)
+2. Replace all launcher icons across density buckets
+3. Create custom notification icon set (11 vector drawables)
+4. Replace all `android.R.drawable.*` references in Kotlin
+5. Update `colors.ts` with storm palette
+6. Fix all hardcoded colors in FloatingDock, SideRail, RootNavigator
+7. Design and replace splash screen logo
+
+### Sprint 2: E2E Test Coverage (2-3 days)
+8. Create P0 Maestro E2E flows: session persistence, provider failover, onboarding
+9. Set up UI Automator 2.4: dependencies, runner, `androidTest/` directory
+10. Create UI Automator tests: permissions, notifications, memory store/recall
+11. Create icon regression tests
+
+### Sprint 3: Core Gaps (3-5 days)
+12. Implement Android `SpeechRecognizer` as free STT fallback
+13. Upgrade Deepgram STT from nova-2 to nova-3
+14. Add channel `incoming()` Flow for Telegram (long polling)
+15. Set up GitHub Actions CI pipeline
+
+---
+
+## E2E Tests — Master List
+
+### Existing Tests ✅
 
 | File | Coverage |
 |------|----------|
-| `e2e_full_agent_scenario.yaml` | Memory + call hook + recall (older version, inline call emulation note) |
-| `test_scenario_incoming_call_telegram.yaml` | Call hook → Telegram notification |
+| `e2e_full_agent_scenario.yaml` | Memory + call hook + recall |
+| `e2e_agent_memory_call_voice.yaml` | Full 5-phase: memory → call → recall → voice |
+| `e2e_phase1_memory_store.yaml` | Store fact |
+| `e2e_phase2_call_hook_setup.yaml` | Call hook setup |
+| `e2e_phase3_call_emulate_verify.yaml` | Call emulation verify |
+| `e2e_phase4_memory_recall.yaml` | Memory recall |
+| `e2e_phase5_voice_stt_blackhole.yaml` | Voice STT via BlackHole |
+| `e2e_call_telegram.sh` | Call → Telegram notification |
+| `test_scenario_incoming_call_telegram.yaml` | Call hook → Telegram |
 | `test_scenario_memory_persistence.yaml` | Memory store → recall |
-| `e2e_call_telegram.sh` | Full call → Telegram notification E2E with Telegram API polling |
-| `guappa_voice_full_flow.yaml` | Voice screen: mic tap → listen → stop |
-| `voice_interruptible_smoke.yaml` | Voice with Deepgram key |
-| `e2e_voice_swarm_emotion.yaml` | Neural swarm emotion on voice screen |
-| `live_openrouter_chat.yaml` | Real OpenRouter API chat test |
+| `guappa_voice_full_flow.yaml` | Voice mic tap → listen → stop |
+| `voice_interruptible_smoke.yaml` | Voice with Deepgram |
+| `e2e_voice_swarm_emotion.yaml` | Swarm emotion on voice |
+| `live_openrouter_chat.yaml` | Real API chat |
 
----
+### Needed Tests 🚫
 
-## Test Credentials (DO NOT COMMIT)
+**P0 — Must Have**
 
-All credentials stored in environment variables or entered via app UI at test time.
-**Never hardcode in YAML/script files. Never commit to git.**
+| File | Phase | What It Tests |
+|------|-------|---------------|
+| `e2e_icon_launcher_not_default.yaml` | Icons | Verify launcher icon is not default Android robot |
+| `e2e_notification_icon_check.yaml` | Icons | Trigger notification → verify custom icon |
+| `e2e_splash_screen_check.yaml` | Icons | Cold launch → screenshot splash |
+| `e2e_storm_palette_visual.yaml` | Palette | Screenshot all screens → verify dark storm aesthetic |
+| `e2e_session_persistence.yaml` | Phase 1 | Send message → kill → reopen → verify |
+| `e2e_onboarding_flow.yaml` | Phase 12 | Fresh install → complete all 4 steps |
+| `AgentMemoryTest.kt` | Phase 7 | UI Automator: store → recall with screenshots |
+| `PermissionFlowTest.kt` | Phase 3 | UI Automator: `watchFor(PermissionDialog)` |
+| `IncomingCallHookTest.kt` | Phase 4 | UI Automator: call hook + shell emulation |
 
-| Service | Type | Where to Configure |
-|---------|------|--------------------|
-| OpenRouter | API key | App → Config → Provider → OpenRouter → API Key |
-| Deepgram | API key | App → Settings → Deepgram API key |
-| Telegram Bot | Bot token | App → Config → Integrations → Telegram |
-| Brave Search | API key | App → Config → Web Search API Key |
-| EAS | Token | Environment variable `EXPO_TOKEN` |
+**P1 — Important**
 
-For the E2E call+Telegram test, set env vars:
-```bash
-export GUAPPA_TG_BOT_TOKEN="<telegram-bot-token>"
-export GUAPPA_TG_CHAT_ID="<your-chat-id>"
-export GUAPPA_TEST_CALLER_NUMBER="5551234567"
-```
+| File | Phase | What It Tests |
+|------|-------|---------------|
+| `e2e_local_llm_chat.yaml` | Local | Download GGUF → chat → verify |
+| `e2e_local_whisper_stt.yaml` | Voice | Whisper STT on-device |
+| `e2e_android_stt_fallback.yaml` | Voice | No API key → SpeechRecognizer fallback |
+| `e2e_builtin_tts_response.yaml` | Voice | TTS speaks response |
+| `e2e_brave_web_search.yaml` | Tools | Web search tool |
+| `e2e_telegram_send_channel.yaml` | Channels | Send to Telegram |
+| `e2e_provider_hot_swap.yaml` | Config | Switch provider mid-chat |
+| `e2e_api_key_persists.yaml` | Config | Key survives restart |
+| `e2e_model_list_fetch.yaml` | Providers | Model dropdown populates |
+| `e2e_swarm_connect.yaml` | Swarm | Connect to connector |
+| `NotificationTest.kt` | Proactive | UI Automator: notification shade |
+| `NotificationReplyTest.kt` | Proactive | UI Automator: inline reply |
+| `StartupBenchmark.kt` | Perf | Macrobenchmark: cold/warm/hot TTFD |
+| `BaselineProfileGenerator.kt` | Perf | Generate AOT profile |
 
----
+**P2 — Nice to Have**
 
-## Execution Plan
-
-To close gaps and run E2E tests successfully:
-
-### Phase A: Build & Deploy
-1. **Build** the app: `cd mobile-app/android && ./gradlew assembleDebug`
-2. **Install** on emulator: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
-
-### Phase B: Configure (via app UI)
-3. **Set provider**: OpenRouter with minimax/minimax-m2.5
-4. **Set Deepgram key** in Settings
-5. **Set Brave Search API key** in Config → Web Search
-6. **Set Telegram Bot token** in Config → Integrations
-
-### Phase C: Run Cloud Provider Tests
-7. **Memory + Call + Recall**:
-   ```bash
-   maestro test mobile-app/.maestro/e2e_phase1_memory_store.yaml
-   maestro test mobile-app/.maestro/e2e_phase2_call_hook_setup.yaml
-   adb emu gsm call 5551234567 && sleep 10 && adb emu gsm cancel 5551234567
-   maestro test mobile-app/.maestro/e2e_phase3_call_emulate_verify.yaml
-   maestro test mobile-app/.maestro/e2e_phase4_memory_recall.yaml
-   ```
-
-### Phase D: Run Voice Tests
-8. **Voice via BlackHole**: `bash mobile-app/.maestro/e2e_agent_memory_call_voice.sh`
-
-### Phase E: Run Local Inference Tests
-9. **Local LLM**: Download GGUF model → switch provider to local → chat test
-10. **Local Whisper**: Download whisper-tiny → switch STT to whisper → voice test
-
-### Phase F: Run Full Telegram E2E
-11. **Call → Telegram**: `bash mobile-app/.maestro/e2e_call_telegram.sh`
+| File | Phase | What It Tests |
+|------|-------|---------------|
+| `e2e_copilot_oauth_flow.yaml` | Providers | GitHub device code OAuth |
+| `e2e_appfunctions_control.yaml` | Tools | AppFunctions API |
+| `e2e_memory_export_import.yaml` | Memory | Export/import |
+| `MultiWindowTest.kt` | UI | Split-screen agent |
+| `ChatJankBenchmark.kt` | Perf | Scroll jank measurement |
+| `e2e_wake_word.yaml` | Voice | "Hey Guappa" via BlackHole |
+| `e2e_geofence_transition.yaml` | Proactive | Location trigger |
+| `e2e_emotion_palette_colors.yaml` | Swarm | Screenshot each emotion state |

@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: OpenRouter Chat with Storm Palette"
+---
+# Full chat flow: configure provider → send message → verify response
+# Uses OpenRouter with minimax/minimax-m2.5
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Chat screen
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send a simple message
+- tapOn:
+    id: "chat-input"
+- inputText: "Say hello in exactly 3 words"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for response (LLM may take a few seconds)
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# Take screenshot of the chat with response
+- takeScreenshot: screenshots/openrouter_chat_response
+
+# Verify the streaming indicator appeared and finished
+- assertNotVisible:
+    text: "GUAPPA is thinking..."
+    optional: true

@@ -13,12 +13,69 @@ type RunAgentTurnStreamArgs = {
   onAgentImages?: (imagePaths: string[]) => void;
 };
 
+let agentBootstrapPromise: Promise<void> | null = null;
+
+async function ensureAgentReady(): Promise<void> {
+  const agentModule = await import("../native/guappaAgent");
+  if (await agentModule.isAgentRunning()) return;
+
+  if (!agentBootstrapPromise) {
+    agentBootstrapPromise = (async () => {
+      const [{ loadAgentConfig, loadIntegrationsConfig }, localLlmModule] = await Promise.all([
+        import("../state/guappa"),
+        import("../native/localLlmServer"),
+      ]);
+      const agentCfg = await loadAgentConfig();
+      const integCfg = await loadIntegrationsConfig();
+      const runtimeApiKey =
+        agentCfg.authMode === "oauth_token" ? agentCfg.oauthAccessToken : agentCfg.apiKey;
+
+      const agentConfig = {
+        apiKey: runtimeApiKey,
+        provider: agentCfg.provider,
+        model: agentCfg.model,
+        apiUrl: agentCfg.apiUrl,
+        temperature: agentCfg.temperature,
+        telegramToken: integCfg.telegramEnabled ? integCfg.telegramBotToken : "",
+        telegramChatId: integCfg.telegramEnabled ? integCfg.telegramChatId : "",
+        discordBotToken: integCfg.discordEnabled ? integCfg.discordBotToken : "",
+        slackBotToken: integCfg.slackEnabled ? integCfg.slackBotToken : "",
+        composioApiKey: integCfg.composioEnabled ? integCfg.composioApiKey : "",
+        braveApiKey: agentCfg.braveApiKey || "",
+        localModelPath: agentCfg.localModelPath || "",
+        thinkingMode: agentCfg.thinkingMode ?? false,
+      };
+
+      if (agentConfig.provider === "local" && agentConfig.localModelPath) {
+        await localLlmModule.startLocalLlmServer({
+          modelPath: agentConfig.localModelPath,
+          gpuLayers: agentCfg.gpuLayers ?? 0,
+          cpuThreads: agentCfg.cpuThreads ?? 4,
+          contextLength: agentCfg.contextLength ?? 2048,
+          thinkingMode: agentCfg.thinkingMode ?? true,
+        });
+        agentConfig.provider = "openai";
+        agentConfig.apiUrl = `${localLlmModule.LOCAL_LLM_URL}/v1`;
+        agentConfig.apiKey = "local";
+        agentConfig.model = "local";
+      }
+
+      await agentModule.startAgent(agentConfig);
+    })().finally(() => {
+      agentBootstrapPromise = null;
+    });
+  }
+
+  await agentBootstrapPromise;
+}
+
 /**
  * Run a single agent turn: send user prompt to Kotlin orchestrator,
  * get LLM response back (with tool execution if needed).
  */
 export async function runAgentTurn(userPrompt: string, sessionId?: string): Promise<AgentTurnResult> {
   try {
+    await ensureAgentReady();
     const response = await sendMessage(userPrompt, sessionId);
     return {
       assistantText: response || "(empty response)",
@@ -115,6 +172,7 @@ export async function runAgentTurnStream({
     });
 
     try {
+      await ensureAgentReady();
       activeSessionId = await sendMessageStream(userPrompt, sessionId, imageUris);
       onSession?.(activeSessionId);
     } catch (error) {

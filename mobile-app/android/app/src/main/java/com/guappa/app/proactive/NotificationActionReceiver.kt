@@ -1,5 +1,7 @@
 package com.guappa.app.proactive
 
+import com.guappa.app.R
+
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -172,7 +174,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         try {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val notification = NotificationCompat.Builder(context, NotificationChannels.CHAT)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_notif_reply)
                 .setContentTitle("GUAPPA")
                 .setContentText(status)
                 .setAutoCancel(true)

@@ -1,0 +1,32 @@
+appId: com.guappa.app
+name: "E2E: Config Screen Section Icons Visibility"
+---
+# Navigate to Config and verify section headers with icons are visible
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Config screen
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Take screenshot showing all CollapsibleSection headers
+- takeScreenshot: screenshots/config_sections_overview
+
+# Scroll down to see all sections
+- scrollUntilVisible:
+    element:
+      text: "Permissions"
+    direction: DOWN
+    timeout: 5000
+
+- takeScreenshot: screenshots/config_sections_bottom
+
+# Try expanding a section to see icon color change
+- tapOn:
+    text: "How GUAPPA Thinks"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/config_section_expanded

@@ -1,0 +1,43 @@
+appId: com.guappa.app
+name: "E2E: Dock Icons Visibility Check"
+---
+# Verify all 5 dock tab icons are visible and tappable
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Verify dock exists
+- assertVisible:
+    id: "floating-dock"
+
+# Tap each dock tab and verify it becomes selected
+- tapOn:
+    id: "dock-tab-voice"
+- assertVisible:
+    id: "dock-tab-voice"
+- takeScreenshot: screenshots/dock_icon_voice
+
+- tapOn:
+    id: "dock-tab-chat"
+- assertVisible:
+    id: "dock-tab-chat"
+- takeScreenshot: screenshots/dock_icon_chat
+
+- tapOn:
+    id: "dock-tab-command"
+- assertVisible:
+    id: "dock-tab-command"
+- takeScreenshot: screenshots/dock_icon_command
+
+- tapOn:
+    id: "dock-tab-swarm"
+- assertVisible:
+    id: "dock-tab-swarm"
+- takeScreenshot: screenshots/dock_icon_swarm
+
+- tapOn:
+    id: "dock-tab-config"
+- assertVisible:
+    id: "dock-tab-config"
+- takeScreenshot: screenshots/dock_icon_config

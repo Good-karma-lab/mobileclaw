@@ -1,0 +1,49 @@
+appId: com.guappa.app
+name: "E2E: Full Onboarding Flow"
+---
+# Test the onboarding flow from fresh install
+
+- clearAppState
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Onboarding should appear on fresh install
+- takeScreenshot: screenshots/onboarding_step1
+
+# Try to progress through onboarding steps
+- tapOn:
+    text: "Next"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding_step2
+
+- tapOn:
+    text: "Next"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding_step3
+
+- tapOn:
+    text: "Next"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    text: "Skip"
+    optional: true
+- tapOn:
+    text: "Get Started"
+    optional: true
+- tapOn:
+    text: "Done"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/onboarding_complete

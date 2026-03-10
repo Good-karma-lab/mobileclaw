@@ -1,5 +1,7 @@
 package com.guappa.app.tools.impl
 
+import com.guappa.app.R
+
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -232,7 +234,7 @@ class CronJobReceiver : BroadcastReceiver() {
         )
             .setContentTitle(title)
             .setContentText(message)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notif_info)
             .setAutoCancel(true)
             .build()
 

@@ -970,7 +970,7 @@ private class AndroidActionBridgeServer(private val context: Context) {
             nm.createNotificationChannel(ch)
         }
         val notif = NotificationCompat.Builder(context, "guappa_agent")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notif_agent)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)

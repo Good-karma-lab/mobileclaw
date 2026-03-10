@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { springs } from "../../theme/animations";
+import { colors } from "../../theme/colors";
 
 export type DockTab = {
   key: string;
@@ -89,7 +90,7 @@ function DockTabItem({
       <Ionicons
         name={iconName as any}
         size={24}
-        color={isActive ? "#D0E8F5" : "rgba(160, 190, 210, 0.75)"}
+        color={isActive ? colors.accent.cyan : colors.text.secondary}
       />
     </AnimatedPressable>
   );
@@ -168,9 +169,9 @@ const styles = StyleSheet.create({
     height: DOCK_HEIGHT,
     borderRadius: DOCK_HEIGHT / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(10, 22, 35, 0.92)",
+    backgroundColor: "rgba(6, 13, 20, 0.94)",
     borderWidth: 1,
-    borderColor: "rgba(80, 130, 160, 0.2)",
+    borderColor: colors.glass.borderSubtle,
   },
   innerRow: {
     flex: 1,
@@ -190,6 +191,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(50, 100, 130, 0.3)",
+    backgroundColor: "rgba(93, 212, 232, 0.15)",
   },
 });

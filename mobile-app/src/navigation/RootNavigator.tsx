@@ -146,7 +146,7 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#020206",
+    backgroundColor: colors.base.abyss,
   },
   screenLayer: {
     flex: 1,

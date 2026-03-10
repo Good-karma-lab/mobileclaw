@@ -1,0 +1,19 @@
+appId: com.guappa.app
+name: "E2E: Voice Screen with Swarm Visualization"
+---
+# Verify voice screen renders with neural swarm and mic button
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Voice screen should be default
+- assertVisible:
+    id: "neural-swarm"
+- takeScreenshot: screenshots/voice_screen_initial
+
+# Verify mic button or voice controls exist
+- assertVisible:
+    id: "dock-tab-voice"
+    
+- takeScreenshot: screenshots/voice_screen_full

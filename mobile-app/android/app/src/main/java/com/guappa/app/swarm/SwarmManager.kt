@@ -36,6 +36,16 @@ class SwarmManager(
     private var heartbeatJob: Job? = null
     private var peerRefreshJob: Job? = null
 
+    fun setConnectorUrl(url: String) {
+        connector.setBaseUrl(url)
+    }
+
+    fun getPendingTasks(): List<SwarmMessage> = pendingTasks.values.sortedByDescending { it.timestamp }
+
+    fun acceptTask(taskId: String): Boolean = pendingTasks.remove(taskId) != null
+
+    fun rejectTask(taskId: String): Boolean = pendingTasks.remove(taskId) != null
+
     fun start() {
         if (!identity.hasIdentity) {
             Log.d(TAG, "No swarm identity — generate one first")

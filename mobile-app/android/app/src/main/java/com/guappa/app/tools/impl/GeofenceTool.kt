@@ -1,5 +1,7 @@
 package com.guappa.app.tools.impl
 
+import com.guappa.app.R
+
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -221,7 +223,7 @@ class GeofenceReceiver : BroadcastReceiver() {
         )
             .setContentTitle(title)
             .setContentText(message)
-            .setSmallIcon(android.R.drawable.ic_dialog_map)
+            .setSmallIcon(R.drawable.ic_notif_location)
             .setAutoCancel(true)
             .build()
 

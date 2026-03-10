@@ -129,6 +129,7 @@ interface SwarmStatusPayload {
 }
 
 interface SwarmIdentityPayload {
+  publicKey?: string;
   displayName: string;
   publicKeyFingerprint: string;
   reputationTier: ReputationTier;

@@ -1,0 +1,40 @@
+appId: com.guappa.app
+name: "E2E: Storm Palette Visual Validation"
+---
+# Screenshot all main screens to verify the storm palette is applied
+# (dark cyan/blue dramatic night sky aesthetic — no lime green or lavender)
+
+- launchApp
+
+# Wait for app to load
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Voice screen (default)
+- assertVisible:
+    id: "dock-tab-voice"
+- takeScreenshot: screenshots/storm_palette_voice
+
+# Chat screen
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/storm_palette_chat
+
+# Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/storm_palette_command
+
+# Swarm screen
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/storm_palette_swarm
+
+# Config screen
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/storm_palette_config

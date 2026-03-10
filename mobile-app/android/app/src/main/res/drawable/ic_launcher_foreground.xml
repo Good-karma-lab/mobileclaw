@@ -1,0 +1,52 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Neural swarm motif — stylized interconnected nodes -->
+    <!-- Central node -->
+    <path
+        android:fillColor="#2E90A5"
+        android:pathData="M54,42c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zM54,62c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z"/>
+    <!-- Top node -->
+    <path
+        android:fillColor="#3AABB8"
+        android:pathData="M54,28c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4z"/>
+    <!-- Bottom node -->
+    <path
+        android:fillColor="#3AABB8"
+        android:pathData="M54,72c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4z"/>
+    <!-- Left node -->
+    <path
+        android:fillColor="#3AABB8"
+        android:pathData="M32,54c0,-2.21 -1.79,-4 -4,-4s-4,1.79 -4,4 1.79,4 4,4 4,-1.79 4,-4z"/>
+    <!-- Right node -->
+    <path
+        android:fillColor="#3AABB8"
+        android:pathData="M80,54c0,-2.21 -1.79,-4 -4,-4s-4,1.79 -4,4 1.79,4 4,4 4,-1.79 4,-4z"/>
+    <!-- Connection lines -->
+    <path
+        android:strokeColor="#1C4A5E"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,36L54,42M54,66L54,72M42,54L32,54M66,54L76,54"/>
+    <!-- Diagonal connections -->
+    <path
+        android:strokeColor="#16334A"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M46,46L34,34M62,46L74,34M46,62L34,74M62,62L74,74"/>
+    <!-- Diagonal outer nodes -->
+    <path
+        android:fillColor="#1C4A5E"
+        android:pathData="M34,31c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z"/>
+    <path
+        android:fillColor="#1C4A5E"
+        android:pathData="M74,31c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z"/>
+    <path
+        android:fillColor="#1C4A5E"
+        android:pathData="M34,71c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z"/>
+    <path
+        android:fillColor="#1C4A5E"
+        android:pathData="M74,71c-1.66,0 -3,1.34 -3,3s1.34,3 3,3 3,-1.34 3,-3 -1.34,-3 -3,-3z"/>
+</vector>

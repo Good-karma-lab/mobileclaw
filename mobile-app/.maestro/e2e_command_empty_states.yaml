@@ -1,0 +1,27 @@
+appId: com.guappa.app
+name: "E2E: Command Screen Empty State Icons"
+---
+# Verify command screen empty state icons are visible (not invisible at 35% opacity)
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Screenshot the command screen showing empty states
+- takeScreenshot: screenshots/command_empty_states_top
+
+# Scroll to see more sections
+- scroll:
+    direction: DOWN
+    duration: 500
+- takeScreenshot: screenshots/command_empty_states_mid
+
+- scroll:
+    direction: DOWN
+    duration: 500
+- takeScreenshot: screenshots/command_empty_states_bottom

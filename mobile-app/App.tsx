@@ -22,7 +22,6 @@ import { SpaceGrotesk_600SemiBold } from "@expo-google-fonts/space-grotesk";
 import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import { Orbitron_700Bold } from "@expo-google-fonts/orbitron";
 import { Exo2_400Regular, Exo2_500Medium, Exo2_600SemiBold } from "@expo-google-fonts/exo-2";
-// Ionicons font must be explicitly loaded for dev-client builds
 const ioniconsFont = require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf");
 
 import { theme } from "./ui/theme";
@@ -56,6 +55,7 @@ export default function App() {
   const [initError, setInitError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [daemonReady, setDaemonReady] = useState(false);
+  const [fontGateOpen, setFontGateOpen] = useState(false);
   const [fontsLoaded, fontError] = Font.useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -70,7 +70,21 @@ export default function App() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded && !fontError) return;
+    if (fontsLoaded || fontError) {
+      setFontGateOpen(true);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      console.warn("[app] font loading timed out, continuing startup");
+      setFontGateOpen(true);
+    }, 2500);
+
+    return () => clearTimeout(timeout);
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    if (!fontGateOpen) return;
     console.log("[app] fonts loaded:", fontsLoaded, "error:", fontError);
     // If font error occurred, continue without custom fonts
 
@@ -158,7 +172,7 @@ export default function App() {
         log("error", "app initialization failed", { error: errorMsg });
       }
     })();
-  }, [fontsLoaded, fontError]);
+  }, [fontGateOpen, fontsLoaded, fontError]);
 
   useEffect(() => {
     if (!isReady) return;
@@ -255,14 +269,14 @@ export default function App() {
   // Show error screen if initialization failed
   if (initError) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#05050A", justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <Text style={{ color: "#FF6B6B", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>
+      <View style={{ flex: 1, backgroundColor: "#020408", justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <Text style={{ color: "#CC4040", fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>
           Initialization Error
         </Text>
-        <Text style={{ color: "#F5F0E6", fontSize: 14, textAlign: "center" }}>
+        <Text style={{ color: "#AAC3D2", fontSize: 14, textAlign: "center" }}>
           {initError}
         </Text>
-        <Text style={{ color: "#A3A3B2", fontSize: 12, marginTop: 20, textAlign: "center" }}>
+        <Text style={{ color: "#78969A", fontSize: 12, marginTop: 20, textAlign: "center" }}>
           Check the console logs for more details
         </Text>
       </View>
@@ -270,12 +284,12 @@ export default function App() {
   }
 
   // Show loading screen while fonts are loading or app is initializing
-  if (!fontsLoaded || !isReady) {
+  if (!fontGateOpen || !isReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#05050A", justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#D4F49C" />
-        <Text style={{ color: "#A3A3B2", marginTop: 20, fontSize: 14 }}>
-          {!fontsLoaded ? "Loading fonts..." : "Initializing app..."}
+      <View style={{ flex: 1, backgroundColor: "#020408", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#2E90A5" />
+        <Text style={{ color: "#78969A", marginTop: 20, fontSize: 14 }}>
+          {!fontGateOpen ? "Loading fonts..." : "Initializing app..."}
         </Text>
       </View>
     );

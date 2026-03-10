@@ -9,6 +9,7 @@ appId: com.guappa.app
 - tapOn:
     id: "chat-input"
 - inputText: "What is your name?"
+- hideKeyboard
 - tapOn:
     id: "chat-send-button"
 - waitForAnimationToEnd

@@ -1,0 +1,21 @@
+appId: com.guappa.app
+name: "E2E: Swarm Screen Tab Navigation"
+---
+# Navigate swarm screen tabs and verify icons render
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Swarm screen
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+
+- takeScreenshot: screenshots/swarm_default_tab
+
+# Try tapping various elements
+- scroll:
+    direction: DOWN
+    duration: 300
+- takeScreenshot: screenshots/swarm_scrolled

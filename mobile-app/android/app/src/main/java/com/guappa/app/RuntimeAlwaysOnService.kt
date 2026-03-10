@@ -40,7 +40,7 @@ class RuntimeAlwaysOnService : Service() {
         return NotificationCompat.Builder(this, RuntimeBridge.CHANNEL_ID)
             .setContentTitle("Guappa runtime active")
             .setContentText("Keeping hooks and Telegram relay active")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notif_service)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

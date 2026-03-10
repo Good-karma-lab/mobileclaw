@@ -89,7 +89,7 @@ export function LiquidGlassView({
           <RoundedRect
             x={0} y={0} width={w} height={h}
             r={borderRadius}
-            color={`rgba(8, 16, 24, ${fillAlpha})`}
+            color={`rgba(11, 26, 38, ${fillAlpha})`}
           />
 
           {/* Top edge highlight — glass refraction line */}
@@ -144,7 +144,7 @@ export function LiquidGlassView({
             r={borderRadius}
             style="stroke"
             strokeWidth={0.5}
-            color={`rgba(80, 130, 150, ${borderAlpha})`}
+            color={`rgba(80, 160, 190, ${borderAlpha})`}
           />
         </Canvas>
       )}

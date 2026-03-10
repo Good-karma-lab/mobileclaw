@@ -21,7 +21,7 @@ import org.json.JSONObject
 data class SwarmConfig(
     val enabled: Boolean = false,
     val connectionMode: SwarmConnectionMode = SwarmConnectionMode.REMOTE,
-    val connectorUrl: String = "http://127.0.0.1:9371",
+    val connectorUrl: String = "http://10.0.2.2:9371",
     val connectorPort: Int = 9370,
 
     // Polling intervals (milliseconds)
@@ -88,7 +88,7 @@ data class SwarmConfig(
                 } catch (_: Exception) {
                     SwarmConnectionMode.REMOTE
                 },
-                connectorUrl = json.optString("connector_url", "http://127.0.0.1:9371"),
+                connectorUrl = json.optString("connector_url", "http://10.0.2.2:9371"),
                 connectorPort = json.optInt("connector_port", 9370),
                 activeTaskPollMs = json.optLong("active_task_poll_ms", 5_000),
                 activeStatusPollMs = json.optLong("active_status_poll_ms", 10_000),

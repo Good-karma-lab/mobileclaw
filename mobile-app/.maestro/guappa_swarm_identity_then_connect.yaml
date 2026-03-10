@@ -11,16 +11,13 @@ appId: com.guappa.app
 - waitForAnimationToEnd
 # Generate identity if not already present
 - tapOn:
-    text: "Generate Identity"
+    text: "Generate New Identity"
     optional: true
 - tapOn:
     id: "generate-identity-btn"
     optional: true
 - waitForAnimationToEnd
-# After identity generation, try to connect
-- tapOn: "Feed"
-- waitForAnimationToEnd
-# Tap connect button
+# Try to connect from current connection panel
 - tapOn:
     text: "Connect to Swarm"
     optional: true

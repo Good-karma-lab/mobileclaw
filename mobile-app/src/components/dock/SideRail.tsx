@@ -97,9 +97,9 @@ const styles = StyleSheet.create({
   },
   blurWrap: {
     flex: 1,
-    backgroundColor: "rgba(10, 10, 30, 0.65)",
+    backgroundColor: "rgba(6, 13, 20, 0.80)",
     borderRightWidth: 1,
-    borderRightColor: "rgba(255, 255, 255, 0.12)",
+    borderRightColor: colors.glass.borderSubtle,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,

@@ -1,5 +1,7 @@
 package com.guappa.app.proactive
 
+import com.guappa.app.R
+
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -87,7 +89,7 @@ class GuappaNotificationManager(private val context: Context) {
             .build()
 
         val replyAction = NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_send,
+            R.drawable.ic_notif_message,
             "Reply",
             replyPendingIntent
         )
@@ -98,7 +100,7 @@ class GuappaNotificationManager(private val context: Context) {
         val contentIntent = createContentPendingIntent(notifId)
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.CHAT)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notif_info)
             .setStyle(messagingStyle)
             .setContentIntent(contentIntent)
             .addAction(replyAction)
@@ -135,7 +137,7 @@ class GuappaNotificationManager(private val context: Context) {
         }
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.TASKS)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setSmallIcon(R.drawable.ic_notif_task)
             .setContentTitle("Task: $taskName")
             .setContentText(status)
             .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
@@ -183,7 +185,7 @@ class GuappaNotificationManager(private val context: Context) {
             .build()
 
         val replyAction = NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_send,
+            R.drawable.ic_notif_message,
             "Answer",
             replyPendingIntent
         )
@@ -194,7 +196,7 @@ class GuappaNotificationManager(private val context: Context) {
         val contentIntent = createContentPendingIntent(notifId)
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.QUESTIONS)
-            .setSmallIcon(android.R.drawable.ic_menu_help)
+            .setSmallIcon(R.drawable.ic_notif_action)
             .setStyle(messagingStyle)
             .setContentIntent(contentIntent)
             .addAction(replyAction)
@@ -226,7 +228,7 @@ class GuappaNotificationManager(private val context: Context) {
         val contentIntent = createContentPendingIntent(notifId)
 
         val builder = NotificationCompat.Builder(context, NotificationChannels.ALERTS)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_notif_alert)
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
@@ -263,7 +265,7 @@ class GuappaNotificationManager(private val context: Context) {
         val contentIntent = createContentPendingIntent(notifId)
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.PROACTIVE)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(R.drawable.ic_notif_reminder)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -305,7 +307,7 @@ class GuappaNotificationManager(private val context: Context) {
         val contentIntent = createContentPendingIntent(0)
 
         return NotificationCompat.Builder(context, NotificationChannels.SERVICE)
-            .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setSmallIcon(R.drawable.ic_notif_info)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(contentIntent)

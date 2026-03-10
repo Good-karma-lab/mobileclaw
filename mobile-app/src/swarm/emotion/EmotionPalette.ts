@@ -11,26 +11,26 @@ export interface HSL {
 }
 
 export const EMOTION_PALETTE = {
-  neutral:    { h: 200, s: 10, l: 28 },  // Dark steel
-  curious:    { h: 195, s: 25, l: 30 },  // Dark ocean teal
-  happy:      { h: 42,  s: 20, l: 32 },  // Dim warm amber
-  love:       { h: 340, s: 22, l: 28 },  // Dark rose
-  focused:    { h: 250, s: 20, l: 26 },  // Deep dark violet
-  alert:      { h: 15,  s: 25, l: 28 },  // Dark coral
-  calm:       { h: 185, s: 18, l: 30 },  // Dark sage teal
-  sad:        { h: 220, s: 18, l: 22 },  // Deep dark indigo
-  excited:    { h: 30,  s: 28, l: 30 },  // Dark amber
-  mysterious: { h: 270, s: 22, l: 24 },  // Very dark purple
-  grateful:   { h: 50,  s: 15, l: 30 },  // Dim gold
-  proud:      { h: 40,  s: 22, l: 28 },  // Dark warm amber
-  playful:    { h: 300, s: 18, l: 26 },  // Dark magenta
-  anxious:    { h: 190, s: 15, l: 24 },  // Very muted teal
-  inspired:   { h: 55,  s: 25, l: 32 },  // Dim yellow
-  nostalgic:  { h: 25,  s: 15, l: 26 },  // Dark sunset
-  angry:      { h: 5,   s: 30, l: 24 },  // Very deep red
-  surprised:  { h: 48,  s: 25, l: 30 },  // Dim gold
-  confused:   { h: 230, s: 14, l: 24 },  // Dark blue-gray
-  sleepy:     { h: 240, s: 10, l: 20 },  // Near-black lavender
+  neutral:    { h: 195, s: 20, l: 40 },  // Storm steel
+  curious:    { h: 190, s: 40, l: 45 },  // Ocean teal
+  happy:      { h: 42,  s: 40, l: 48 },  // Warm amber
+  love:       { h: 340, s: 35, l: 42 },  // Rose
+  focused:    { h: 250, s: 30, l: 40 },  // Deep violet
+  alert:      { h: 15,  s: 40, l: 42 },  // Coral
+  calm:       { h: 185, s: 30, l: 44 },  // Sage teal
+  sad:        { h: 220, s: 25, l: 32 },  // Deep indigo
+  excited:    { h: 30,  s: 45, l: 48 },  // Amber
+  mysterious: { h: 270, s: 35, l: 38 },  // Purple
+  grateful:   { h: 50,  s: 30, l: 44 },  // Gold
+  proud:      { h: 40,  s: 35, l: 42 },  // Warm amber
+  playful:    { h: 300, s: 30, l: 40 },  // Magenta
+  anxious:    { h: 190, s: 20, l: 35 },  // Muted teal
+  inspired:   { h: 55,  s: 40, l: 48 },  // Yellow
+  nostalgic:  { h: 25,  s: 25, l: 38 },  // Sunset
+  angry:      { h: 5,   s: 45, l: 38 },  // Deep red
+  surprised:  { h: 48,  s: 40, l: 46 },  // Gold
+  confused:   { h: 230, s: 20, l: 35 },  // Blue-gray
+  sleepy:     { h: 240, s: 15, l: 28 },  // Dark lavender
 } as const;
 
 export type EmotionKey = keyof typeof EMOTION_PALETTE;

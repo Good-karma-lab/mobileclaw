@@ -38,8 +38,8 @@ function generateStars(): Star[] {
   return Array.from({ length: STAR_COUNT }, () => ({
     x: Math.random(),
     y: Math.random(),
-    r: 0.2 + Math.random() * 0.8,
-    a: 0.06 + Math.random() * 0.3,
+    r: 0.2 + Math.random() * 0.6,
+    a: 0.04 + Math.random() * 0.15,
     twinklePhase: Math.random() * Math.PI * 2,
     twinkleSpeed: 0.0002 + Math.random() * 0.0008,
     hue: 200 + Math.random() * 60,
@@ -53,8 +53,8 @@ function generateDust(): DustMote[] {
     x: Math.random() * 2 - 1,
     y: Math.random() * 2 - 1,
     z: Math.random() * 2 - 1,
-    size: 0.2 + Math.random() * 0.7,
-    alpha: 0.02 + Math.random() * 0.06,
+    size: 0.3 + Math.random() * 0.9,
+    alpha: 0.05 + Math.random() * 0.12,
     speed: 0.00005 + Math.random() * 0.00015,
     phase: Math.random() * Math.PI * 2,
   }));
@@ -204,7 +204,7 @@ export const SwarmCanvas: React.FC = () => {
 
         // ── 2. Nebula clouds ──
         const drawCloud = (x: number, y: number, r: number, a: number, cloudH: number) => {
-          const [cr, cg, cb] = hsl(cloudH, 12, 12);
+          const [cr, cg, cb] = hsl(cloudH, 20, 18);
           const shader = Skia.Shader.MakeRadialGradient(
             { x, y }, r,
             [
@@ -219,9 +219,9 @@ export const SwarmCanvas: React.FC = () => {
           canvas.drawRect(Skia.XYWHRect(0, 0, W, H), fill);
           fill.setShader(null);
         };
-        drawCloud(W * 0.15, H * 0.3, W * 0.35, 0.06, 230);
-        drawCloud(W * 0.85, H * 0.2, W * 0.28, 0.04, 260);
-        drawCloud(cx, cy, Math.min(W, H) * 0.45, 0.04, 220);
+        drawCloud(W * 0.15, H * 0.3, W * 0.38, 0.10, 200);
+        drawCloud(W * 0.85, H * 0.2, W * 0.30, 0.07, 220);
+        drawCloud(cx, cy, Math.min(W, H) * 0.50, 0.08, 195);
 
         // ── 3. Emotion tint overlay ──
         const tintA = 0.1 + Math.abs(globalPulse) * 0.05;
@@ -229,13 +229,13 @@ export const SwarmCanvas: React.FC = () => {
         fill.setColor(Skia.Color(`rgba(${tR}, ${tG}, ${tB}, ${tintA})`));
         canvas.drawRect(Skia.XYWHRect(0, 0, W, H), fill);
 
-        // ── 4. Stars ──
+        // ── 4. Stars (subtle background) ──
         for (const star of starsRef.current) {
           const twinkle = 0.5 + 0.5 * Math.sin(time * 2 * star.twinkleSpeed + star.twinklePhase);
           const starA = star.a * twinkle;
           if (starA < 0.01) continue;
           const starH = emoHsl.h * 0.2 + star.hue * 0.8;
-          const [sR, sG, sB] = hsl(starH, 6 + emoHsl.s * 0.1, 65);
+          const [sR, sG, sB] = hsl(starH, 6 + emoHsl.s * 0.1, 55);
           fill.setColor(Skia.Color(`rgba(${sR}, ${sG}, ${sB}, ${starA})`));
           canvas.drawCircle(star.x * W, star.y * H, star.r, fill);
         }
@@ -254,11 +254,11 @@ export const SwarmCanvas: React.FC = () => {
           canvas.drawCircle(dp.sx, dp.sy, d.size * dp.scale, fill);
         }
 
-        // ── 6. Central glow ──
+        // ── 6. Central glow (subtle ambient, not fog) ──
         const glP = 1 + globalPulse * 0.2;
-        const glowR = Math.min(W, H) * 0.4 * (0.85 + 0.15 * Math.sin(time * 0.3)) * glP;
-        const glowA = (0.025 + config.coreGlow) * glP;
-        const glowA2 = (0.012 + config.coreGlow * 0.4) * glP;
+        const glowR = Math.min(W, H) * 0.40 * (0.85 + 0.15 * Math.sin(time * 0.3)) * glP;
+        const glowA = (0.03 + config.coreGlow * 0.6) * glP;
+        const glowA2 = (0.015 + config.coreGlow * 0.25) * glP;
         const glowShader = Skia.Shader.MakeRadialGradient(
           { x: cx, y: cy }, glowR,
           [
@@ -372,9 +372,10 @@ export const SwarmCanvas: React.FC = () => {
             const pulseX = p.sx + (mp.sx - p.sx) * travelT;
             const pulseY = p.sy + (mp.sy - p.sy) * travelT;
 
-            // Draw connection line
-            stroke.setColor(Skia.Color(`rgba(${er}, ${eg}, ${eb}, ${connA * 0.5})`));
-            stroke.setStrokeWidth((0.25 + strength * 0.7) * Math.min(p.scale, mp.scale));
+            // Draw connection line — bright glowing wires
+            const lineA = Math.min(1, connA * 2.5);
+            stroke.setColor(Skia.Color(`rgba(${Math.min(255, er + 80)}, ${Math.min(255, eg + 80)}, ${Math.min(255, eb + 80)}, ${lineA})`));
+            stroke.setStrokeWidth((0.4 + strength * 1.2) * Math.min(p.scale, mp.scale));
             const connPath = Skia.Path.Make();
             const mmx = (p.sx + mp.sx) / 2 + Math.sin(time * 0.6 + p.idx) * 2;
             const mmy = (p.sy + mp.sy) / 2 + Math.cos(time * 0.6 + j) * 2;
@@ -383,10 +384,10 @@ export const SwarmCanvas: React.FC = () => {
             canvas.drawPath(connPath, stroke);
 
             // Bright traveling pulse dot
-            if (connA > 0.01) {
-              const pulseBright = connA * 1.8;
-              fill.setColor(Skia.Color(`rgba(${Math.min(255, er + 40)}, ${Math.min(255, eg + 40)}, ${Math.min(255, eb + 40)}, ${pulseBright})`));
-              canvas.drawCircle(pulseX, pulseY, 1.2 * Math.min(p.scale, mp.scale), fill);
+            if (connA > 0.005) {
+              const pulseBright = Math.min(1, connA * 4.0);
+              fill.setColor(Skia.Color(`rgba(${Math.min(255, er + 100)}, ${Math.min(255, eg + 100)}, ${Math.min(255, eb + 100)}, ${pulseBright})`));
+              canvas.drawCircle(pulseX, pulseY, 1.8 * Math.min(p.scale, mp.scale), fill);
             }
           }
         }
@@ -455,7 +456,7 @@ export const SwarmCanvas: React.FC = () => {
           const tp = camera.project(to.x, to.y, to.z);
           const px = fp.sx + (tp.sx - fp.sx) * fire.progress;
           const py = fp.sy + (tp.sy - fp.sy) * fire.progress;
-          const fireA = Math.sin(fire.progress * Math.PI) * 0.65;
+          const fireA = Math.sin(fire.progress * Math.PI) * 1.0;
           const sc = (fp.scale + tp.scale) / 2;
 
           // Glow halo
@@ -482,77 +483,75 @@ export const SwarmCanvas: React.FC = () => {
         // Two-pass: first draw all glow halos with blur, then core circles
         // This is more efficient than per-neuron gradient shaders
 
-        // Pass A: Glow halos (blurred circles, much cheaper than radial gradients)
-        blurFill.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 6, true));
+        // Pass A: Subtle glow halos (keep tight, not foggy)
+        blurFill.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 4, true));
         for (const p of projected) {
           const n = system.neurons[p.idx];
           const baseR = n.size * p.scale;
-          const a = n.brightness * (0.25 + n.energy * 0.7) * Math.min(1, p.scale * 1.4);
-          if (a < 0.015 || baseR < 0.5) continue;
+          const a = n.brightness * (0.5 + n.energy * 0.5) * Math.min(1, p.scale * 1.4);
+          if (a < 0.02 || baseR < 0.8) continue;
 
-          const breathe = 1 + Math.sin(time * 0.5 + n.phase) * 0.04 + globalPulse * 0.04;
+          const breathe = 1 + Math.sin(time * 0.5 + n.phase) * 0.06 + globalPulse * 0.06;
           const r = baseR * breathe;
-          const glowSize = r * (1.5 + n.energy * 2.5);
-          const glowA = a * 0.12 * (1 + globalPulse * 0.3);
+          const glowSize = r * 1.6;
+          const glowA = a * 0.18;
 
-          blurFill.setColor(Skia.Color(`rgba(${er}, ${eg}, ${eb}, ${glowA})`));
+          blurFill.setColor(Skia.Color(`rgba(${Math.min(255, er + 50)}, ${Math.min(255, eg + 50)}, ${Math.min(255, eb + 50)}, ${Math.min(0.5, glowA)})`));
           canvas.drawCircle(p.sx, p.sy, glowSize, blurFill);
         }
         blurFill.setMaskFilter(null);
 
-        // Pass B: Core neurons with per-neuron gradient (only for larger neurons)
+        // Pass B: Core neurons — blazing bright nodes
         for (const p of projected) {
           const n = system.neurons[p.idx];
           const baseR = n.size * p.scale;
-          const a = n.brightness * (0.25 + n.energy * 0.7) * Math.min(1, p.scale * 1.4);
-          if (a < 0.008 || baseR < 0.2) continue;
+          const rawA = n.brightness * (0.5 + n.energy * 0.5) * Math.min(1, p.scale * 1.4);
+          if (rawA < 0.005 || baseR < 0.2) continue;
+          const a = Math.min(1, rawA * 1.6);
 
-          const breathe = 1 + Math.sin(time * 0.5 + n.phase) * 0.04 + globalPulse * 0.04;
+          const breathe = 1 + Math.sin(time * 0.5 + n.phase) * 0.07 + globalPulse * 0.07;
           const r = baseR * breathe;
 
-          if (r > 1.5) {
-            // Full gradient for prominent neurons
+          if (r > 1.0) {
+            // White-hot core → bright cyan → fade
             const coreShader = Skia.Shader.MakeRadialGradient(
-              { x: p.sx - r * 0.25, y: p.sy - r * 0.25 }, r,
+              { x: p.sx - r * 0.15, y: p.sy - r * 0.15 }, r,
               [
-                Skia.Color(`rgba(${Math.min(255, er + 80)}, ${Math.min(255, eg + 60)}, ${Math.min(255, eb + 50)}, ${a * 0.7})`),
-                Skia.Color(`rgba(${er}, ${eg}, ${eb}, ${a})`),
-                Skia.Color(`rgba(${Math.round(er * 0.55)}, ${Math.round(eg * 0.55)}, ${Math.round(eb * 0.55)}, ${a * 0.12})`),
+                Skia.Color(`rgba(${Math.min(255, er + 160)}, ${Math.min(255, eg + 140)}, ${Math.min(255, eb + 130)}, ${a})`),
+                Skia.Color(`rgba(${Math.min(255, er + 70)}, ${Math.min(255, eg + 60)}, ${Math.min(255, eb + 50)}, ${a * 0.85})`),
+                Skia.Color(`rgba(${er}, ${eg}, ${eb}, ${a * 0.2})`),
               ],
-              [0, 0.35, 1],
+              [0, 0.3, 1],
               TileMode.Clamp,
             );
             fill.setShader(coreShader);
             canvas.drawCircle(p.sx, p.sy, r, fill);
             fill.setShader(null);
 
-            // Specular highlight
-            if (r > 1.8) {
-              fill.setColor(Skia.Color(`rgba(255, 255, 255, ${0.04 + n.energy * 0.05})`));
-              canvas.drawOval(
-                Skia.XYWHRect(p.sx - r * 0.45, p.sy - r * 0.45, r * 0.5, r * 0.24),
-                fill,
-              );
+            // White specular glint
+            if (r > 1.3) {
+              const specA = Math.min(1, 0.25 + n.energy * 0.35);
+              fill.setColor(Skia.Color(`rgba(230, 245, 255, ${specA})`));
+              canvas.drawCircle(p.sx, p.sy, r * 0.35, fill);
             }
           } else {
-            // Simple flat circle for tiny neurons (cheap)
-            fill.setColor(Skia.Color(`rgba(${Math.min(255, er + 60)}, ${Math.min(255, eg + 40)}, ${Math.min(255, eb + 30)}, ${a})`));
+            // Small neurons — bright points
+            fill.setColor(Skia.Color(`rgba(${Math.min(255, er + 120)}, ${Math.min(255, eg + 100)}, ${Math.min(255, eb + 90)}, ${a})`));
             canvas.drawCircle(p.sx, p.sy, r, fill);
           }
 
-          // Energy decay
-          n.energy *= 0.998;
+          n.energy *= 0.996;
         }
 
-        // ── 13. Vignette ──
-        const vigR = Math.max(W, H) * 0.72;
+        // ── 13. Vignette (lighter — let the stars shine through) ──
+        const vigR = Math.max(W, H) * 0.80;
         const vigShader = Skia.Shader.MakeRadialGradient(
           { x: cx, y: cy }, vigR,
           [
             Skia.Color('rgba(0, 0, 0, 0)'),
-            Skia.Color('rgba(2, 2, 6, 0.68)'),
+            Skia.Color('rgba(2, 3, 8, 0.40)'),
           ],
-          [Math.min(W, H) * 0.22 / vigR, 1],
+          [Math.min(W, H) * 0.30 / vigR, 1],
           TileMode.Clamp,
         );
         fill.setShader(vigShader);

@@ -1,0 +1,35 @@
+appId: com.guappa.app
+name: "E2E: Chat Input Bar Icons"
+---
+# Verify chat input bar icons (image, camera, document, mic/send) are visible
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Verify input bar exists and icons are visible
+- assertVisible:
+    id: "chat-input"
+
+# Take screenshot of the input bar area
+- takeScreenshot: screenshots/chat_input_icons
+
+# Type text to trigger send button
+- tapOn:
+    id: "chat-input"
+- inputText: "hello"
+
+# Verify send button appears
+- assertVisible:
+    id: "chat-send-button"
+- takeScreenshot: screenshots/chat_send_button_visible
+
+# Clear and check mic button returns
+- clearText:
+    id: "chat-input"
+- takeScreenshot: screenshots/chat_mic_button_visible

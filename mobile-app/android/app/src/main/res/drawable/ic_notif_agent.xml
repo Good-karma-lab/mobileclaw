@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Neural swarm node — Guappa agent -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,4c1.93,0 3.68,0.78 4.95,2.05l-1.41,1.41C14.47,6.39 13.3,5.88 12,5.88s-2.47,0.51-3.54,1.58L7.05,6.05C8.32,4.78 10.07,4 12,4zM8,12c0,-2.21 1.79,-4 4,-4s4,1.79 4,4 -1.79,4 -4,4 -4,-1.79 -4,-4zM12,20c-1.93,0 -3.68,-0.78 -4.95,-2.05l1.41,-1.41c1.07,1.07 2.24,1.58 3.54,1.58s2.47,-0.51 3.54,-1.58l1.41,1.41C15.68,19.22 13.93,20 12,20z"/>
+</vector>

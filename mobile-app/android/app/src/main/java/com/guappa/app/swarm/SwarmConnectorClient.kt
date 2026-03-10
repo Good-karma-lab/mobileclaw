@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  * simpler and sufficient for mobile use cases.
  */
 class SwarmConnectorClient(
-    private val baseUrl: String = "http://10.0.2.2:9371"
+    baseUrl: String = "http://10.0.2.2:9371"
 ) {
     private val TAG = "SwarmConnector"
     private val client = OkHttpClient.Builder()
@@ -32,6 +32,7 @@ class SwarmConnectorClient(
         .build()
 
     private val jsonMediaType = "application/json".toMediaType()
+    @Volatile private var baseUrl: String = baseUrl.trimEnd('/')
 
     private val _events = MutableSharedFlow<SwarmMessage>(
         extraBufferCapacity = 64
@@ -42,6 +43,13 @@ class SwarmConnectorClient(
 
     val isConnected: Boolean
         get() = eventJob?.isActive == true
+
+    fun setBaseUrl(url: String) {
+        val normalized = url.trim().removeSuffix("/")
+        if (normalized.isNotBlank()) {
+            baseUrl = normalized
+        }
+    }
 
     /**
      * Get connector status and peer count.

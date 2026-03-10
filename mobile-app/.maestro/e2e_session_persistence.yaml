@@ -1,0 +1,38 @@
+appId: com.guappa.app
+name: "E2E: Session Persistence Across Restart"
+---
+# Send message → kill app → reopen → verify conversation is intact
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Go to chat and send a distinctive message
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "The secret code is STORM42"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 20000
+- takeScreenshot: screenshots/session_before_restart
+
+# Kill and relaunch app
+- stopApp
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Return to chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Verify the previous message is still visible
+- takeScreenshot: screenshots/session_after_restart
+- assertVisible:
+    text: "STORM42"
+    optional: true

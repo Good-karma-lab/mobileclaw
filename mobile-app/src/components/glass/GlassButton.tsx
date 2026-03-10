@@ -61,8 +61,8 @@ export function GlassButton({
 
   const variantStyles = variantMap[variant];
   const textColor = variant === "primary"
-    ? "rgba(180, 210, 220, 0.9)"
-    : "rgba(140, 170, 185, 0.7)";
+    ? colors.text.primary
+    : colors.text.secondary;
 
   return (
     <AnimatedPressable
@@ -108,14 +108,14 @@ export function GlassButton({
 
 const variantMap: Record<Variant, ViewStyle> = {
   primary: {
-    backgroundColor: "rgba(20, 60, 70, 0.4)",
+    backgroundColor: "rgba(22, 51, 74, 0.50)",
     borderWidth: 0.5,
-    borderColor: "rgba(40, 90, 100, 0.3)",
+    borderColor: colors.glass.border,
   },
   secondary: {
-    backgroundColor: "rgba(20, 30, 40, 0.35)",
+    backgroundColor: "rgba(14, 32, 48, 0.40)",
     borderWidth: 0.5,
-    borderColor: "rgba(60, 80, 100, 0.15)",
+    borderColor: colors.glass.borderSubtle,
   },
   ghost: {
     backgroundColor: "transparent",

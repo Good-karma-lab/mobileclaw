@@ -412,7 +412,7 @@ class AndroidAgentToolsModule(private val appContext: ReactApplicationContext) :
         val notification = NotificationCompat.Builder(appContext, channelId)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notif_agent)
             .setAutoCancel(true)
             .build()
 

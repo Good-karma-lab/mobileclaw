@@ -9,6 +9,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.ConcurrentLinkedDeque
 
 /**
  * React Native bridge module exposing the World Wide Swarm to JavaScript.
@@ -30,6 +31,12 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
     private var holonParticipant: SwarmHolonParticipant? = null
     private var eventRelayJob: Job? = null
     private var connectedUrl: String? = null
+    private val recentMessages = ConcurrentLinkedDeque<JSONObject>()
+
+    companion object {
+        private const val DEFAULT_CONNECTOR_URL = "http://10.0.2.2:9371"
+        private const val MAX_RECENT_MESSAGES = 200
+    }
 
     override fun getName(): String = "GuappaSwarm"
 
@@ -54,12 +61,7 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
             ensureComponents()
             val identity = swarmManager!!.identity
             identity.generateIdentity()
-            val json = JSONObject().apply {
-                put("publicKey", identity.publicKeyBase64 ?: "")
-                put("fingerprint", identity.peerId ?: "")
-                put("displayName", identity.displayName)
-                put("createdAt", System.currentTimeMillis())
-            }
+            val json = buildIdentityPayload(identity)
             promise.resolve(json.toString())
         } catch (e: Exception) {
             promise.reject("IDENTITY_ERROR", "Failed to generate identity: ${e.message}", e)
@@ -71,12 +73,7 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
         try {
             ensureComponents()
             val identity = swarmManager!!.identity
-            val json = JSONObject().apply {
-                put("publicKey", identity.publicKeyBase64 ?: "")
-                put("fingerprint", identity.peerId ?: "")
-                put("displayName", identity.displayName)
-                put("createdAt", 0)
-            }
+            val json = buildIdentityPayload(identity)
             promise.resolve(json.toString())
         } catch (e: Exception) {
             promise.reject("IDENTITY_ERROR", "Failed to get identity: ${e.message}", e)
@@ -111,11 +108,13 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
         ensureComponents()
         scope.launch {
             try {
+                val resolvedUrl = connectorUrl.trim().ifEmpty { DEFAULT_CONNECTOR_URL }
                 // Update config with URL
                 configStore!!.update {
-                    copy(connectorUrl = connectorUrl, enabled = true)
+                    copy(connectorUrl = resolvedUrl, enabled = true)
                 }
-                connectedUrl = connectorUrl
+                connectedUrl = resolvedUrl
+                swarmManager!!.setConnectorUrl(resolvedUrl)
 
                 // Start swarm manager
                 swarmManager!!.start()
@@ -177,10 +176,14 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                 arr.put(JSONObject().apply {
                     put("id", peer.peerId)
                     put("displayName", peer.displayName)
+                    put("name", peer.displayName)
                     put("fingerprint", peer.peerId)
                     put("capabilities", JSONArray(peer.capabilities))
+                    put("address", peer.address)
                     put("reputationTier", "trusted")
+                    put("reputationScore", 0)
                     put("lastSeen", peer.lastSeen)
+                    put("lastSeenTimestamp", peer.lastSeen)
                     put("online", peer.isOnline)
                 })
             }
@@ -215,6 +218,16 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                     payload = JSONObject().apply { put("content", content) }
                 )
                 val sent = swarmManager!!.connector.sendMessage(msg)
+                if (sent) {
+                    appendRecentMessage(
+                        swarmUiMessage(
+                            type = "chat",
+                            title = swarmManager!!.identity.displayName,
+                            content = content,
+                            timestamp = msg.timestamp,
+                        )
+                    )
+                }
                 promise.resolve(sent)
             } catch (e: Exception) {
                 promise.reject("SEND_ERROR", e.message, e)
@@ -234,6 +247,16 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                     payload = JSONObject().apply { put("content", content) }
                 )
                 val sent = swarmManager!!.connector.sendMessage(msg)
+                if (sent) {
+                    appendRecentMessage(
+                        swarmUiMessage(
+                            type = "chat",
+                            title = swarmManager!!.identity.displayName,
+                            content = content,
+                            timestamp = msg.timestamp,
+                        )
+                    )
+                }
                 promise.resolve(sent)
             } catch (e: Exception) {
                 promise.reject("SEND_ERROR", e.message, e)
@@ -243,16 +266,22 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun getRecentMessages(limit: Int, promise: Promise) {
-        // Messages are ephemeral in the current connector model;
-        // return empty array until persistent message store is added
-        promise.resolve("[]")
+        try {
+            val effectiveLimit = limit.coerceAtLeast(1)
+            val items = synchronized(recentMessages) {
+                recentMessages.toList().takeLast(effectiveLimit)
+            }
+            promise.resolve(JSONArray(items).toString())
+        } catch (e: Exception) {
+            promise.resolve("[]")
+        }
     }
 
     // ---- Tasks ----
 
     @ReactMethod
     fun getAvailableTasks(promise: Promise) {
-        promise.resolve("[]")
+        getActiveTasks(promise)
     }
 
     @ReactMethod
@@ -260,8 +289,7 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
         ensureComponents()
         scope.launch {
             try {
-                // Route through task executor via SwarmManager
-                promise.resolve(true)
+                promise.resolve(swarmManager!!.acceptTask(taskId))
             } catch (e: Exception) {
                 promise.reject("TASK_ERROR", e.message, e)
             }
@@ -271,7 +299,8 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun rejectTask(taskId: String, promise: Promise) {
         try {
-            promise.resolve(true)
+            ensureComponents()
+            promise.resolve(swarmManager!!.rejectTask(taskId))
         } catch (e: Exception) {
             promise.reject("TASK_ERROR", e.message, e)
         }
@@ -288,7 +317,22 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun getActiveTasks(promise: Promise) {
-        promise.resolve("[]")
+        try {
+            ensureComponents()
+            val arr = JSONArray()
+            swarmManager!!.getPendingTasks().forEach { task ->
+                arr.put(JSONObject().apply {
+                    put("id", task.id)
+                    put("description", task.payload.optString("task", task.payload.optString("content", "Swarm task")))
+                    put("progress", 0)
+                    put("timeRemainingSeconds", 0)
+                    put("status", "pending")
+                })
+            }
+            promise.resolve(arr.toString())
+        } catch (e: Exception) {
+            promise.resolve("[]")
+        }
     }
 
     @ReactMethod
@@ -496,7 +540,7 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                 putString("connectionStatus", if (isConn) "connected" else "disconnected")
                 putInt("peerCount", swarmManager!!.peers.value.size)
                 putDouble("uptimeSeconds", ((System.currentTimeMillis() - stats.connectedSince) / 1000).toDouble())
-                putString("connectorUrl", connectedUrl ?: configStore?.current?.connectorUrl ?: "http://localhost:9371")
+                putString("connectorUrl", connectedUrl ?: configStore?.current?.connectorUrl ?: DEFAULT_CONNECTOR_URL)
             }
             promise.resolve(result)
         } catch (e: Exception) {
@@ -504,7 +548,7 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                 putString("connectionStatus", "disconnected")
                 putInt("peerCount", 0)
                 putDouble("uptimeSeconds", 0.0)
-                putString("connectorUrl", "http://localhost:9371")
+                putString("connectorUrl", DEFAULT_CONNECTOR_URL)
             }
             promise.resolve(result)
         }
@@ -523,8 +567,20 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun getMessages(since: Double, promise: Promise) {
-        // Return empty array - messages are ephemeral
-        promise.resolve(Arguments.createArray())
+        try {
+            val sinceTs = since.toLong()
+            val arr = JSONArray()
+            synchronized(recentMessages) {
+                recentMessages.forEach { msg ->
+                    if (msg.optLong("timestamp", 0) > sinceTs) {
+                        arr.put(msg)
+                    }
+                }
+            }
+            promise.resolve(arr.toString())
+        } catch (e: Exception) {
+            promise.resolve("[]")
+        }
     }
 
     @ReactMethod
@@ -585,6 +641,39 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
                     }.toString())
                 }
             }
+            launch {
+                manager.connector.events.collectLatest { message ->
+                    val senderName = manager.peers.value.firstOrNull { it.peerId == message.fromPeerId }?.displayName
+                        ?: message.fromPeerId
+                    when (message.type) {
+                        SwarmMessageType.BROADCAST -> appendRecentMessage(
+                            swarmUiMessage(
+                                type = "chat",
+                                title = senderName,
+                                content = message.payload.optString("content", "Broadcast message"),
+                                timestamp = message.timestamp,
+                            )
+                        )
+                        SwarmMessageType.TASK_REQUEST -> appendRecentMessage(
+                            swarmUiMessage(
+                                type = "task_offer",
+                                title = senderName,
+                                content = message.payload.optString("task", "Task request"),
+                                timestamp = message.timestamp,
+                            )
+                        )
+                        SwarmMessageType.HOLON_INVITE -> appendRecentMessage(
+                            swarmUiMessage(
+                                type = "holon_invite",
+                                title = senderName,
+                                content = message.payload.optString("topic", "Holon invite"),
+                                timestamp = message.timestamp,
+                            )
+                        )
+                        else -> Unit
+                    }
+                }
+            }
         }
     }
 
@@ -605,5 +694,38 @@ class GuappaSwarmModule(private val reactContext: ReactApplicationContext) :
     override fun onCatalystInstanceDestroy() {
         eventRelayJob?.cancel()
         scope.cancel()
+    }
+
+    private fun buildIdentityPayload(identity: SwarmIdentity): JSONObject {
+        val fingerprint = identity.peerId ?: ""
+        return JSONObject().apply {
+            put("publicKey", identity.publicKeyBase64 ?: "")
+            put("fingerprint", fingerprint)
+            put("displayName", identity.displayName)
+            put("createdAt", System.currentTimeMillis())
+            put("publicKeyFingerprint", fingerprint)
+            put("reputationTier", reputationTracker?.tier?.value?.name?.lowercase() ?: "new")
+            put("reputationScore", reputationTracker?.score?.value ?: 0)
+            put("hasIdentity", identity.hasIdentity)
+        }
+    }
+
+    private fun appendRecentMessage(message: JSONObject) {
+        synchronized(recentMessages) {
+            recentMessages.addLast(message)
+            while (recentMessages.size > MAX_RECENT_MESSAGES) {
+                recentMessages.pollFirst()
+            }
+        }
+    }
+
+    private fun swarmUiMessage(type: String, title: String, content: String, timestamp: Long = System.currentTimeMillis()): JSONObject {
+        return JSONObject().apply {
+            put("id", java.util.UUID.randomUUID().toString())
+            put("senderName", title)
+            put("content", content)
+            put("timestamp", timestamp)
+            put("type", type)
+        }
     }
 }

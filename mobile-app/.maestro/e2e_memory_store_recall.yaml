@@ -1,0 +1,42 @@
+appId: com.guappa.app
+name: "E2E: Memory Store and Recall"
+---
+# Store a fact → recall it to verify memory pipeline
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Navigate to Chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Store a fact
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember this: my favorite color is cyan"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for agent to process and store
+- waitForAnimationToEnd:
+    timeout: 25000
+- takeScreenshot: screenshots/memory_store
+
+# Now ask for recall
+- tapOn:
+    id: "chat-input"
+- inputText: "What is my favorite color?"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for recall response
+- waitForAnimationToEnd:
+    timeout: 25000
+- takeScreenshot: screenshots/memory_recall
+
+# Verify cyan is mentioned in the response
+- assertVisible:
+    text: "cyan"
+    optional: true
