@@ -1,0 +1,56 @@
+# E2E Test: Model Selection via Dropdown Search
+#
+# Pre-requisites:
+#   - App already configured with valid OpenRouter API key
+#   - Models list fetched from provider
+#
+# This test covers:
+#   1. Navigate to config
+#   2. Open model dropdown
+#   3. Search for a specific model
+#   4. Select it
+#   5. Verify selection
+
+appId: com.guappa.app
+---
+
+# ── Navigate to Config ──
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+# Expand How GUAPPA Thinks
+- tapOn:
+    id: "config-section-thinks"
+- waitForAnimationToEnd
+
+# ── Open Model Dropdown ──
+
+- tapOn:
+    id: "config-model-dropdown"
+- waitForAnimationToEnd
+
+# ── Search for model ──
+
+- tapOn:
+    id: "model-search-input"
+- inputText: "minimax-m2.5"
+- waitForAnimationToEnd
+
+# ── Verify search results ──
+
+- assertVisible:
+    text: "minimax/minimax-m2.5"
+    timeout: 5000
+
+# ── Select model ──
+
+- tapOn:
+    text: "minimax/minimax-m2.5"
+- waitForAnimationToEnd
+
+# ── Verify selection ──
+
+- assertVisible:
+    text: "minimax/minimax-m2.5"

@@ -1,0 +1,34 @@
+# E2E Test: Apply Button Confirmation Feedback
+#
+# Pre-requisites:
+#   - App already configured with valid API key
+#
+# This test covers:
+#   1. Navigate to config screen
+#   2. Tap Apply
+#   3. Verify "Applied!" confirmation appears (persists until next tap)
+
+appId: com.guappa.app
+---
+
+# ── Navigate to Config ──
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Configuration"
+
+# ── Tap Apply ──
+
+- tapOn:
+    id: "config-apply-button"
+
+# ── Verify Confirmation ──
+# "Applied!" persists after apply completes (testID changes to config-applied-button)
+
+- extendedWaitUntil:
+    visible:
+      id: "config-applied-button"
+    timeout: 30000

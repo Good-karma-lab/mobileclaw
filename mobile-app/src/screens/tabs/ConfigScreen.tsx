@@ -253,6 +253,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
 
   // Restart agent with current config (hot-reload)
   const restartAgent = useCallback(async () => {
+    setApplied(false);
     setRestarting(true);
     try {
       await saveAgentConfig(config);
@@ -293,7 +294,6 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
       await startAgent(agentConfig);
       console.log("[config] agent restarted with new config");
       setApplied(true);
-      setTimeout(() => setApplied(false), 2500);
     } catch (err) {
       console.warn("[config] agent restart failed:", err);
     } finally {
@@ -555,14 +555,18 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
             onPress={restartAgent}
             disabled={restarting}
             hitSlop={8}
+            testID={applied ? "config-applied-button" : "config-apply-button"}
           >
             <Ionicons
               name={applied ? "checkmark-circle" : "refresh-outline"}
               size={16}
               color={applied ? colors.semantic.success : colors.accent.cyan}
             />
-            <Text style={[styles.restartButtonText, applied && { color: colors.semantic.success }]}>
-              {restarting ? "Applying..." : applied ? "Applied ✓" : "Apply"}
+            <Text
+              style={[styles.restartButtonText, applied && { color: colors.semantic.success }]}
+              accessibilityLabel={restarting ? "Applying" : applied ? "Applied" : "Apply"}
+            >
+              {restarting ? "Applying..." : applied ? "Applied!" : "Apply"}
             </Text>
           </Pressable>
         </View>

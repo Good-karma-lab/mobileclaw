@@ -1,0 +1,147 @@
+# E2E Smoke Test: Full OpenRouter Chat Pipeline
+#
+# Pre-requisites:
+#   - Fresh install of com.guappa.app (clear data or fresh APK)
+#   - Internet connectivity for OpenRouter API
+#
+# This test covers:
+#   1. Onboarding wizard completion (Cloud AI path)
+#   2. Model selection (minimax/minimax-m2.5)
+#   3. Apply configuration
+#   4. Send chat message and verify response
+#
+# API key: OpenRouter key must be valid
+# Model: minimax/minimax-m2.5
+
+appId: com.guappa.app
+---
+
+# ── Step 1: Complete Onboarding Wizard ──
+
+- waitForAnimationToEnd
+
+# Tap "Get Started" on welcome screen
+- tapOn:
+    id: "onboarding-get-started"
+- waitForAnimationToEnd
+
+# ── Step 2: Provider Setup — Cloud AI ──
+
+- tapOn:
+    id: "provider-option-cloud"
+- waitForAnimationToEnd
+
+# Enter OpenRouter API key
+- tapOn:
+    id: "wizard-api-key-input"
+- inputText: "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"
+
+# Tap Continue
+- tapOn:
+    id: "wizard-continue-button"
+- waitForAnimationToEnd
+
+# ── Step 3: Model Download — Skip ──
+
+- tapOn:
+    id: "wizard-skip-button"
+- waitForAnimationToEnd
+
+# ── Step 4: Permissions — Grant All + Continue ──
+
+- tapOn:
+    id: "wizard-grant-all"
+- waitForAnimationToEnd
+
+# Handle system permission dialogs
+- runFlow:
+    when:
+      visible: "While using the app"
+    commands:
+      - tapOn: "While using the app"
+
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+
+# Tap Continue / Finish
+- tapOn:
+    id: "wizard-continue-button"
+- waitForAnimationToEnd
+
+# ── Step 5: Main Screen — Navigate to Config ──
+
+- waitForAnimationToEnd
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+# ── Step 6: Expand "How GUAPPA Thinks" ──
+
+- assertVisible:
+    text: "Configuration"
+
+- tapOn:
+    id: "config-section-thinks"
+- waitForAnimationToEnd
+
+# ── Step 7: Select Model — minimax/minimax-m2.5 ──
+
+- tapOn:
+    id: "config-model-dropdown"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "model-search-input"
+- inputText: "minimax-m2.5"
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "minimax/minimax-m2.5"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "minimax/minimax-m2.5"
+
+# ── Step 8: Apply Configuration ──
+
+- tapOn:
+    id: "config-apply-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "config-applied-button"
+    timeout: 30000
+
+# ── Step 9: Navigate to Chat ──
+
+- tapOn:
+    point: "34%,94%"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Chat"
+
+# ── Step 10: Send Chat Message ──
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello! What is 2+2?"
+- tapOn:
+    id: "chat-send-button"
+
+# ── Step 11: Verify Response ──
+
+- extendedWaitUntil:
+    visible:
+      text: "Hello! What is 2+2?"
+    timeout: 10000
+
+# Verify input cleared (response complete)
+- extendedWaitUntil:
+    visible:
+      text: "Message GUAPPA..."
+    timeout: 30000

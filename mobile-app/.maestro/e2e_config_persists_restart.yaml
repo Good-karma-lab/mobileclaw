@@ -1,0 +1,68 @@
+# E2E Test: Config Persists After Restart
+#
+# Pre-requisites:
+#   - App already configured with OpenRouter + minimax/minimax-m2.5
+#
+# This test covers:
+#   1. Navigate to config, verify model is minimax/minimax-m2.5
+#   2. Apply config
+#   3. Force-stop and relaunch app
+#   4. Navigate to config again
+#   5. Verify model is still minimax/minimax-m2.5
+
+appId: com.guappa.app
+---
+
+# ── Step 1: Navigate to Config ──
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+# Expand How GUAPPA Thinks
+- tapOn:
+    id: "config-section-thinks"
+- waitForAnimationToEnd
+
+# Verify model
+- assertVisible:
+    text: "minimax/minimax-m2.5"
+
+# Verify provider
+- assertVisible:
+    text: "OpenRouter"
+
+# ── Step 2: Apply ──
+
+- tapOn:
+    id: "config-apply-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "config-applied-button"
+    timeout: 30000
+
+# ── Step 3: Force-stop and relaunch ──
+
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+
+# ── Step 4: Navigate to Config again ──
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+# Expand How GUAPPA Thinks
+- tapOn:
+    id: "config-section-thinks"
+- waitForAnimationToEnd
+
+# ── Step 5: Verify persistence ──
+
+- assertVisible:
+    text: "minimax/minimax-m2.5"
+
+- assertVisible:
+    text: "OpenRouter"
