@@ -308,7 +308,7 @@ export function ChatScreen({ isActive }: { isActive?: boolean }) {
     <View style={styles.screen} testID="chat-screen">
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
         {/* Glass header — transparent, blurred */}

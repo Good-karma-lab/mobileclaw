@@ -161,6 +161,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
   const [config, setConfig] = useState<AgentRuntimeConfig>(DEFAULT_AGENT_CONFIG);
   const [loaded, setLoaded] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [applied, setApplied] = useState(false);
   const [providerModels, setProviderModels] = useState<ProviderModelInfo[]>([]);
   const [providerModelsLoading, setProviderModelsLoading] = useState(false);
   const [providerHealthy, setProviderHealthy] = useState<boolean | null>(null);
@@ -291,6 +292,8 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
 
       await startAgent(agentConfig);
       console.log("[config] agent restarted with new config");
+      setApplied(true);
+      setTimeout(() => setApplied(false), 2500);
     } catch (err) {
       console.warn("[config] agent restart failed:", err);
     } finally {
@@ -554,12 +557,12 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
             hitSlop={8}
           >
             <Ionicons
-              name="refresh-outline"
+              name={applied ? "checkmark-circle" : "refresh-outline"}
               size={16}
-              color={colors.accent.cyan}
+              color={applied ? colors.semantic.success : colors.accent.cyan}
             />
-            <Text style={styles.restartButtonText}>
-              {restarting ? "Restarting..." : "Apply"}
+            <Text style={[styles.restartButtonText, applied && { color: colors.semantic.success }]}>
+              {restarting ? "Applying..." : applied ? "Applied ✓" : "Apply"}
             </Text>
           </Pressable>
         </View>
