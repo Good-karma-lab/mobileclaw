@@ -66,6 +66,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
       <GlassCard
         onPress={() => setMode("cloud")}
         style={mode === "cloud" ? styles.cardSelected : undefined}
+        testID="provider-option-cloud"
       >
         <View style={styles.cardHeader}>
           <Ionicons
@@ -106,6 +107,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
             loading={saving}
             disabled={!apiKey.trim()}
             icon="checkmark-circle-outline"
+            testID="wizard-continue-button"
           />
         </View>
       )}
@@ -113,6 +115,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
       <GlassCard
         onPress={() => setMode("local")}
         style={mode === "local" ? styles.cardSelected : undefined}
+        testID="provider-option-local"
       >
         <View style={styles.cardHeader}>
           <Ionicons
@@ -144,6 +147,7 @@ export function ProviderSetupStep({ onNext, onSkip }: Props) {
             onPress={handleSave}
             loading={saving}
             icon="checkmark-circle-outline"
+            testID="wizard-continue-button"
           />
         </View>
       )}

@@ -1,0 +1,53 @@
+# E2E Test: Local Inference Chat (Qwen3.5-0.8B)
+#
+# Pre-requisites:
+#   - App configured with local provider and model downloaded
+#   - Model: Qwen3.5-0.8B (Q4_K_M) GGUF
+#
+# This test covers:
+#   1. Navigate to config, apply to start local LLM
+#   2. Navigate to chat
+#   3. Send a message (pure text, no tools)
+#   4. Verify response appears (no stuck state)
+
+appId: com.guappa.app
+---
+
+# ── Apply Config (starts local LLM server) ──
+
+- tapOn:
+    point: "81%,94%"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "config-apply-button"
+
+- extendedWaitUntil:
+    visible:
+      id: "config-applied-button"
+    timeout: 30000
+
+# ── Navigate to Chat ──
+
+- tapOn:
+    point: "34%,94%"
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Chat"
+
+# ── Send Message ──
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Say hello"
+- tapOn:
+    id: "chat-send-button"
+
+# ── Verify Response ──
+# Local inference may take 5-15 seconds
+
+- extendedWaitUntil:
+    visible:
+      text: "Message GUAPPA..."
+    timeout: 60000

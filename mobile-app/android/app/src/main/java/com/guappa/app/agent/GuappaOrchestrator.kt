@@ -378,7 +378,9 @@ class GuappaOrchestrator(
             }
 
             // Determine capability: prefer TOOL_USE if available, fall back to TEXT_CHAT
-            val capability = if (router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
+            // Local small models (≤3B params) cannot handle tool schemas in context
+            val isLocalModel = selectedModel == "local"
+            val capability = if (!isLocalModel && router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
                 CapabilityType.TOOL_USE
             } else {
                 CapabilityType.TEXT_CHAT

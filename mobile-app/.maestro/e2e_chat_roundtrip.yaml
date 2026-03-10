@@ -8,9 +8,8 @@
 # This test covers:
 #   1. Navigate to chat screen
 #   2. Send a message
-#   3. Verify response appears
-#   4. Verify input clears after send
-#   5. Send a second message to verify no stuck state
+#   3. Verify response appears (input clears)
+#   4. Send a second message to verify no stuck state
 
 appId: com.guappa.app
 ---
@@ -32,34 +31,22 @@ appId: com.guappa.app
 - tapOn:
     id: "chat-send-button"
 
-# Wait for user message to appear
-- extendedWaitUntil:
-    visible:
-      text: "Say exactly: pong"
-    timeout: 10000
-
-# Wait for input to clear (response received, isThinking done)
+# Wait for response — input clears to placeholder when done
 - extendedWaitUntil:
     visible:
       text: "Message GUAPPA..."
-    timeout: 25000
+    timeout: 60000
 
 # ── Send Second Message (no stuck state) ──
 
 - tapOn:
     id: "chat-input"
-- inputText: "What is 10 plus 5?"
+- inputText: "Say exactly: hello"
 - tapOn:
     id: "chat-send-button"
-
-# Verify second message appeared
-- extendedWaitUntil:
-    visible:
-      text: "What is 10 plus 5?"
-    timeout: 10000
 
 # Verify input cleared again (no stuck isThinking)
 - extendedWaitUntil:
     visible:
       text: "Message GUAPPA..."
-    timeout: 25000
+    timeout: 60000

@@ -50,7 +50,7 @@ Legend:
 | 2.8 | CapabilityType enum | ✅ | `providers/CapabilityType.kt` | — | 🚫 N/A — enum |
 | 2.9 | CostTracker | ✅ | `providers/CostTracker.kt` | — | 🧪 `e2e_cost_display.yaml` + unit test |
 | 2.10 | ProviderFactory | ✅ | `providers/ProviderFactory.kt` | — | 🧪 Unit test: `ProviderFactoryTest.kt` |
-| 2.11 | Local inference (llama.rn GGUF) | ✅ | `localLlmServer.ts` + NanoHTTPD | — | 🧪 `e2e_local_llm_chat.yaml` |
+| 2.11 | Local inference (llama.rn GGUF) | ✅ | `localLlmServer.ts` + NanoHTTPD, serial inference queue, thinking tag strip, GPU layers=99, tool-free for local models | — | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
 | 2.12 | LiteRT-LM (Gemini Nano) | ❌ | Not found | — | 🚫 |
 | 2.13 | Qualcomm GENIE (NPU) | ❌ | Not found | — | 🚫 |
 | 2.14 | ONNX Runtime Mobile | ❌ | Not found | — | 🚫 |
@@ -162,7 +162,7 @@ Legend:
 | 6.8 | VoiceAmplitude | ✅ | `swarm/audio/VoiceAmplitude.ts` | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
 | 6.9 | VoiceScreen UI | ✅ | `screens/tabs/VoiceScreen.tsx` (338 lines) | — | 🧪 `guappa_voice_full_flow.yaml` |
 | 6.10 | Streaming TTS | ⚠️ | Sentence-level queue | Not word-level | 🚫 |
-| 6.11 | Android `SpeechRecognizer` (built-in) | ✅ | `voice/AndroidSTTModule.kt` + `AndroidSTTPackage.kt` — free, zero API key | — | 🧪 `e2e_android_stt_fallback.yaml` |
+| 6.11 | Android `SpeechRecognizer` (built-in) | ✅ | `voice/AndroidSTTModule.kt` + `AndroidSTTPackage.kt` — free, zero API key, **default STT provider** | — | 🧪 `e2e_android_stt_fallback.yaml` |
 | 6.12 | Google ML Kit Speech | ❌ | Not found | — | 🚫 |
 | 6.13 | Google Cloud Speech-to-Text | ❌ | Not found | — | 🚫 |
 | 6.14 | Android TextToSpeech (built-in) | ✅ | Via `expo-speech` | — | 🧪 Via TTS tests |
@@ -221,7 +221,7 @@ Legend:
 | # | Feature | Status | Evidence | Gap | E2E Test |
 |---|---------|--------|----------|-----|----------|
 | 9.1 | Unit tests (JUnit + MockK) | ✅ | **21 test files** — agent, providers, config, tools, channels, swarm | — | 🧪 All pass (178+ tests) |
-| 9.2 | Maestro E2E flows | ✅ | **207 YAML flows** in `.maestro/` including 107 `e2e_*` tests | — | 🧪 Extensive |
+| 9.2 | Maestro E2E flows | ✅ | **220 YAML flows** in `.maestro/` including 120 `e2e_*` tests | — | 🧪 Extensive |
 | 9.3 | Integration tests (Espresso) | ❌ | Not found | — | 🚫 |
 | 9.4 | Performance benchmarks | ❌ | Not found | — | 🚫 |
 | 9.5 | Firebase Test Lab config | ❌ | Not found | — | 🚫 |
@@ -326,10 +326,10 @@ Legend:
 
 | # | Modality | Status | Engine | E2E Test |
 |---|----------|--------|--------|----------|
-| L.1 | Text (LLM) — GGUF | ✅ | `llama.rn` + NanoHTTPD | 🧪 `e2e_local_llm_chat.yaml` |
+| L.1 | Text (LLM) — GGUF | ✅ | `llama.rn` + NanoHTTPD, serial inference queue, `<think>` tag stripping, GPU layers=99 | 🧪 `e2e_local_llm_chat.yaml`, `e2e_local_inference_chat.yaml` |
 | L.2 | STT (on-device Whisper) | ✅ | `whisper.rn` GGML | 🧪 `e2e_local_whisper_stt.yaml` |
-| L.3 | STT (free, zero-download) | ✅ | `AndroidSTTModule.kt` — `SpeechRecognizer` API | 🧪 `e2e_android_stt_fallback.yaml` |
-| L.4 | TTS (built-in) | ✅ | `expo-speech` | 🧪 `e2e_builtin_tts_response.yaml` |
+| L.3 | STT (free, zero-download) | ✅ | `AndroidSTTModule.kt` — `SpeechRecognizer` API, default STT provider | 🧪 `e2e_android_stt_fallback.yaml` |
+| L.4 | TTS (built-in) | ✅ | `expo-speech` (Android TextToSpeech), default TTS provider | 🧪 `e2e_builtin_tts_response.yaml` |
 | L.5 | TTS (high-quality on-device) | ❌ | Kokoro / Piper | 🚫 |
 | L.6 | Embeddings (on-device) | ⚠️ | `EmbeddingService.kt` | 🚫 Needs: `e2e_offline_embedding.yaml` |
 | L.7 | Vision (on-device) | ❌ | — | 🚫 |
@@ -446,8 +446,8 @@ appId: com.guappa.app
 | Phase 12: UI | 13 | 10 | 3 | **77%** |
 | Phase 14: Visualization | 13 | 5 | 8 | **38%** |
 | Phase 13: Documentation | 5 | 5 | 0 | **100%** |
-| Local Inference | 13 | 6 | 7 | **46%** |
-| **TOTAL** | **225** | **144** | **81** | **64%** |
+| Local Inference | 13 | 7 | 6 | **54%** |
+| **TOTAL** | **225** | **145** | **80** | **64%** |
 
 ---
 

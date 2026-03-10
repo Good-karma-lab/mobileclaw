@@ -43,25 +43,27 @@ export function VoiceScreen({ isActive }: { isActive?: boolean }) {
   const [modelReady, setModelReady] = useState(false);
   const transcriptRef = useRef("");
   const whisperModelPathRef = useRef<string>("");
+  const voiceProviderRef = useRef<"android" | "whisper" | "deepgram">("android");
   const autoListenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const processTranscriptRef = useRef<(text: string) => void>(() => {});
   const startListeningRef = useRef<() => void>(() => {});
 
-  // Check if Whisper model is downloaded (downloads happen in onboarding)
+  // Determine voice provider: android built-in (default), whisper if downloaded, deepgram if key
   useEffect(() => {
     (async () => {
       const downloaded = await isModelDownloaded("base.en");
       if (downloaded) {
         whisperModelPathRef.current = getModelPath("base.en");
-        setModelReady(true);
       }
+      // Android built-in is always ready (no model download needed)
+      setModelReady(true);
     })();
   }, []);
 
-  // STT: local Whisper
+  // STT engine
   const voice = useVoiceRecording({
-    voiceProvider: "whisper",
+    voiceProvider: voiceProviderRef.current,
     whisperModelPath: whisperModelPathRef.current || undefined,
   });
 

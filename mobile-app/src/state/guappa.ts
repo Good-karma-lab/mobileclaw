@@ -135,10 +135,10 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   platformUrl: "http://127.0.0.1:8000", // Embedded daemon on localhost
   localModelPath: "",
   thinkingMode: true, // Qwen3.5 thinking mode enabled by default
-  gpuLayers: 0,
+  gpuLayers: 99, // Auto: llama.rn offloads as many layers as GPU supports
   cpuThreads: 4,
-  contextLength: 8192,
-  voiceProvider: "deepgram",
+  contextLength: 4096,
+  voiceProvider: "android",
   whisperModel: "whisper-base",
   whisperModelPath: "",
 };

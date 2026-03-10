@@ -214,17 +214,18 @@ export function ModelDownloadStep({ onNext, onSkip }: Props) {
           />
         ) : (
           <GlassButton
-            title={downloading ? "Downloading..." : "Download"}
+            title={downloading ? "Downloading..." : "Download Model"}
             onPress={handleDownload}
             loading={downloading}
             disabled={downloading}
             icon="download-outline"
+            testID="wizard-download-button"
           />
         )}
       </View>
 
       {!done && (
-        <Pressable onPress={onSkip} style={styles.skipButton} disabled={downloading} testID="onboarding-skip-model">
+        <Pressable onPress={onSkip} style={styles.skipButton} disabled={downloading} testID="wizard-skip-button">
           <Text style={styles.skipText}>Skip for now</Text>
           <Text style={styles.warningText}>
             GUAPPA needs a model to chat

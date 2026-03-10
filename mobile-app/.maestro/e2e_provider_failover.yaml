@@ -70,7 +70,7 @@ tags:
 - tapOn:
     id: "config-api-key"
 - clearText
-- inputText: "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"
+- inputText: "${OPENROUTER_API_KEY}"
 
 # Return to chat
 - tapOn:

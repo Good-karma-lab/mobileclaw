@@ -63,15 +63,14 @@ const PROVIDER_OPTIONS = [
 ];
 
 const STT_OPTIONS = [
-  { label: "Whisper", value: "whisper" },
-  { label: "Google", value: "google" },
-  { label: "Local", value: "local" },
+  { label: "Android Built-in (Free)", value: "android" },
+  { label: "Whisper (On-Device)", value: "whisper" },
+  { label: "Deepgram Nova-3 (Cloud)", value: "deepgram" },
 ];
 
 const TTS_OPTIONS = [
-  { label: "ElevenLabs", value: "elevenlabs" },
-  { label: "Google", value: "google" },
-  { label: "Local", value: "local" },
+  { label: "Android Built-in (Free)", value: "android" },
+  { label: "Deepgram Aura-2 (Cloud)", value: "deepgram" },
 ];
 
 const RETENTION_OPTIONS = [
@@ -280,9 +279,9 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
       if (agentConfig.provider === "local" && agentConfig.localModelPath) {
         await startLocalLlmServer({
           modelPath: agentConfig.localModelPath,
-          gpuLayers: config.gpuLayers ?? 0,
+          gpuLayers: config.gpuLayers ?? 99,
           cpuThreads: config.cpuThreads ?? 4,
-          contextLength: config.contextLength ?? 2048,
+          contextLength: config.contextLength ?? 4096,
           thinkingMode: config.thinkingMode ?? true,
         });
         agentConfig.provider = "openai";

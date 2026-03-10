@@ -34,7 +34,7 @@ appId: com.guappa.app
 # Enter OpenRouter API key
 - tapOn:
     id: "wizard-api-key-input"
-- inputText: "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"
+- inputText: "${OPENROUTER_API_KEY}"
 
 # Tap Continue
 - tapOn:

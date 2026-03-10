@@ -1,6 +1,11 @@
 import { sendMessage, sendMessageStream, subscribeToAgentEvents, type AgentEvent } from "../native/guappaAgent";
 import type { AgentTurnResult, ToolExecutionEvent } from "./types";
 
+/** Strip <think>...</think> tags from Qwen3.5 thinking mode output */
+function stripThinkingTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>\s*/g, "").trim();
+}
+
 type RunAgentTurnStreamArgs = {
   userPrompt: string;
   sessionId?: string;
@@ -156,12 +161,12 @@ export async function runAgentTurnStream({
       if (event.type === "agent_chunk") {
         const delta = event.text || "";
         partialText += delta;
-        onDelta?.(partialText, delta);
+        onDelta?.(stripThinkingTags(partialText), delta);
         return;
       }
 
       if (event.type === "agent_complete") {
-        partialText = event.text || partialText || "(empty response)";
+        partialText = stripThinkingTags(event.text || partialText || "(empty response)");
         onDelta?.(partialText, "");
         finish({
           assistantText: partialText,

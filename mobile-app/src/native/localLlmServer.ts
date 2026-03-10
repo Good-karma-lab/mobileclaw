@@ -12,6 +12,9 @@ let serverRunning = false;
 let serverStarting = false;
 let requestSubscription: any = null;
 
+// Serial queue for inference — llama.rn only supports one completion at a time
+let inferenceQueue: Promise<void> = Promise.resolve();
+
 export type LocalLlmConfig = {
   modelPath: string;
   gpuLayers: number;
@@ -39,8 +42,13 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
   logger.info("[LocalLLM] Model loaded successfully");
 
   // Listen for HTTP requests from the native server
-  requestSubscription = eventEmitter.addListener("LocalLlmRequest", async (event) => {
+  requestSubscription = eventEmitter.addListener("LocalLlmRequest", (event) => {
     const { requestId, body } = event;
+    // Serialize all inference requests through the queue
+    inferenceQueue = inferenceQueue.then(() => handleInferenceRequest(requestId, body)).catch(() => {});
+  });
+
+  async function handleInferenceRequest(requestId: string, body: string) {
     try {
       const parsed = JSON.parse(body || "{}");
       const messages = parsed.messages || [];
@@ -95,7 +103,7 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
       LocalLlmServer.respondToRequest(requestId, 500,
         JSON.stringify({ error: { message: errMsg } }));
     }
-  });
+  }
 
   // Start the native HTTP server
   await LocalLlmServer.start(LOCAL_PORT);

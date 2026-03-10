@@ -22,7 +22,7 @@ tags:
     id: "config-deepgram-key-input"
     optional: true
 - eraseText: 100
-- inputText: "dddeb932f55fe13aa42a7a9e366d2c3b63ec4053"
+- inputText: "${DEEPGRAM_API_KEY}"
 - hideKeyboard
 
 # Select Deepgram as STT engine
