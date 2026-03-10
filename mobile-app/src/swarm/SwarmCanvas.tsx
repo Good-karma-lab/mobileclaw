@@ -257,8 +257,8 @@ export const SwarmCanvas: React.FC = () => {
         // ── 6. Central glow (subtle ambient, not fog) ──
         const glP = 1 + globalPulse * 0.2;
         const glowR = Math.min(W, H) * 0.40 * (0.85 + 0.15 * Math.sin(time * 0.3)) * glP;
-        const glowA = (0.03 + config.coreGlow * 0.6) * glP;
-        const glowA2 = (0.015 + config.coreGlow * 0.25) * glP;
+        const glowA = (0.02 + config.coreGlow * 0.4) * glP;
+        const glowA2 = (0.01 + config.coreGlow * 0.15) * glP;
         const glowShader = Skia.Shader.MakeRadialGradient(
           { x: cx, y: cy }, glowR,
           [
@@ -373,9 +373,9 @@ export const SwarmCanvas: React.FC = () => {
             const pulseY = p.sy + (mp.sy - p.sy) * travelT;
 
             // Draw connection line — bright HDR glowing wires
-            const lineA = Math.min(1, connA * 3.5);
-            stroke.setColor(Skia.Color(`rgba(${Math.min(255, er + 120)}, ${Math.min(255, eg + 120)}, ${Math.min(255, eb + 120)}, ${lineA})`));
-            stroke.setStrokeWidth((0.6 + strength * 1.6) * Math.min(p.scale, mp.scale));
+            const lineA = Math.min(1, connA * 2.5);
+            stroke.setColor(Skia.Color(`rgba(${Math.min(255, er + 80)}, ${Math.min(255, eg + 80)}, ${Math.min(255, eb + 80)}, ${lineA})`));
+            stroke.setStrokeWidth((0.3 + strength * 0.8) * Math.min(p.scale, mp.scale));
             const connPath = Skia.Path.Make();
             const mmx = (p.sx + mp.sx) / 2 + Math.sin(time * 0.6 + p.idx) * 2;
             const mmy = (p.sy + mp.sy) / 2 + Math.cos(time * 0.6 + j) * 2;
@@ -483,8 +483,8 @@ export const SwarmCanvas: React.FC = () => {
         // Two-pass: first draw all glow halos with blur, then core circles
         // This is more efficient than per-neuron gradient shaders
 
-        // Pass A: Bloom glow halos — soft star-like glow
-        blurFill.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 5, true));
+        // Pass A: Subtle glow halos
+        blurFill.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 3, true));
         for (const p of projected) {
           const n = system.neurons[p.idx];
           const baseR = n.size * p.scale;
@@ -493,10 +493,10 @@ export const SwarmCanvas: React.FC = () => {
 
           const breathe = 1 + Math.sin(time * 0.5 + n.phase) * 0.07 + globalPulse * 0.07;
           const r = baseR * breathe;
-          const glowSize = r * 1.9;
-          const glowA = a * 0.25;
+          const glowSize = r * 1.5;
+          const glowA = a * 0.15;
 
-          blurFill.setColor(Skia.Color(`rgba(${Math.min(255, er + 60)}, ${Math.min(255, eg + 60)}, ${Math.min(255, eb + 60)}, ${Math.min(0.5, glowA)})`));
+          blurFill.setColor(Skia.Color(`rgba(${Math.min(255, er + 40)}, ${Math.min(255, eg + 40)}, ${Math.min(255, eb + 40)}, ${Math.min(0.35, glowA)})`));
           canvas.drawCircle(p.sx, p.sy, glowSize, blurFill);
         }
         blurFill.setMaskFilter(null);

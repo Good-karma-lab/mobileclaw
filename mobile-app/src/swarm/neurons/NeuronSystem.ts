@@ -125,7 +125,7 @@ export class NeuronSystem {
         ty: this.cy + y * this.spread,
         tz: z * this.spread * 0.5,
         vx: 0, vy: 0, vz: 0,
-        size: 3.2 + Math.random() * 6.5,
+        size: 4.0 + Math.random() * 7.5,
         brightness: 0.75 + Math.random() * 0.25,
         phase: Math.random() * Math.PI * 2,
         energy: 0.25 + Math.random() * 0.20,
