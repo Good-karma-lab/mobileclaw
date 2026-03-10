@@ -3,14 +3,8 @@ import "react-native-gesture-handler";
 import React, { useEffect, useRef, useState } from "react";
 import { Platform, View, ActivityIndicator, Text, LogBox } from "react-native";
 
-// Suppress non-critical warnings that create a banner covering the dock navigation
-LogBox.ignoreLogs([
-  "expo-av",
-  "new NativeEventEmitter",
-  "setLayoutAnimationEnabledExperimental",
-  "Method getInfoAsync",
-  "Attempted to import the module",
-]);
+// Suppress ALL log warnings — the yellow bar covers the dock and breaks E2E tests
+LogBox.ignoreAllLogs(true);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";

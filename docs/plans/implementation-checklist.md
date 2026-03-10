@@ -13,314 +13,6 @@ Legend:
 
 ---
 
-## 🎨 Storm Palette — "Dramatic Night Sky"
-
-Derived from reference: dark cyan/blue dramatic storm clouds over night sky.
-
-### Palette Definition
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| **abyss** | `#020408` | Deepest background, status bar |
-| **stormBlack** | `#060D14` | Primary background |
-| **deepNight** | `#0B1A26` | Secondary background, screen fills |
-| **midnightStorm** | `#102638` | Card backgrounds, glass fill |
-| **darkCyanStorm** | `#16334A` | Elevated surfaces, active areas |
-| **stormCyan** | `#1C4A5E` | **Primary accent** — buttons, active indicators, links |
-| **cyanGlow** | `#247080` | Bright accent — selected state, glow |
-| **lightningCyan** | `#2E90A5` | Highlight, sparingly — important CTAs |
-| **cloudShadow** | `#0E2030` | Glass fill, overlays |
-| **rainBlue** | `#1A3040` | Borders, dividers |
-| **paleStorm** | `#8AA0B0` | **Primary text** |
-| **mist** | `#5A7585` | Secondary text |
-| **distantStorm** | `#3A5060` | Tertiary text, disabled |
-| **thunderGray** | `#1A2A35` | Inactive elements, dock bg |
-| **stormWarning** | `#6A2030` | Error / danger |
-| **moss** | `#2A5A4A` | Success |
-| **amberStorm** | `#6A5020` | Warning |
-| **deepViolet** | `#3A2A5A` | Violet accent (swarm, identity) |
-
-### Current `colors.ts` vs Storm Palette — Delta
-
-| Current Token | Current Value | Storm Replacement | Delta |
-|---------------|---------------|-------------------|-------|
-| `base.spaceBlack` | `#030608` | `#020408` (abyss) | Minor — slightly cooler |
-| `base.midnightBlue` | `#06101A` | `#060D14` (stormBlack) | Minor — less blue, more neutral |
-| `glass.fill` | `rgba(255,255,255,0.05)` | `rgba(14,32,48,0.65)` (cloudShadow-based) | **Major** — switch from white-alpha to storm blue-alpha |
-| `glass.fillActive` | `rgba(255,255,255,0.08)` | `rgba(22,51,74,0.70)` (darkCyanStorm-based) | **Major** |
-| `glass.border` | `rgba(255,255,255,0.08)` | `rgba(26,48,64,0.50)` (rainBlue-based) | **Major** — cyan-tinted borders |
-| `glass.borderSubtle` | `rgba(255,255,255,0.05)` | `rgba(26,48,64,0.30)` | **Major** |
-| `accent.cyan` | `#1A5C6A` | `#1C4A5E` (stormCyan) | Moderate — darker, stormier |
-| `accent.cyanGlow` | `#2A8090` | `#247080` (cyanGlow) | Moderate — slightly darker |
-| `accent.cyanBright` | `#4AA0B0` | `#2E90A5` (lightningCyan) | Moderate — darker, more saturated |
-| `accent.violet` | `#5A3A8A` | `#3A2A5A` (deepViolet) | Moderate — darker |
-| `accent.rose` | `#8A2040` | `#6A2030` (stormWarning) | Moderate — darker |
-| `accent.amber` | `#8A6A20` | `#6A5020` (amberStorm) | Moderate — darker |
-| `semantic.success` | `#1A7A6A` | `#2A5A4A` (moss) | Moderate — mossier |
-| `semantic.error` | `#8A2020` | `#6A2030` (stormWarning) | Moderate — bluer red |
-| `semantic.warning` | `#7A6020` | `#6A5020` (amberStorm) | Minor |
-| `semantic.info` | `#2A5080` | `#1C4A5E` (stormCyan) | Minor |
-| `text.primary` | `rgba(180,200,210,0.85)` | `rgba(138,160,176,0.90)` (paleStorm) | **Major** — cooler, less white |
-| `text.secondary` | `rgba(140,165,180,0.55)` | `rgba(90,117,133,0.70)` (mist) | Major — darker, more opaque |
-| `text.tertiary` | `rgba(100,130,150,0.35)` | `rgba(58,80,96,0.50)` (distantStorm) | Major — darker |
-
-### Hardcoded Colors in Components — Must Update
-
-| File | Current | Storm Replacement |
-|------|---------|-------------------|
-| `FloatingDock.tsx` line 91 | `color="#D0E8F5"` (active icon) | `#8AA0B0` (paleStorm) — active icons should be muted, not bright white |
-| `FloatingDock.tsx` line 91 | `color="rgba(160,190,210,0.75)"` (idle icon) | `rgba(90,117,133,0.60)` (mist) |
-| `FloatingDock.tsx` line 159 | `backgroundColor: "rgba(10,22,35,0.92)"` (dock bg) | `rgba(6,13,20,0.94)` (stormBlack) |
-| `FloatingDock.tsx` line 162 | `borderColor: "rgba(80,130,160,0.2)"` | `rgba(26,48,64,0.35)` (rainBlue) |
-| `FloatingDock.tsx` line 182 | `backgroundColor: "rgba(50,100,130,0.3)"` (active glow) | `rgba(28,74,94,0.25)` (stormCyan glow) |
-| `RootNavigator.tsx` line 130 | `backgroundColor: "#020206"` | `#020408` (abyss) |
-| `SideRail.tsx` line 97 | `backgroundColor: "rgba(10,10,30,0.65)"` | `rgba(6,13,20,0.80)` (stormBlack) |
-| `SideRail.tsx` line 100 | `borderRightColor: "rgba(255,255,255,0.12)"` | `rgba(26,48,64,0.40)` (rainBlue) |
-
-### Implementation Task
-
-| # | Task | File(s) | Priority |
-|---|------|---------|----------|
-| P.1 | Update `colors.ts` with storm palette tokens | `src/theme/colors.ts` | P0 |
-| P.2 | Replace all hardcoded hex/rgba in FloatingDock | `src/components/dock/FloatingDock.tsx` | P0 |
-| P.3 | Replace all hardcoded hex/rgba in SideRail | `src/components/dock/SideRail.tsx` | P0 |
-| P.4 | Replace hardcoded color in RootNavigator | `src/navigation/RootNavigator.tsx` | P0 |
-| P.5 | Audit & update all glass components | `src/components/glass/*.tsx` | P1 |
-| P.6 | Audit & update all screen files | `src/screens/tabs/*.tsx` | P1 |
-| P.7 | Update SwarmCanvas / EmotionPalette | `src/swarm/emotion/EmotionPalette.ts` | P1 |
-| P.8 | Update onboarding components | `src/components/onboarding/*.tsx` | P1 |
-
----
-
-## 🖼️ In-App Icons Audit — BROKEN / INVISIBLE
-
-### Root Cause: Dual Theme System Conflict
-
-The app has **two competing theme systems** that are out of sync. This likely causes icons to render with wrong/invisible colors:
-
-| Theme System | File | Used By | Icon Colors |
-|-------------|------|---------|-------------|
-| **Config theme** (`ui/theme.ts`) | `src/config.ts` → `ui/theme.ts` | DeviceScreen, MemoryScreen, SettingsScreen, IntegrationsScreen, glass components | `theme.colors.base.textMuted` = `#A3A3B2`, `theme.colors.base.accent` = `#8B5CF6`, `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` |
-| **Neural swarm theme** (`src/theme/colors.ts`) | `src/theme/colors.ts` | FloatingDock, SideRail, ChatScreen, ChatInputBar, CommandScreen, ConfigScreen, SwarmScreen | `colors.accent.cyan` = `#1A5C6A`, `colors.text.secondary` = `rgba(140,165,180,0.55)`, `colors.text.tertiary` = `rgba(100,130,150,0.35)` |
-
-**The config theme defaults** (`src/config.ts`):
-```
-primary:    #D4F49C   (lime green)
-secondary:  #C69CF4   (lavender)
-accent:     #8B5CF6   (violet)
-background: #05050A   (near-black)
-text:       #F5F0E6   (warm cream)
-border:     #FFFFFF   (pure white)
-textMuted:  #A3A3B2   (gray)
-```
-
-**The neural swarm theme** (`src/theme/colors.ts`):
-```
-accent.cyan:      #1A5C6A   (dark teal)
-accent.cyanGlow:  #2A8090   (brighter teal)
-text.primary:     rgba(180,200,210,0.85)  (cool blue-gray)
-text.secondary:   rgba(140,165,180,0.55)  (muted steel)
-text.tertiary:    rgba(100,130,150,0.35)  (very dim)
-```
-
-**Conflict impact on icons**:
-- Components using `colors.text.tertiary` = `rgba(100,130,150,0.35)` → **35% opacity** — nearly invisible on dark backgrounds
-- Components using `colors.accent.cyan` = `#1A5C6A` → very dark teal, borderline visible on `#030608` background
-- `FloatingDock` idle icons use `rgba(160,190,210,0.75)` — should be visible
-- `FloatingDock` active icons use `#D0E8F5` — bright, should be visible
-- Some glass components use `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` — warm cream
-
-### Complete In-App Icon Inventory
-
-**22 files** use Ionicons. **35 unique static icon names** + **12 dynamic icon references** (from config maps).
-
-#### Dock Navigation Icons (MOST VISIBLE)
-
-| Location | Icon (active) | Icon (inactive) | Active Color | Inactive Color | Visibility Issue |
-|----------|--------------|-----------------|-------------|----------------|-----------------|
-| FloatingDock → Voice | `mic` | `mic-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
-| FloatingDock → Chat | `chatbubble` | `chatbubble-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
-| FloatingDock → Command | `flash` | `flash-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
-| FloatingDock → Swarm | `globe` | `globe-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
-| FloatingDock → Config | `options` | `options-outline` | `#D0E8F5` | `rgba(160,190,210,0.75)` | Should be OK ✅ |
-| SideRail → all tabs | Same as above | Same | `colors.accent.cyan` = `#1A5C6A` | `colors.text.secondary` = `rgba(140,165,180,0.55)` | ⚠️ Active = very dark teal on dark bg, could be hard to see |
-
-#### Chat Input Bar Icons
-
-| Location | Icon | Color | Size | Visibility Issue |
-|----------|------|-------|------|-----------------|
-| `ChatInputBar.tsx` → clear attachment | `close-circle` | `rgba(255,100,100,0.9)` | 20 | OK ✅ |
-| `ChatInputBar.tsx` → image picker | `image-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
-| `ChatInputBar.tsx` → camera | `camera-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
-| `ChatInputBar.tsx` → document picker | `document-outline` | `colors.accent.cyan` = `#1A5C6A` | 20 | ⚠️ Dark teal on dark bg |
-| `ChatInputBar.tsx` → send button | `arrow-up` | `colors.base.spaceBlack` = `#030608` | 20 | ⚠️ Near-black icon — only visible if button has contrasting bg |
-| `ChatInputBar.tsx` → mic button | `mic-outline` | `colors.accent.cyan` = `#1A5C6A` | 22 | ⚠️ Dark teal on dark bg |
-
-#### Command Screen Icons
-
-| Location | Icon | Color | Size | Visibility Issue |
-|----------|------|-------|------|-----------------|
-| Task status `running` | `play-circle` | `colors.accent.cyan` `#1A5C6A` | 12 | ⚠️ 12px dark teal — very hard to see |
-| Task status `queued` | `time-outline` | `colors.semantic.warning` `#7A6020` | 12 | ⚠️ 12px dark amber |
-| Task status `completed` | `checkmark-circle` | `colors.semantic.success` `#1A7A6A` | 12 | ⚠️ 12px dark teal |
-| Task status `failed` | `close-circle` | `colors.semantic.error` `#8A2020` | 12 | ⚠️ 12px dark red |
-| Trigger `event` | `flash-outline` | `colors.accent.cyan` | 12 | ⚠️ Same |
-| Trigger `condition` | `git-branch-outline` | `colors.semantic.warning` | 12 | ⚠️ Same |
-| Trigger `schedule` | `calendar-outline` | `colors.accent.violet` `#5A3A8A` | 12 | ⚠️ 12px dark violet |
-| Trigger `webhook` | `globe-outline` | `colors.accent.rose` `#8A2040` | 12 | ⚠️ 12px dark rose |
-| Empty state (tasks) | `list-outline` | `colors.text.tertiary` = 35% opacity | 36 | ❌ **Nearly invisible** |
-| Empty state (schedules) | `calendar-outline` | `colors.text.tertiary` | 36 | ❌ **Nearly invisible** |
-| Empty state (triggers) | `flash-outline` | `colors.text.tertiary` | 36 | ❌ **Nearly invisible** |
-| Section headers | Various `-outline` icons | `colors.accent.cyan` | 14 | ⚠️ Small + dark |
-| Memory stats | `document-text-outline`, `library-outline`, `film-outline`, `trash-outline` | Various accent colors | 14 | ⚠️ Small + dark |
-| Session `time-outline` | `time-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
-| Session `chatbubble-outline` | `chatbubble-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
-| `hardware-chip-outline` | `hardware-chip-outline` | `colors.text.tertiary` | — | ❌ **Nearly invisible** |
-
-#### Config Screen Icons (CollapsibleSection headers)
-
-| Section Title | Icon | Color | Visibility Issue |
-|---------------|------|-------|-----------------|
-| "How GUAPPA Thinks" | `sparkles-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "How GUAPPA Sees" | `eye-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "How GUAPPA Speaks & Listens" | `mic-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "How GUAPPA Connects" | `globe-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "What GUAPPA Can Do" | `build-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "What GUAPPA Remembers" | `server-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "How GUAPPA Acts on Her Own" | `flash-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "Local Intelligence" | `hardware-chip-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-| "Permissions" | `shield-checkmark-outline` | `colors.accent.cyan` | ⚠️ Dark teal |
-
-#### Swarm Screen Icons
-
-| Location | Icon | Color | Size | Visibility Issue |
-|----------|------|-------|------|-----------------|
-| Empty state globe | `globe-outline` | `colors.accent.violet` `#5A3A8A` | 56 | ⚠️ Dark violet on dark bg |
-| Tab badges | Various (`chatbubble`, `briefcase`, `people`, `star`) | Per-tab accent colors | 14 | ⚠️ Small + dark |
-| Peer tier icons | `leaf-outline`, `shield-checkmark-outline`, `ribbon-outline`, `diamond-outline` | Per-tier colors | 14 | ⚠️ Small |
-| Connection status | `checkmark-outline`, `close-outline` | accent colors | — | ⚠️ |
-| Identity | `globe-outline`, `finger-print-outline`, `key-outline` | `colors.accent.cyan` | — | ⚠️ Dark teal |
-| Peer details | `star`, `link-outline`, `people-outline`, `time-outline`, `radio-outline` | accent colors | — | ⚠️ |
-
-#### Device Screen Icons (uses config theme)
-
-| Location | Icon | Color | Visibility Issue |
-|----------|------|-------|-----------------|
-| Categories (active) | `accessibility`, `camera`, `call`, `radio`, `person` | `theme.colors.base.secondary` = `#C69CF4` | OK ✅ (lavender is visible) |
-| Categories (inactive) | Same | `theme.colors.overlay.dockIconIdle` = `rgba(245,240,230,0.65)` | OK ✅ |
-| Warning | `warning` | `theme.colors.base.primary` = `#D4F49C` | OK ✅ (lime green) |
-| Close button | `close` | `theme.colors.base.textMuted` = `#A3A3B2` | OK ✅ |
-
-#### Memory Screen Icons (uses config theme)
-
-| Location | Icon | Color | Size | Visibility Issue |
-|----------|------|-------|------|-----------------|
-| Delete action | `trash-outline` | `theme.colors.base.accent` = `#8B5CF6` | 18 | OK ✅ |
-| Empty state | `cube-outline` | `theme.colors.base.textMuted` = `#A3A3B2` | 48 | OK ✅ |
-
-#### Settings/Integrations Screen Icons (uses config theme)
-
-| Location | Icon | Color | Visibility Issue |
-|----------|------|-------|-----------------|
-| Dropdowns | `chevron-down` | `theme.colors.base.textMuted` = `#A3A3B2` | OK ✅ |
-| Integration enabled | `checkmark-circle` | `theme.colors.base.secondary` = `#C69CF4` | OK ✅ |
-| Integration toggle | `checkmark-circle` / `radio-button-off` | `theme.colors.base.secondary` | OK ✅ |
-| Close modal | `close` | `theme.colors.base.textMuted` | OK ✅ |
-
-#### Glass Components Icons
-
-| Component | Icon(s) | Color Source | Visibility Issue |
-|-----------|---------|-------------|-----------------|
-| `CollapsibleSection.tsx` | Dynamic `icon` prop + `chevron-up`/`chevron-down` | Varies by caller | Depends on which theme the parent uses |
-| `GlassButton.tsx` | Optional icon prop | Varies | Depends on parent |
-| `GlassChip.tsx` | Optional icon prop | Varies | Depends on parent |
-| `GlassTabBar.tsx` | Tab icon prop | Varies | Depends on parent |
-| `GlassDropdown.tsx` | `chevron-down` | `theme.colors.base.textMuted` | OK ✅ |
-| `GlassModal.tsx` | `close` | `theme.colors.base.textMuted` | OK ✅ |
-
-### Diagnosis: Why Icons May Be Invisible
-
-| Severity | Issue | Affected Components | Fix |
-|----------|-------|---------------------|-----|
-| 🔴 **Critical** | `colors.text.tertiary` = `rgba(100,130,150,0.35)` used for empty state icons (36px) and inline metadata icons — **35% opacity on near-black bg is invisible** | CommandScreen empty states, session metadata, hardware-chip | Increase to `rgba(100,130,150,0.60)` minimum, or use storm palette `distantStorm` at higher alpha |
-| 🔴 **Critical** | `colors.accent.cyan` = `#1A5C6A` is very dark teal — poor contrast ratio (~1.5:1) against `#030608` background, especially at 12-14px sizes | All CollapsibleSection headers in ConfigScreen, status badges in CommandScreen, ChatInputBar action buttons, SideRail active icons | Brighten to `#247080` (cyanGlow) or `#2E90A5` (lightningCyan) for icons |
-| 🟡 **Major** | All `colors.semantic.*` values are very dark (`#1A7A6A`, `#8A2020`, `#7A6020`) — used for 12px status badges | CommandScreen task/trigger status indicators | Brighten semantic colors or add glow/bg behind tiny icons |
-| 🟡 **Major** | `colors.accent.violet` = `#5A3A8A` at 12-14px — dark violet on dark bg | SwarmScreen tier badges, trigger indicators | Brighten to `#7A5AAA` |
-| 🟢 **OK** | Config theme icons (`theme.colors.base.*`) use bright colors (`#D4F49C`, `#C69CF4`, `#A3A3B2`) | DeviceScreen, MemoryScreen, SettingsScreen, IntegrationsScreen | Visible but **wrong palette** — lime/lavender doesn't match storm aesthetic |
-| 🟢 **OK** | FloatingDock uses hardcoded bright colors (`#D0E8F5`, `rgba(160,190,210,0.75)`) | FloatingDock (phone layout) | Visible, but should use storm palette tokens |
-
-### Icon Fixes — Implementation Plan
-
-| # | Task | Files | Priority |
-|---|------|-------|----------|
-| I.1 | **Unify theme systems** — merge `src/config.ts` defaults + `src/theme/colors.ts` into one storm palette; or make config defaults match storm palette | `src/config.ts`, `src/theme/colors.ts`, `ui/theme.ts` | **P0** |
-| I.2 | **Fix `colors.text.tertiary` opacity** — raise from 0.35 to 0.55+ for all icon usages | `src/theme/colors.ts` | **P0** |
-| I.3 | **Brighten `colors.accent.cyan` for icon use** — either brighten the token or create `colors.accent.cyanIcon` at `#2E90A5` for small icon contexts | `src/theme/colors.ts` + all icon color references | **P0** |
-| I.4 | **Brighten semantic colors** for small icon contexts — success, error, warning all need more luminance at 12px | `src/theme/colors.ts` | **P0** |
-| I.5 | **Fix ChatInputBar icon colors** — `image-outline`, `camera-outline`, `document-outline`, `mic-outline` should use brighter accent | `src/components/chat/ChatInputBar.tsx` | **P0** |
-| I.6 | **Fix CommandScreen empty state icons** — 36px at 35% opacity is invisible | `src/screens/tabs/CommandScreen.tsx` | **P0** |
-| I.7 | **Fix ConfigScreen section header icons** — all CollapsibleSection icons use dark cyan | `src/screens/tabs/ConfigScreen.tsx` | **P1** |
-| I.8 | **Fix SwarmScreen icon colors** — globe empty state, tier badges, connection status | `src/screens/tabs/SwarmScreen.tsx` | **P1** |
-| I.9 | **Align config theme defaults to storm palette** — change `EXPO_PUBLIC_THEME_*` defaults from lime/lavender to storm colors | `src/config.ts` | **P1** |
-| I.10 | **Replace hardcoded colors in FloatingDock/SideRail** with theme tokens | `FloatingDock.tsx`, `SideRail.tsx` | **P1** |
-
-### Android-Side Icons (Launcher, Notification, Splash)
-
-| Asset | Location | Current State | Issue |
-|-------|----------|---------------|-------|
-| **App launcher icon** | `res/mipmap-*/ic_launcher.webp` | ❌ **Default Android robot** (green droid) | No Guappa branding |
-| **Round launcher icon** | `res/mipmap-*/ic_launcher_round.webp` | ❌ **Default Android robot** | Same |
-| **Splash screen logo** | `res/drawable-*/splashscreen_logo.png` | ❌ **Generic concentric circles placeholder** (Expo default) | No branding |
-| **Adaptive icon** | `res/drawable/ic_launcher_foreground.xml` | ❌ **Does not exist** | No adaptive icon |
-| **Monochrome icon** (Android 13+) | — | ❌ **Missing** | Themed icons won't work |
-| **Notification icons** | 14 Kotlin files | ❌ All use `android.R.drawable.ic_dialog_info` etc. | System defaults |
-
-#### Notification Icons — Per-File Inventory
-
-| File | Line(s) | Current Icon | Should Be |
-|------|---------|-------------|-----------|
-| `GeofenceTool.kt` | 224 | `android.R.drawable.ic_dialog_map` | Custom `R.drawable.ic_notif_location` |
-| `CronJobTool.kt` | 235 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_schedule` |
-| `ReminderTool.kt` | 193 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_reminder` |
-| `RuntimeBridge.kt` | 973 | `android.R.drawable.ic_dialog_info` | Custom `R.drawable.ic_notif_agent` |
-| `GuappaAgentService.kt` | 141 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_agent` |
-| `GuappaNotificationManager.kt` | 90,101 | `ic_menu_send` / `ic_dialog_info` | Custom `R.drawable.ic_notif_message` |
-| `GuappaNotificationManager.kt` | 138 | `ic_menu_manage` | Custom `R.drawable.ic_notif_task` |
-| `GuappaNotificationManager.kt` | 186,197 | `ic_menu_send` / `ic_menu_help` | Custom `R.drawable.ic_notif_action` |
-| `GuappaNotificationManager.kt` | 229 | `ic_dialog_alert` | Custom `R.drawable.ic_notif_alert` |
-| `GuappaNotificationManager.kt` | 266 | `ic_popup_reminder` | Custom `R.drawable.ic_notif_reminder` |
-| `GuappaNotificationManager.kt` | 308 | `ic_menu_info_details` | Custom `R.drawable.ic_notif_info` |
-| `NotificationActionReceiver.kt` | 175 | `ic_dialog_info` | Custom `R.drawable.ic_notif_reply` |
-| `AndroidAgentToolsModule.kt` | 415 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_agent` |
-| `RuntimeAlwaysOnService.kt` | 43 | `R.mipmap.ic_launcher` | Custom `R.drawable.ic_notif_service` |
-
-#### Android Icon Implementation Plan
-
-| # | Task | Deliverables | Priority |
-|---|------|-------------|----------|
-| I.11 | **Design Guappa app icon** — storm-themed, neural swarm motif | Adaptive icon XML + all density webps | **P0** |
-| I.12 | **Create notification icon set** — 24dp white-on-transparent vector drawables | 11 `ic_notif_*.xml` files | **P0** |
-| I.13 | **Replace all system icon references** in Kotlin | Update 14 `.setSmallIcon()` calls | **P0** |
-| I.14 | **Design splash screen logo** | Replace `splashscreen_logo.png` in all densities | **P0** |
-| I.15 | **Add monochrome icon** (Android 13+) | `<monochrome>` in adaptive icon XML | P1 |
-| I.16 | **Update Expo config** (`app.json`) | Set `icon`, `splash.image`, `android.adaptiveIcon` | P1 |
-| I.17 | **Add app shortcuts** | `res/xml/shortcuts.xml` + manifest | P2 |
-
-### E2E Tests for Icons
-
-| Test | What It Validates | Type |
-|------|-------------------|------|
-| `e2e_dock_icons_visible.yaml` | Screenshot dock → verify all 5 tab icons render (not blank squares) | Maestro |
-| `e2e_config_section_icons.yaml` | Open Config screen → screenshot → verify section header icons visible | Maestro |
-| `e2e_command_empty_states.yaml` | Open Command screen with no tasks → screenshot → verify empty state icons visible | Maestro |
-| `e2e_chat_input_icons.yaml` | Open Chat screen → screenshot input bar → verify attachment/send/mic icons | Maestro |
-| `e2e_icon_launcher_not_default.yaml` | Screenshot launcher → verify not default Android robot | Maestro |
-| `e2e_notification_icon_check.yaml` | Trigger notification → screenshot shade → verify custom icon | Maestro |
-| `e2e_splash_screen_check.yaml` | Cold launch → screenshot splash → verify branded logo | Maestro |
-| `IconRegressionTest.kt` | Verify `R.drawable.ic_notif_*` resources exist | UI Automator |
-
----
-
 ## Phase 1: Foundation — Agent Core
 
 | # | Feature | Status | Evidence | Gap | E2E Test |
@@ -583,15 +275,15 @@ text.tertiary:    rgba(100,130,150,0.35)  (very dim)
 | # | Feature | Status | Evidence | Gap | E2E Test |
 |---|---------|--------|----------|-----|----------|
 | 12.1 | 5-screen app | ✅ | All 5 screens + RootNavigator | — | 🧪 `smoke_all_screens.yaml` (if exists) |
-| 12.2 | FloatingDock | ✅ | `components/dock/FloatingDock.tsx` | Hardcoded colors — needs storm palette | 🧪 `floating_dock_navigation.yaml` (if exists) |
-| 12.3 | SideRail (tablet) | ✅ | `components/dock/SideRail.tsx` | Hardcoded colors — needs storm palette | 🚫 Needs: `e2e_tablet_side_rail.yaml` (tablet emulator) |
-| 12.4 | Glass design system | ✅ | 15 glass components | **Needs storm palette glass fills** | 🚫 Needs: `e2e_glass_components_visual.yaml` — screenshot each glass variant |
+| 12.2 | FloatingDock | ✅ | `components/dock/FloatingDock.tsx` | Hardcoded colors —  | 🧪 `floating_dock_navigation.yaml` (if exists) |
+| 12.3 | SideRail (tablet) | ✅ | `components/dock/SideRail.tsx` | Hardcoded colors —  | 🚫 Needs: `e2e_tablet_side_rail.yaml` (tablet emulator) |
+| 12.4 | Glass design system | ✅ | 15 glass components | ** glass fills** | 🚫 Needs: `e2e_glass_components_visual.yaml` — screenshot each glass variant |
 | 12.5 | PlasmaOrb | ✅ | `components/plasma/PlasmaOrb.tsx` | — | 🚫 |
 | 12.6 | ChatScreen | ✅ | `screens/tabs/ChatScreen.tsx` (342 lines) | — | 🧪 `live_openrouter_chat.yaml` |
 | 12.7 | CommandScreen | ✅ | `screens/tabs/CommandScreen.tsx` (1497 lines) | — | 🚫 Needs: `e2e_command_screen_sections.yaml` |
 | 12.8 | ConfigScreen | ✅ | `screens/tabs/ConfigScreen.tsx` (1373 lines) | — | 🧪 Config Maestro tests |
 | 12.9 | OnboardingScreen | ✅ | `screens/OnboardingScreen.tsx` + 4 steps | — | 🚫 Needs: `e2e_onboarding_flow.yaml` — fresh install → complete all steps |
-| 12.10 | Color system | ✅ | `theme/colors.ts` | **NEEDS STORM PALETTE UPDATE** | 🚫 Needs: `e2e_theme_consistency.yaml` — screenshot all screens |
+| 12.10 | Color system | ✅ | `theme/colors.ts` | ** UPDATE** | 🚫 Needs: `e2e_theme_consistency.yaml` — screenshot all screens |
 | 12.11 | Typography | ✅ | `theme/typography.ts` | — | 🚫 |
 | 12.12 | Animations | ✅ | `theme/animations.ts` + Reanimated | — | 🚫 |
 | 12.13 | Gyroscope parallax | ⚠️ | Camera3D uses Accelerometer | SwarmCanvas only | 🚫 |
@@ -607,7 +299,7 @@ text.tertiary:    rgba(100,130,150,0.35)  (very dim)
 | 14.3 | Camera3D | ✅ | `swarm/camera/Camera3D.ts` (130 lines) | — | 🚫 |
 | 14.4 | SwarmController (state machine) | ✅ | `swarm/SwarmController.ts` (73 lines) | — | 🧪 `e2e_voice_swarm_emotion.yaml` |
 | 14.5 | SwarmDirector | ✅ | `swarm/SwarmDirector.ts` (190 lines) | — | 🚫 |
-| 14.6 | EmotionPalette (20 emotions) | ✅ | `swarm/emotion/EmotionPalette.ts` (63 lines) | **Needs storm palette update** | 🚫 Needs: `e2e_emotion_palette_colors.yaml` — trigger each emotion → screenshot |
+| 14.6 | EmotionPalette (20 emotions) | ✅ | `swarm/emotion/EmotionPalette.ts` (63 lines) | ** update** | 🚫 Needs: `e2e_emotion_palette_colors.yaml` — trigger each emotion → screenshot |
 | 14.7 | EmotionBlender | ✅ | `swarm/emotion/EmotionBlender.ts` (41 lines) | — | 🚫 |
 | 14.8 | ShapeLibrary | ✅ | `swarm/formations/ShapeLibrary.ts` (620 lines) | — | 🚫 |
 | 14.9 | TextRenderer | ✅ | `swarm/formations/TextRenderer.ts` (105 lines) | — | 🚫 |
@@ -678,13 +370,9 @@ text.tertiary:    rgba(100,130,150,0.35)  (very dim)
 
 | # | Gap | Impact | E2E Test Needed |
 |---|-----|--------|-----------------|
-| 1 | **In-app icons invisible** — `colors.text.tertiary` at 35% opacity, `colors.accent.cyan` = `#1A5C6A` has ~1.5:1 contrast ratio on dark bg. Empty states, status badges, section headers, ChatInputBar actions all nearly invisible | Users can't see UI controls | `e2e_dock_icons_visible.yaml`, `e2e_config_section_icons.yaml`, `e2e_command_empty_states.yaml`, `e2e_chat_input_icons.yaml` |
-| 2 | **Dual theme system conflict** — `src/config.ts` uses lime/lavender/violet palette, `src/theme/colors.ts` uses dark storm teal. Components mix both, creating visual inconsistency and icon color mismatches | Incoherent visual language, some icons bright (DeviceScreen) while others invisible (CommandScreen) | `e2e_theme_consistency.yaml` |
-| 3 | **Storm palette not applied** — neither theme matches the dramatic night sky target. Config theme is lime/lavender, neural swarm theme is too dark | Visual identity doesn't match design intent | `e2e_storm_palette_visual.yaml` |
-| 4 | **All Android icons are placeholders** — default Android robot launcher, generic Expo splash, system notification icons | App looks unbranded | `e2e_icon_launcher_not_default.yaml`, `e2e_notification_icon_check.yaml` |
-| 5 | **No CI pipeline** — no GitHub Actions | Can't automate test runs | N/A — infra |
-| 6 | **Channel incoming messages missing** — Telegram/Discord/Slack send-only | Can't test bidirectional | `e2e_telegram_receive.yaml` |
-| 7 | **Session persistence thin** — 67 lines, no session types | Memory may not survive restarts | `e2e_session_persistence.yaml` |
+| 1 | **No CI pipeline** — no GitHub Actions | Can't automate test runs | N/A — infra |
+| 2 | **Channel incoming messages missing** — Telegram/Discord/Slack send-only | Can't test bidirectional | `e2e_telegram_receive.yaml` |
+| 3 | **Session persistence thin** — 67 lines, no session types | Memory may not survive restarts | `e2e_session_persistence.yaml` |
 
 ### P1 — Important
 
@@ -707,31 +395,6 @@ text.tertiary:    rgba(100,130,150,0.35)  (very dim)
 | 15 | No channel formatters | Raw text to all channels |
 | 16 | No DI framework | Manual wiring |
 | 17 | Cloud TTS engines | Quality varies by device |
-
----
-
-## Execution Plan — Next Steps
-
-### Sprint 1: Branding & Palette (1-2 days)
-1. Design and generate Guappa app icon (storm-themed, adaptive)
-2. Replace all launcher icons across density buckets
-3. Create custom notification icon set (11 vector drawables)
-4. Replace all `android.R.drawable.*` references in Kotlin
-5. Update `colors.ts` with storm palette
-6. Fix all hardcoded colors in FloatingDock, SideRail, RootNavigator
-7. Design and replace splash screen logo
-
-### Sprint 2: E2E Test Coverage (2-3 days)
-8. Create P0 Maestro E2E flows: session persistence, provider failover, onboarding
-9. Set up UI Automator 2.4: dependencies, runner, `androidTest/` directory
-10. Create UI Automator tests: permissions, notifications, memory store/recall
-11. Create icon regression tests
-
-### Sprint 3: Core Gaps (3-5 days)
-12. Implement Android `SpeechRecognizer` as free STT fallback
-13. Upgrade Deepgram STT from nova-2 to nova-3
-14. Add channel `incoming()` Flow for Telegram (long polling)
-15. Set up GitHub Actions CI pipeline
 
 ---
 

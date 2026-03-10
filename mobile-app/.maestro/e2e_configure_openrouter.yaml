@@ -1,0 +1,51 @@
+appId: com.guappa.app
+name: "E2E: Configure OpenRouter Provider"
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "dock-tab-voice"
+    timeout: 30000
+
+# Navigate to Config screen
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Open provider dropdown
+- tapOn:
+    id: "config-provider-select"
+- waitForAnimationToEnd
+
+# Select OpenRouter
+- tapOn: "OpenRouter"
+- waitForAnimationToEnd
+
+# Enter API key
+- tapOn:
+    id: "config-api-key-input"
+- eraseText: 100
+- inputText: "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"
+
+# Scroll down to model input
+- scrollUntilVisible:
+    element:
+      id: "config-model-input"
+    direction: DOWN
+
+# Enter model
+- tapOn:
+    id: "config-model-input"
+- eraseText: 100
+- inputText: "minimax/minimax-m2.5"
+
+# Hide keyboard
+- hideKeyboard
+
+# Tap Apply
+- tapOn: "Apply"
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- takeScreenshot: screenshots/openrouter_configured
