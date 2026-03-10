@@ -1,0 +1,42 @@
+appId: com.guappa.app
+name: "E2E: Memory Export/Import — export data and verify"
+tags:
+  - e2e
+  - memory
+  - export
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Store a fact
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember: export test fact 12345"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Navigate to config/memory to find export option
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+- scrollUntilVisible:
+    element:
+
+      text: "Memory"    direction: DOWN
+    timeout: 10000

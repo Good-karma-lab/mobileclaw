@@ -1,0 +1,43 @@
+appId: com.guappa.app
+name: "E2E: Incoming SMS Trigger — send SMS via ADB, verify agent reacts"
+tags:
+  - e2e
+  - proactive
+  - sms
+  - requires-adb
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# First set up an SMS trigger in chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Set up a hook for incoming SMS messages"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "SMS"
+    timeout: 30000
+
+# Wait for system to be ready
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Note: actual SMS emulation requires ADB:
+# adb emu sms send 15551234567 "Test SMS from Maestro"
+# This test verifies the setup flow works

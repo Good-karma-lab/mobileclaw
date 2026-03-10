@@ -1,0 +1,44 @@
+appId: com.guappa.app
+name: "E2E: Episodic Recall — ask about past sessions"
+tags:
+  - e2e
+  - memory
+  - episodic
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Store a memorable event
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember that I successfully completed the Phoenix project today"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "Phoenix"
+    timeout: 30000
+
+# Ask about it
+- tapOn:
+    id: "chat-input"
+- inputText: "What project did I complete recently?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible: "Phoenix"
+    timeout: 30000

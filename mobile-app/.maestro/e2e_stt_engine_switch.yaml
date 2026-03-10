@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: STT Engine Switch — switch between STT engines in config"
+tags:
+  - e2e
+  - voice
+  - config
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for voice/speech settings
+- scrollUntilVisible:
+    element:
+
+      text: "Voice"    direction: DOWN
+    timeout: 10000
+
+# Verify voice configuration section exists
+- assertVisible: "Voice"

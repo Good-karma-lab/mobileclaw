@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Telegram Send Channel — send a message via Telegram"
+tags:
+  - e2e
+  - channels
+  - telegram
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Send a test message to Telegram saying 'Guappa E2E test successful'"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "sent"
+    timeout: 30000

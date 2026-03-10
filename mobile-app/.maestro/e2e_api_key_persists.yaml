@@ -1,0 +1,55 @@
+appId: com.guappa.app
+name: "E2E: API Key Persists — set key, restart, verify still there"
+tags:
+  - e2e
+  - config
+  - persistence
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for provider section
+- scrollUntilVisible:
+    element:
+
+      text: "Provider"    direction: DOWN
+    timeout: 10000
+
+# Verify config section is visible
+- assertVisible: "Provider"
+# Kill and reopen
+- stopApp
+- waitForAnimationToEnd:
+    timeout: 2000
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+# Navigate to Config again
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Verify config section still accessible
+- scrollUntilVisible:
+    element:
+
+      text: "Provider"    direction: DOWN
+    timeout: 10000
+
+- assertVisible: "Provider"

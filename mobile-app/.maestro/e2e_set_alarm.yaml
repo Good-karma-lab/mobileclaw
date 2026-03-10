@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Set Alarm — ask agent to set an alarm"
+tags:
+  - e2e
+  - tools
+  - alarm
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Set an alarm for 7:30 AM"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "alarm"
+    timeout: 30000

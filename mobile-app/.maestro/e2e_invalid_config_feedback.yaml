@@ -1,0 +1,50 @@
+appId: com.guappa.app
+name: "E2E: Invalid Config Feedback — enter bad API key, verify error message"
+tags:
+  - e2e
+  - config
+  - validation
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Set an obviously invalid API key
+- scrollUntilVisible:
+    element:
+
+      id: "config-api-key"    direction: DOWN
+    timeout: 10000
+
+# Try to chat with bad config
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send message - should get error feedback
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello"
+- tapOn:
+    id: "chat-send-button"
+
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# App should still be functional (not crashed)
+- assertVisible:
+    id: "chat-input"

@@ -1,0 +1,51 @@
+appId: com.guappa.app
+name: "E2E: Semantic Search — store facts, query by meaning"
+tags:
+  - e2e
+  - memory
+  - semantic
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Store several facts
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember: I love playing tennis on weekends"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember: My favorite restaurant is Pasta Palace"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Query by meaning (not exact match)
+- tapOn:
+    id: "chat-input"
+- inputText: "What are my hobbies and sports?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "tennis"
+    timeout: 30000

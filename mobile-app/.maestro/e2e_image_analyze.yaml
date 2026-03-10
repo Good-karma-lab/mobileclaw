@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: Image Analyze — verify image analysis capability"
+tags:
+  - e2e
+  - tools
+  - vision
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Ask about vision capability
+- tapOn:
+    id: "chat-input"
+- inputText: "Can you analyze images? What vision capabilities do you have?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "image"
+    timeout: 30000

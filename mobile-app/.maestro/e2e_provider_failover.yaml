@@ -1,0 +1,90 @@
+appId: com.guappa.app
+name: "E2E: Provider Failover — bad key then correct key"
+tags:
+  - e2e
+  - provider
+  - failover
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Go to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Set a bad API key
+- scrollUntilVisible:
+    element:
+      text: "Provider"
+    direction: DOWN
+
+- tapOn:
+    text: "Provider"
+
+- scrollUntilVisible:
+    element:
+      id: "config-api-key"
+    direction: DOWN
+
+- tapOn:
+    id: "config-api-key"
+- clearText
+- inputText: "sk-or-v1-INVALID_KEY_12345"
+
+# Go to chat and try
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello"
+- tapOn:
+    id: "chat-send-button"
+
+# Should show an error or fallback message
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Now fix the key
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+- scrollUntilVisible:
+    element:
+      id: "config-api-key"
+    direction: DOWN
+
+- tapOn:
+    id: "config-api-key"
+- clearText
+- inputText: "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"
+
+# Return to chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Hello again"
+- tapOn:
+    id: "chat-send-button"
+
+# Should get a response now
+- extendedWaitUntil:
+    visible:
+      "Hello"
+    timeout: 30000

@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Browser Session — ask agent to fetch a URL"
+tags:
+  - e2e
+  - tools
+  - browser
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Fetch the content from https://httpbin.org/get and show me the response"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "httpbin"
+    timeout: 45000

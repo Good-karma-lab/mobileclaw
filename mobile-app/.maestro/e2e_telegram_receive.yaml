@@ -1,0 +1,42 @@
+appId: com.guappa.app
+name: "E2E: Telegram Receive — verify incoming message handling"
+tags:
+  - e2e
+  - channels
+  - telegram
+  - incoming
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Configure Telegram first
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+- scrollUntilVisible:
+    element:
+
+      text: "Telegram"    direction: DOWN
+    timeout: 10000
+
+# Verify Telegram configuration section exists
+- assertVisible: "Telegram"
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Verify app is functional
+- assertVisible:
+    id: "chat-input"

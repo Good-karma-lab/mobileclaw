@@ -1,0 +1,39 @@
+appId: com.guappa.app
+name: "E2E: Command Screen Sections — verify all sections present"
+tags:
+  - e2e
+  - ui
+  - command
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Verify command screen loaded
+- assertVisible: "Command"
+# Scroll through sections
+- scroll:
+    direction: DOWN
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+- scroll:
+    direction: DOWN
+
+# Verify multiple sections exist
+- assertVisible: "Task"

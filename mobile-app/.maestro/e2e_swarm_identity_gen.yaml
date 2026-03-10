@@ -1,0 +1,35 @@
+appId: com.guappa.app
+name: "E2E: Swarm Identity Gen — verify DID generated on swarm screen"
+tags:
+  - e2e
+  - swarm
+  - identity
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Swarm screen
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+
+# Look for Identity tab
+- runFlow:
+    when:
+      visible: "Identity"
+    commands:
+      - tapOn: "Identity"
+      - waitForAnimationToEnd
+
+# Verify identity card or DID is visible
+- assertVisible: "Identity"

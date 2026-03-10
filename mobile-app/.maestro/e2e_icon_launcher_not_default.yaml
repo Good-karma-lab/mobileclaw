@@ -1,0 +1,21 @@
+appId: com.guappa.app
+name: "E2E: Icon Launcher Not Default — verify custom launcher icon"
+tags:
+  - e2e
+  - icons
+  - branding
+
+---
+
+# Just verify the app launches successfully with its icon
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+# Take screenshot of launched app for visual verification
+- takeScreenshot: "launcher_icon_check"
+
+# App should be visible and not crash
+- assertVisible:
+
+    id: "dock-tab-chat"

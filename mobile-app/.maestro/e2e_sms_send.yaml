@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: SMS Send — ask agent to compose an SMS"
+tags:
+  - e2e
+  - channels
+  - sms
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Send an SMS to +15551234567 saying 'Hello from Guappa test'"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "SMS"
+    timeout: 30000

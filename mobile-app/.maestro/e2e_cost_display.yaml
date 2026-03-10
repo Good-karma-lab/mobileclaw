@@ -1,0 +1,45 @@
+appId: com.guappa.app
+name: "E2E: Cost Display — send messages, verify cost tracking shown"
+tags:
+  - e2e
+  - cost
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send a message
+- tapOn:
+    id: "chat-input"
+- inputText: "What is 2 + 2?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "4"
+    timeout: 30000
+
+# Navigate to Command screen to see stats
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Look for cost/token/usage info
+- scrollUntilVisible:
+    element:
+
+      text: "token"    direction: DOWN
+    timeout: 10000

@@ -1,0 +1,36 @@
+appId: com.guappa.app
+name: "E2E: Brave Web Search — ask agent to search the web"
+tags:
+  - e2e
+  - tools
+  - web-search
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Ask a question that requires web search
+- tapOn:
+    id: "chat-input"
+- inputText: "Search the web for the current weather in Berlin Germany"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for response that indicates web search was used
+- extendedWaitUntil:
+    visible:
+      "Berlin"
+    timeout: 45000

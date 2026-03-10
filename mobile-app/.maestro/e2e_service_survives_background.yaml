@@ -1,18 +1,16 @@
 appId: com.guappa.app
-name: "E2E: Session Persistence — send message, kill app, reopen, verify conversation intact"
+name: "E2E: Service Survives Background — minimize, wait, verify response"
 tags:
   - e2e
-  - session
-  - persistence
+  - service
+  - background
 
 ---
 
 - launchApp:
     clearState: false
-
 - waitForAnimationToEnd
 
-# Skip onboarding if shown
 - runFlow:
     when:
       visible: "Get Started"
@@ -20,40 +18,33 @@ tags:
       - tapOn: "Get Started"
       - waitForAnimationToEnd
 
-# Navigate to Chat
 - tapOn:
     id: "dock-tab-chat"
 - waitForAnimationToEnd
 
-# Type a unique message
+# Send a message
 - tapOn:
     id: "chat-input"
-- inputText: "My secret passphrase is PurpleFox42"
+- inputText: "Hello, I'm testing background persistence"
 - tapOn:
     id: "chat-send-button"
-
-# Wait for agent response
-- extendedWaitUntil:
-    visible: "PurpleFox42"
-    timeout: 30000
-
-# Kill the app
-- stopApp
-
-# Wait a moment
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 10000
+
+# Press home to minimize
+- pressKey: home
+- waitForAnimationToEnd:
+    timeout: 30000
 
 # Reopen
 - launchApp:
     clearState: false
-
 - waitForAnimationToEnd
 
-# Navigate to Chat
+# Navigate to chat
 - tapOn:
     id: "dock-tab-chat"
 - waitForAnimationToEnd
 
-# Verify previous message is still visible
-- assertVisible: "PurpleFox42"
+# Verify previous message still visible
+- assertVisible: "background persistence"

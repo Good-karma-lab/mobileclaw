@@ -1,0 +1,44 @@
+appId: com.guappa.app
+name: "E2E: Cron Schedule — schedule a recurring task"
+tags:
+  - e2e
+  - tools
+  - cron
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Schedule a daily reminder at 9am to drink water"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "scheduled"
+    timeout: 30000
+
+# Verify in Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+- scrollUntilVisible:
+    element:
+
+      text: "Schedule"    direction: DOWN
+    timeout: 10000

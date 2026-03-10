@@ -1,0 +1,43 @@
+appId: com.guappa.app
+name: "E2E: Memory Consolidation — add facts, trigger consolidation, verify"
+tags:
+  - e2e
+  - memory
+  - consolidation
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Store multiple related facts
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember these facts: I like coffee, I drink it every morning, my favorite blend is Colombian"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Ask for a consolidated recall
+- tapOn:
+    id: "chat-input"
+- inputText: "What do you know about my coffee preferences?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "coffee"
+    timeout: 30000

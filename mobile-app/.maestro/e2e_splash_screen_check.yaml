@@ -1,0 +1,18 @@
+appId: com.guappa.app
+name: "E2E: Splash Screen Check — cold launch, verify splash"
+tags:
+  - e2e
+  - icons
+  - splash
+
+---
+
+- launchApp:
+    clearState: true
+- takeScreenshot: "cold_launch_splash"
+
+# Wait for app to fully load
+- waitForAnimationToEnd
+
+# Should see either onboarding or main app
+- assertVisible: "Get Started"

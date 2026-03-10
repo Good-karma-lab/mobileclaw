@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Email Compose — ask agent to compose an email"
+tags:
+  - e2e
+  - channels
+  - email
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Compose an email to test@example.com with subject 'Test' and body 'Hello from Guappa'"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "email"
+    timeout: 30000

@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Launch App Tool — ask agent to list installed apps"
+tags:
+  - e2e
+  - tools
+  - apps
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "List the apps installed on this device"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "app"
+    timeout: 30000

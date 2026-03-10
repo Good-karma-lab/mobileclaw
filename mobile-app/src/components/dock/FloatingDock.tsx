@@ -89,8 +89,8 @@ function DockTabItem({
       <Animated.View style={[styles.activeGlow, glowStyle]} />
       <Ionicons
         name={iconName as any}
-        size={24}
-        color={isActive ? colors.accent.cyan : colors.text.secondary}
+        size={28}
+        color={isActive ? '#FFFFFF' : '#C0DCE8'}
       />
     </AnimatedPressable>
   );
@@ -122,7 +122,7 @@ export function FloatingDock({ tabs, activeTab, onTabPress }: Props) {
       style={[styles.container, { bottom: bottomOffset }]}
     >
       <Animated.View style={[styles.dockWrapper, dockBreathStyle]}>
-        <BlurView intensity={50} tint="dark" style={styles.blurWrap}>
+        <BlurView intensity={70} tint="dark" style={styles.blurWrap}>
           <View style={styles.innerRow}>
             {tabs.map((tab) => (
               <DockTabItem
@@ -169,9 +169,9 @@ const styles = StyleSheet.create({
     height: DOCK_HEIGHT,
     borderRadius: DOCK_HEIGHT / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(15, 35, 50, 0.65)",
-    borderWidth: 0.75,
-    borderColor: "rgba(100, 190, 220, 0.18)",
+    backgroundColor: "rgba(25, 52, 72, 0.42)",
+    borderWidth: 1,
+    borderColor: "rgba(120, 210, 240, 0.30)",
   },
   innerRow: {
     flex: 1,
@@ -191,6 +191,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(93, 212, 232, 0.15)",
+    backgroundColor: "rgba(93, 212, 232, 0.30)",
   },
 });

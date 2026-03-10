@@ -14,7 +14,7 @@ class SwarmConfigTest {
         val config = SwarmConfig()
         assertFalse(config.enabled)
         assertEquals(SwarmConnectionMode.REMOTE, config.connectionMode)
-        assertEquals("http://127.0.0.1:9371", config.connectorUrl)
+        assertEquals("http://10.0.2.2:9371", config.connectorUrl)
         assertEquals(9370, config.connectorPort)
         assertTrue(config.autoAcceptTasks)
         assertEquals(3, config.maxConcurrentTasks)
@@ -59,7 +59,7 @@ class SwarmConfigTest {
         }
         val config = SwarmConfig.fromJSON(json)
         assertTrue(config.enabled)
-        assertEquals("http://127.0.0.1:9371", config.connectorUrl)
+        assertEquals("http://10.0.2.2:9371", config.connectorUrl)
         assertEquals(SwarmConnectionMode.REMOTE, config.connectionMode)
     }
 

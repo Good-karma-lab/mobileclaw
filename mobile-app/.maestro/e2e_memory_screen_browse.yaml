@@ -1,0 +1,43 @@
+appId: com.guappa.app
+name: "E2E: Memory Screen Browse — navigate memory screen sections"
+tags:
+  - e2e
+  - memory
+  - ui
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Store a fact first via chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+- tapOn:
+    id: "chat-input"
+- inputText: "Remember my name is TestUser42"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Navigate to Command screen (which has memory sections)
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Look for memory-related sections
+- scrollUntilVisible:
+    element:
+
+      text: "Memory"    direction: DOWN
+    timeout: 10000

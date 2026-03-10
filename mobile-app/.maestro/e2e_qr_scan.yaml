@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: QR Scan — verify QR code tool exists"
+tags:
+  - e2e
+  - tools
+  - qr
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Generate a QR code containing the text 'Hello Guappa'"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "QR"
+    timeout: 30000

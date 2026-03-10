@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: Proactive Trigger — trigger event, verify agent proactively responds"
+tags:
+  - e2e
+  - proactive
+  - trigger
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Command screen for triggers
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Look for Triggers section
+- scrollUntilVisible:
+    element:
+
+      text: "Trigger"    direction: DOWN
+    timeout: 10000
+
+# Verify triggers section exists
+- assertVisible: "Trigger"

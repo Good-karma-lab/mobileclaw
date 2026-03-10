@@ -1,0 +1,32 @@
+appId: com.guappa.app
+name: "E2E: Swarm Connect — attempt connection to swarm"
+tags:
+  - e2e
+  - swarm
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Swarm screen
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+
+# Verify swarm screen loaded
+- assertVisible: "Swarm"
+# Try connect button if visible
+- runFlow:
+    when:
+      visible: "Connect"    commands:
+      - tapOn:
+   id: "swarm-connect-button"    timeout: 5000

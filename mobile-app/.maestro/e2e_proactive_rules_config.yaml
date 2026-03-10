@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: Proactive Rules Config — configure proactive rules"
+tags:
+  - e2e
+  - proactive
+  - config
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for proactive/trigger settings
+- scrollUntilVisible:
+    element:
+
+      text: "Proactive"    direction: DOWN
+    timeout: 10000
+
+# Verify settings section exists
+- assertVisible: "Permissions"

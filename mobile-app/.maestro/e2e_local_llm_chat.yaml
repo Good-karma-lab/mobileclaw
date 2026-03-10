@@ -1,0 +1,57 @@
+appId: com.guappa.app
+name: "E2E: Local LLM Chat — download GGUF model, chat locally"
+tags:
+  - e2e
+  - local
+  - llm
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for Local Model section
+- scrollUntilVisible:
+    element:
+
+      text: "Local Model"    direction: DOWN
+    timeout: 10000
+
+# Check if a model is already downloaded
+- runFlow:
+    when:
+      visible: "Download"    commands:
+      - tapOn: "Download"    timeout: 60000
+      - extendedWaitUntil:
+          visible: "Ready"          timeout: 300000
+
+# Navigate to chat
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send a simple message
+- tapOn:
+    id: "chat-input"
+- inputText: "Say hello"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for local model response
+- extendedWaitUntil:
+    visible:
+      "hello"
+    timeout: 60000

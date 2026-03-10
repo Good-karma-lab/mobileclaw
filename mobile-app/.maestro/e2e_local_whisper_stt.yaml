@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: Local Whisper STT — verify on-device whisper transcription"
+tags:
+  - e2e
+  - voice
+  - whisper
+  - local
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Verify voice screen loaded with orb
+- assertVisible:
+
+    id: "voice-orb"
+# Verify the voice UI components are present
+- assertVisible:
+
+    id: "voice-mic-button"

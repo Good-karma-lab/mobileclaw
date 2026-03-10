@@ -1,0 +1,54 @@
+appId: com.guappa.app
+name: "E2E: Rate Limit Feedback — rapid tool calls verify app handles gracefully"
+tags:
+  - e2e
+  - tools
+  - rate-limit
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Send rapid messages
+- tapOn:
+    id: "chat-input"
+- inputText: "What time is it?"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "What date is it?"
+- tapOn:
+    id: "chat-send-button"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- tapOn:
+    id: "chat-input"
+- inputText: "What day of the week is it?"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for responses
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# Verify the app handled rapid requests without crashing
+- assertVisible:
+    id: "chat-input"

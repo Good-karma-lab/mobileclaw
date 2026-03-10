@@ -1,0 +1,42 @@
+appId: com.guappa.app
+name: "E2E: Model List Fetch — open config, verify model dropdown populates"
+tags:
+  - e2e
+  - provider
+  - models
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for Provider section
+- scrollUntilVisible:
+    element:
+      text: "Provider"
+    direction: DOWN
+
+- tapOn:
+    text: "Provider"
+- waitForAnimationToEnd
+
+# Look for model selection — should have models listed
+- scrollUntilVisible:
+    element:
+
+      id: "config-model-select"    direction: DOWN
+
+- assertVisible: "Model"

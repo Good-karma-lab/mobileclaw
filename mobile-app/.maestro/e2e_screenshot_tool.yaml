@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Screenshot Tool — ask agent to take a screenshot"
+tags:
+  - e2e
+  - tools
+  - screenshot
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Take a screenshot of the current screen"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "screenshot"
+    timeout: 30000

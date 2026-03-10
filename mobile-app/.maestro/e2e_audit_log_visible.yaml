@@ -1,0 +1,46 @@
+appId: com.guappa.app
+name: "E2E: Audit Log Visible — execute tool, verify log entry in Command screen"
+tags:
+  - e2e
+  - tools
+  - audit
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Send a command that triggers a tool
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "What is the current battery level?"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "battery"
+    timeout: 30000
+
+# Navigate to Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Look for task/tool execution history
+- scrollUntilVisible:
+    element:
+
+      text: "battery"    direction: DOWN
+    timeout: 10000

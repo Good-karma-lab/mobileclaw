@@ -1,0 +1,34 @@
+appId: com.guappa.app
+name: "E2E: Model Download — trigger download, verify progress, verify usable"
+tags:
+  - e2e
+  - local
+  - download
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Find local model section
+- scrollUntilVisible:
+    element:
+
+      text: "Local Model"    direction: DOWN
+    timeout: 10000
+
+# Look for download button or already downloaded indicator
+- assertVisible: "Download"

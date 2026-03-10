@@ -17,14 +17,14 @@ export const colors = {
     darkCyanStorm: '#16334A',
   },
   glass: {
-    fill: 'rgba(18, 40, 55, 0.45)',           // brighter tint, more see-through
-    fillActive: 'rgba(25, 55, 75, 0.55)',
-    border: 'rgba(100, 190, 220, 0.20)',      // visible cyan glass edge
-    borderSubtle: 'rgba(80, 170, 200, 0.12)',
+    fill: 'rgba(22, 48, 65, 0.38)',           // brighter tint, more see-through — dark glass
+    fillActive: 'rgba(30, 62, 82, 0.48)',
+    border: 'rgba(110, 200, 230, 0.24)',      // brighter cyan glass edge
+    borderSubtle: 'rgba(90, 180, 210, 0.16)',
   },
   accent: {
     cyan: '#5DD4E8',         // bright cyan — primary accent, clearly visible
-    cyanMuted: '#3A9AB0',    // medium cyan for secondary elements
+    cyanMuted: '#4DB8D0',    // medium cyan for secondary elements — brighter
     cyanGlow: '#80E8F8',     // very bright glow
     cyanBright: '#A0F0FF',   // ultra-bright, sparingly
     violet: '#A880D0',       // bright violet
@@ -41,7 +41,7 @@ export const colors = {
   },
   text: {
     primary: 'rgba(210, 230, 240, 0.95)',   // near-white cool blue — highly readable
-    secondary: 'rgba(160, 190, 210, 0.80)', // clearly visible muted blue
-    tertiary: 'rgba(120, 160, 185, 0.65)',  // visible for icons and labels
+    secondary: 'rgba(185, 210, 225, 0.88)', // brighter muted blue — clearly visible
+    tertiary: 'rgba(140, 175, 200, 0.72)',  // brighter for icons and labels
   },
 } as const;

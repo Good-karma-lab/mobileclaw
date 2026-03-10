@@ -1,0 +1,44 @@
+appId: com.guappa.app
+name: "E2E: Android STT Fallback — no API key, SpeechRecognizer fallback"
+tags:
+  - e2e
+  - voice
+  - stt
+  - android-builtin
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Config and check STT engine options
+- tapOn:
+    id: "dock-tab-config"
+- waitForAnimationToEnd
+
+# Look for voice/STT settings
+- scrollUntilVisible:
+    element:
+
+      text: "Voice"    direction: DOWN
+    timeout: 10000
+
+# Verify STT engine options are available
+- assertVisible: "Voice"
+# Navigate to voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Verify voice screen is accessible
+- assertVisible:
+
+    id: "voice-mic-button"

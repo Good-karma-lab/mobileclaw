@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Battery Low Trigger — verify battery status handling"
+tags:
+  - e2e
+  - proactive
+  - battery
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Check the current battery status"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "battery"
+    timeout: 30000

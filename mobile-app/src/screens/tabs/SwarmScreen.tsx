@@ -361,17 +361,17 @@ const statBoxStyles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 8,
+    gap: 5,
+    paddingVertical: 10,
   },
   value: {
     color: colors.text.primary,
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: typography.mono.fontFamily,
     fontWeight: "600",
   },
   label: {
-    color: colors.text.tertiary,
+    color: colors.text.secondary,
     fontSize: 11,
     fontFamily: typography.body.fontFamily,
     textTransform: "uppercase",
@@ -411,11 +411,11 @@ function FeedMessageRow({ message }: { message: SwarmMessagePayload }) {
 
 const feedStyles = StyleSheet.create({
   messageRow: {
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.06)",
+    borderColor: "rgba(255, 255, 255, 0.10)",
     borderRadius: 14,
-    padding: 12,
+    padding: 14,
     marginBottom: spacing.sm,
   },
   messageHeader: {
@@ -440,7 +440,7 @@ const feedStyles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
   },
   typeBadgeText: {
     fontSize: 10,
@@ -508,9 +508,9 @@ function PeerRow({ peer }: { peer: SwarmPeerPayload }) {
 
 const peerStyles = StyleSheet.create({
   row: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
   header: {
     flexDirection: "row",
@@ -519,13 +519,13 @@ const peerStyles = StyleSheet.create({
     marginBottom: 6,
   },
   onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   name: {
     color: colors.text.primary,
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: typography.bodySemiBold.fontFamily,
     flex: 1,
   },
@@ -546,12 +546,12 @@ const peerStyles = StyleSheet.create({
     marginBottom: 4,
   },
   capBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255, 255, 255, 0.12)",
   },
   capText: {
     color: colors.text.tertiary,
@@ -667,9 +667,9 @@ function TaskRow({
 
 const taskStyles = StyleSheet.create({
   row: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.05)",
+    borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
   header: {
     flexDirection: "row",
@@ -678,17 +678,17 @@ const taskStyles = StyleSheet.create({
     marginBottom: 6,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     marginTop: 4,
   },
   description: {
     color: colors.text.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: typography.body.fontFamily,
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   progressContainer: {
     marginTop: 4,
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: "rgba(255, 255, 255, 0.10)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderBottomWidth: 0,
   },
   headerInner: {
@@ -1546,7 +1546,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
   },
   tierText: {
     fontSize: 11,
@@ -1660,12 +1660,12 @@ const emptyStyles = StyleSheet.create({
     gap: 8,
   },
   iconContainer: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: "rgba(139, 92, 246, 0.06)",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(139, 92, 246, 0.10)",
     borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.15)",
+    borderColor: "rgba(139, 92, 246, 0.22)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -1674,7 +1674,7 @@ const emptyStyles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: typography.bodySemiBold.fontFamily,
     fontSize: 18,
-    opacity: 0.6,
+    opacity: 0.8,
   },
   subtitle: {
     color: colors.text.tertiary,

@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Built-in TTS Response — verify TTS speaks agent response"
+tags:
+  - e2e
+  - voice
+  - tts
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Voice screen
+- tapOn:
+    id: "dock-tab-voice"
+- waitForAnimationToEnd
+
+# Verify TTS controls are available
+- assertVisible:
+
+    id: "voice-mic-button"
+# Voice screen should show the orb/mic button
+- assertVisible:
+
+    id: "voice-orb"

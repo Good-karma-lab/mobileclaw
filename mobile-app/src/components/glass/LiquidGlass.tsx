@@ -74,9 +74,9 @@ export function LiquidGlassView({
   }));
 
   // Glass fill — brighter tint, more transparent (dark glass with shine)
-  const fillAlpha = (0.25 + intensity * 0.15).toFixed(3);
-  const borderAlpha = (0.10 + intensity * 0.12).toFixed(3);
-  const highlightAlpha = 0.06 + intensity * 0.10;
+  const fillAlpha = (0.20 + intensity * 0.14).toFixed(3);
+  const borderAlpha = (0.13 + intensity * 0.14).toFixed(3);
+  const highlightAlpha = 0.08 + intensity * 0.12;
 
   const { w, h } = size;
 
@@ -89,7 +89,7 @@ export function LiquidGlassView({
           <RoundedRect
             x={0} y={0} width={w} height={h}
             r={borderRadius}
-            color={`rgba(18, 40, 55, ${fillAlpha})`}
+            color={`rgba(22, 48, 65, ${fillAlpha})`}
           />
 
           {/* Top edge highlight — glass refraction line */}
@@ -101,8 +101,8 @@ export function LiquidGlassView({
               start={vec(0, 0)}
               end={vec(0, Math.min(60, h * 0.35))}
               colors={[
-                `rgba(140, 200, 220, ${highlightAlpha.toFixed(3)})`,
-                `rgba(80, 140, 160, ${(highlightAlpha * 0.35).toFixed(3)})`,
+                `rgba(155, 215, 235, ${highlightAlpha.toFixed(3)})`,
+                `rgba(95, 155, 175, ${(highlightAlpha * 0.40).toFixed(3)})`,
                 "rgba(0, 0, 0, 0)",
               ]}
             />
@@ -117,7 +117,7 @@ export function LiquidGlassView({
               start={vec(0, 0)}
               end={vec(Math.min(30, w * 0.15), h)}
               colors={[
-                `rgba(120, 180, 200, ${(highlightAlpha * 0.35).toFixed(3)})`,
+                `rgba(135, 195, 215, ${(highlightAlpha * 0.40).toFixed(3)})`,
                 "rgba(0, 0, 0, 0)",
               ]}
             />
@@ -144,7 +144,7 @@ export function LiquidGlassView({
             r={borderRadius}
             style="stroke"
             strokeWidth={0.75}
-            color={`rgba(100, 190, 220, ${borderAlpha})`}
+            color={`rgba(115, 205, 235, ${borderAlpha})`}
           />
         </Canvas>
       )}

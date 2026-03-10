@@ -18,6 +18,7 @@ import expo.modules.ReactNativeHostWrapper
 
 import com.guappa.app.GuappaAgentPackage
 import com.guappa.app.config.ConfigBridgePackage
+import com.guappa.app.config.ConfigMigrator
 import com.guappa.app.memory.MemoryBridgePackage
 import com.guappa.app.memory.MemoryConsolidationWorker
 import com.guappa.app.proactive.NotificationChannels
@@ -62,6 +63,7 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
+    ConfigMigrator.migrateIfNeeded(this)
     NotificationChannels.createAll(this)
     MemoryConsolidationWorker.schedule(this)
     loadReactNative(this)

@@ -1,0 +1,33 @@
+appId: com.guappa.app
+name: "E2E: Geofence Setup — ask agent to create a geofence"
+tags:
+  - e2e
+  - tools
+  - geofence
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Set up a geofence alert for when I arrive at latitude 52.52 longitude 13.405 with 500 meter radius"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "geofence"
+    timeout: 30000

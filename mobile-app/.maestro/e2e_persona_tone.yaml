@@ -1,0 +1,32 @@
+appId: com.guappa.app
+name: "E2E: Persona Tone — verify agent responds with Guappa personality"
+tags:
+  - e2e
+  - persona
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "What is your name and what can you do?"
+- tapOn:
+    id: "chat-send-button"
+
+# Wait for response — agent should identify as Guappa
+- extendedWaitUntil:
+    visible: "Guappa"    timeout: 30000

@@ -1,0 +1,32 @@
+appId: com.guappa.app
+name: "E2E: Calculator Tool — verify math computation"
+tags:
+  - e2e
+  - tools
+  - calculator
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "chat-input"
+- inputText: "Calculate: 17 * 23 + 5"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible: "396"
+    timeout: 30000

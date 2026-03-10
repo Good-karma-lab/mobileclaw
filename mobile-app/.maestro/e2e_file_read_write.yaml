@@ -1,0 +1,44 @@
+appId: com.guappa.app
+name: "E2E: File Read/Write — agent writes a file then reads it back"
+tags:
+  - e2e
+  - tools
+  - file
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+- tapOn:
+    id: "dock-tab-chat"
+- waitForAnimationToEnd
+
+# Ask agent to write a file
+- tapOn:
+    id: "chat-input"
+- inputText: "Write 'Hello from Guappa test' to a file called /sdcard/Download/guappa_test.txt"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible:
+      "written"
+    timeout: 30000
+
+# Now ask to read it back
+- tapOn:
+    id: "chat-input"
+- inputText: "Read the file /sdcard/Download/guappa_test.txt"
+- tapOn:
+    id: "chat-send-button"
+- extendedWaitUntil:
+    visible: "Hello from Guappa test"
+    timeout: 30000

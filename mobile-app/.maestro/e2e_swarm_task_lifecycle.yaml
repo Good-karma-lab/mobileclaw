@@ -1,0 +1,35 @@
+appId: com.guappa.app
+name: "E2E: Swarm Task Lifecycle — create task, view in swarm"
+tags:
+  - e2e
+  - swarm
+  - task
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Swarm screen
+- tapOn:
+    id: "dock-tab-swarm"
+- waitForAnimationToEnd
+
+# Navigate through tabs
+- runFlow:
+    when:
+      visible: "Feed"
+    commands:
+      - tapOn: "Feed"
+      - waitForAnimationToEnd
+
+# Verify feed tab works
+- assertVisible: "Feed"

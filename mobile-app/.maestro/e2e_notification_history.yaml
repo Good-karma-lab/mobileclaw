@@ -1,0 +1,31 @@
+appId: com.guappa.app
+name: "E2E: Notification History — view notification history"
+tags:
+  - e2e
+  - proactive
+  - notifications
+
+---
+
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Get Started"
+    commands:
+      - tapOn: "Get Started"
+      - waitForAnimationToEnd
+
+# Navigate to Command screen
+- tapOn:
+    id: "dock-tab-command"
+- waitForAnimationToEnd
+
+# Look for notification/history section
+- scrollUntilVisible:
+    element:
+
+      text: "Notification"    direction: DOWN
+    timeout: 10000

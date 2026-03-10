@@ -59,8 +59,8 @@ export function CollapsibleSection({
             <View style={[styles.iconWrap, expanded && styles.iconWrapActive]}>
               <Ionicons
                 name={icon}
-                size={17}
-                color={expanded ? colors.accent.cyan : colors.accent.cyanMuted}
+                size={20}
+                color={expanded ? '#AAEEFF' : '#7DD8EC'}
               />
             </View>
           )}
@@ -69,8 +69,8 @@ export function CollapsibleSection({
         <View style={[styles.chevronWrap, expanded && styles.chevronWrapExpanded]}>
           <Ionicons
             name={expanded ? "chevron-up" : "chevron-down"}
-            size={15}
-            color={expanded ? colors.text.secondary : colors.text.tertiary}
+            size={16}
+            color={expanded ? colors.text.primary : colors.text.secondary}
           />
         </View>
       </Pressable>
@@ -97,19 +97,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: "rgba(16, 38, 56, 0.50)",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "rgba(20, 55, 80, 0.70)",
+    borderWidth: 1,
+    borderColor: "rgba(93, 212, 232, 0.28)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
   },
   iconWrapActive: {
-    backgroundColor: "rgba(22, 51, 74, 0.60)",
+    backgroundColor: "rgba(25, 65, 95, 0.80)",
+    borderColor: "rgba(93, 212, 232, 0.45)",
   },
   title: {
-    color: colors.text.secondary,
+    color: colors.text.primary,
     fontSize: 15,
     fontFamily: "Exo2_500Medium",
     flex: 1,
@@ -119,15 +122,15 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   chevronWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(16, 38, 56, 0.40)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(35, 65, 90, 0.50)",
     alignItems: "center",
     justifyContent: "center",
   },
   chevronWrapExpanded: {
-    backgroundColor: "rgba(22, 51, 74, 0.50)",
+    backgroundColor: "rgba(40, 75, 100, 0.60)",
   },
   divider: {
     height: 0.5,
