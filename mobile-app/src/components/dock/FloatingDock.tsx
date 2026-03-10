@@ -169,9 +169,9 @@ const styles = StyleSheet.create({
     height: DOCK_HEIGHT,
     borderRadius: DOCK_HEIGHT / 2,
     overflow: "hidden",
-    backgroundColor: "rgba(6, 13, 20, 0.94)",
-    borderWidth: 1,
-    borderColor: colors.glass.borderSubtle,
+    backgroundColor: "rgba(15, 35, 50, 0.65)",
+    borderWidth: 0.75,
+    borderColor: "rgba(100, 190, 220, 0.18)",
   },
   innerRow: {
     flex: 1,

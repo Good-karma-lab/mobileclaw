@@ -17,10 +17,10 @@ export const colors = {
     darkCyanStorm: '#16334A',
   },
   glass: {
-    fill: 'rgba(14, 32, 48, 0.55)',
-    fillActive: 'rgba(22, 51, 74, 0.65)',
-    border: 'rgba(60, 140, 170, 0.25)',      // brighter cyan-tinted borders
-    borderSubtle: 'rgba(50, 120, 150, 0.15)',
+    fill: 'rgba(18, 40, 55, 0.45)',           // brighter tint, more see-through
+    fillActive: 'rgba(25, 55, 75, 0.55)',
+    border: 'rgba(100, 190, 220, 0.20)',      // visible cyan glass edge
+    borderSubtle: 'rgba(80, 170, 200, 0.12)',
   },
   accent: {
     cyan: '#5DD4E8',         // bright cyan — primary accent, clearly visible

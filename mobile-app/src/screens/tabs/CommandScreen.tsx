@@ -1011,7 +1011,7 @@ const styles = StyleSheet.create({
 
   // ── Header ──────────────────────────────────────────────
   header: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderBottomWidth: 0,
     overflow: "hidden",
   },
@@ -1079,7 +1079,7 @@ const styles = StyleSheet.create({
   headerSummaryDivider: {
     width: 1,
     height: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
   },
   headerLine: {
     height: 1,
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
     borderWidth: 1,
     borderColor: colors.glass.borderSubtle,
     gap: 6,
@@ -1128,7 +1128,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderWidth: 1,
     borderColor: colors.glass.borderSubtle,
     alignItems: "center",
@@ -1158,7 +1158,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderWidth: 1,
   },
   badgeLabel: {
@@ -1180,7 +1180,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   taskCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
   jobCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
@@ -1288,7 +1288,7 @@ const styles = StyleSheet.create({
   triggerCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
@@ -1335,7 +1335,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   memoryWorkingCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
@@ -1371,7 +1371,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   memStatsGrid: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,
@@ -1415,7 +1415,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sessionCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     borderRadius: 14,
     padding: spacing.md,
     borderWidth: 1,

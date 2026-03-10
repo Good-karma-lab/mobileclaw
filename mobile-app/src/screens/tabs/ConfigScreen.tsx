@@ -1111,7 +1111,7 @@ const permStyles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
     borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255, 255, 255, 0.09)",
   },
   pillText: {
     fontSize: 11,
@@ -1128,7 +1128,7 @@ const styles = StyleSheet.create({
 
   // ── Glass Header ──────────────────────────────────────────
   header: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderBottomWidth: 0,
     overflow: "hidden",
   },
@@ -1241,9 +1241,9 @@ const channelStyles = StyleSheet.create({
     width: "100%",
   },
   tile: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255, 255, 255, 0.14)",
     borderRadius: 14,
     padding: spacing.sm,
   },
@@ -1299,7 +1299,7 @@ const proactiveStyles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255, 255, 255, 0.06)",
+    borderTopColor: "rgba(255, 255, 255, 0.10)",
   },
   subsectionTitle: {
     color: colors.text.secondary,

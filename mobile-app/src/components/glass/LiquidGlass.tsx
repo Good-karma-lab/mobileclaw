@@ -73,10 +73,10 @@ export function LiquidGlassView({
     opacity: 0.02 + shimmer.value * 0.03 * intensity,
   }));
 
-  // Glass fill opacity based on intensity
-  const fillAlpha = (0.04 + intensity * 0.06).toFixed(3);
-  const borderAlpha = (0.04 + intensity * 0.08).toFixed(3);
-  const highlightAlpha = 0.03 + intensity * 0.06;
+  // Glass fill — brighter tint, more transparent (dark glass with shine)
+  const fillAlpha = (0.25 + intensity * 0.15).toFixed(3);
+  const borderAlpha = (0.10 + intensity * 0.12).toFixed(3);
+  const highlightAlpha = 0.06 + intensity * 0.10;
 
   const { w, h } = size;
 
@@ -85,11 +85,11 @@ export function LiquidGlassView({
       {/* Skia glass background */}
       {w > 0 && h > 0 && (
         <Canvas style={[StyleSheet.absoluteFill, { borderRadius }]} pointerEvents="none">
-          {/* Dark glass fill */}
+          {/* Dark glass fill — slightly brighter base */}
           <RoundedRect
             x={0} y={0} width={w} height={h}
             r={borderRadius}
-            color={`rgba(11, 26, 38, ${fillAlpha})`}
+            color={`rgba(18, 40, 55, ${fillAlpha})`}
           />
 
           {/* Top edge highlight — glass refraction line */}
@@ -99,10 +99,10 @@ export function LiquidGlassView({
           >
             <SkLinearGradient
               start={vec(0, 0)}
-              end={vec(0, Math.min(50, h * 0.3))}
+              end={vec(0, Math.min(60, h * 0.35))}
               colors={[
-                `rgba(120, 170, 190, ${highlightAlpha.toFixed(3)})`,
-                `rgba(60, 100, 120, ${(highlightAlpha * 0.3).toFixed(3)})`,
+                `rgba(140, 200, 220, ${highlightAlpha.toFixed(3)})`,
+                `rgba(80, 140, 160, ${(highlightAlpha * 0.35).toFixed(3)})`,
                 "rgba(0, 0, 0, 0)",
               ]}
             />
@@ -117,7 +117,7 @@ export function LiquidGlassView({
               start={vec(0, 0)}
               end={vec(Math.min(30, w * 0.15), h)}
               colors={[
-                `rgba(100, 150, 170, ${(highlightAlpha * 0.3).toFixed(3)})`,
+                `rgba(120, 180, 200, ${(highlightAlpha * 0.35).toFixed(3)})`,
                 "rgba(0, 0, 0, 0)",
               ]}
             />
@@ -138,13 +138,13 @@ export function LiquidGlassView({
             />
           </RoundedRect>
 
-          {/* Outer border glow */}
+          {/* Outer border glow — visible glass edge */}
           <RoundedRect
             x={0.5} y={0.5} width={w - 1} height={h - 1}
             r={borderRadius}
             style="stroke"
-            strokeWidth={0.5}
-            color={`rgba(80, 160, 190, ${borderAlpha})`}
+            strokeWidth={0.75}
+            color={`rgba(100, 190, 220, ${borderAlpha})`}
           />
         </Canvas>
       )}

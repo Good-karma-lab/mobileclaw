@@ -411,7 +411,7 @@ function FeedMessageRow({ message }: { message: SwarmMessagePayload }) {
 
 const feedStyles = StyleSheet.create({
   messageRow: {
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: 14,
@@ -440,7 +440,7 @@ const feedStyles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
   },
   typeBadgeText: {
     fontSize: 10,
@@ -546,7 +546,7 @@ const peerStyles = StyleSheet.create({
     marginBottom: 4,
   },
   capBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.10)",
     borderBottomWidth: 0,
   },
   headerInner: {
@@ -1546,7 +1546,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
   },
   tierText: {
     fontSize: 11,

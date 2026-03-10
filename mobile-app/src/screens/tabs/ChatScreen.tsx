@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   },
   flex: { flex: 1 },
   header: {
-    backgroundColor: "rgba(4, 8, 14, 0.7)",
+    backgroundColor: "rgba(15, 30, 45, 0.55)",
     borderBottomWidth: 0,
   },
   headerInner: {
