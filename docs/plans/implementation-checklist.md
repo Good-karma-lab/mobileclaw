@@ -194,8 +194,8 @@ Testing Status:
 | 4.15 | NotificationHistory | ✅ | `proactive/NotificationHistory.kt` | 🟡 Unit tested |
 | 4.16 | MorningBriefingWorker | ✅ | `proactive/MorningBriefingWorker.kt` | 🟡 Unit tested |
 | 4.17 | DailySummaryWorker | ✅ | `proactive/DailySummaryWorker.kt` | 🟡 Unit tested |
-| 4.18 | MessagingStyle notifications | ⚠️ | NotificationManager exists | 🔴 |
-| 4.19 | Inline reply from notification | ⚠️ | NotificationActionReceiver exists | 🔴 |
+| 4.18 | MessagingStyle notifications | ✅ | `GuappaNotificationManager.kt` — full `NotificationCompat.MessagingStyle` with Person, conversation history | 🟡 Unit tested |
+| 4.19 | Inline reply from notification | ✅ | `RemoteInput` + `NotificationActionReceiver` — `REPLY_ACTION_KEY`, direct reply action | 🟡 Unit tested |
 | 4.20 | LocationGeofenceReceiver | ✅ | `proactive/GeofenceBroadcastReceiver.kt` | 🟡 Unit tested |
 | 4.21 | Network state receiver | ✅ | `proactive/NetworkStateReceiver.kt` | 🟡 Unit tested |
 | 4.22 | Screen state receiver | ✅ | `proactive/ScreenStateReceiver.kt` | 🟡 Unit tested |
@@ -239,7 +239,7 @@ Testing Status:
 | 6.7 | useWakeWord ("Hey Guappa") | ✅ | `hooks/useWakeWord.ts` — energy + STT keyword | 🔴 |
 | 6.8 | VoiceAmplitude | ✅ | `swarm/audio/VoiceAmplitude.ts` | 🟡 Unit tested |
 | 6.9 | VoiceScreen UI | ✅ | `screens/tabs/VoiceScreen.tsx` (338 lines) | 🟢 Verified: renders with neuroswarm |
-| 6.10 | Streaming TTS | ⚠️ | Sentence-level queue | 🔴 |
+| 6.10 | Streaming TTS | ✅ | `useTTS.ts` — `speakStreaming()` buffers tokens, speaks complete sentences via queue | 🟡 Unit tested |
 | 6.11 | Android SpeechRecognizer (built-in) | ✅ | `voice/AndroidSTTModule.kt` — free, zero API key, default | 🟡 Unit tested |
 | 6.12–6.13 | Google ML Kit / Cloud Speech | ❌ | Not found | 🔴 |
 | 6.14 | Android TextToSpeech (built-in) | ✅ | Via `expo-speech` | 🟡 |
@@ -259,7 +259,7 @@ Testing Status:
 | # | Feature | Status | Evidence | E2E Status |
 |---|---------|--------|----------|------------|
 | 7.1 | MemoryManager (5-tier) | ✅ | `memory/MemoryManager.kt` (627 lines) | 🟡 Unit tested |
-| 7.2 | Tier 1: Working memory | ✅ | ContextCompactor manages | 🟢 Verified: Command Center shows "Working Memory 0/8,192" |
+| 7.2 | Tier 1: Working memory | ✅ | ContextCompactor manages | 🟢 Verified: Command Center shows dynamic "Working Memory 0/65,536" from config |
 | 7.3 | Tier 2: Short-term memory | ✅ | Room SessionEntity, MessageEntity | 🟢 Verified: messages persist |
 | 7.4 | Tier 3: Long-term memory (facts) | ✅ | `MemoryFactEntity` | 🟢 Verified: "Long-term facts 0" visible |
 | 7.5 | Tier 4: Episodic memory | ✅ | `EpisodeEntity` | 🟢 Verified: "Episodic memories 0" visible |
@@ -270,8 +270,8 @@ Testing Status:
 | 7.10 | EmbeddingService | ✅ | `memory/EmbeddingService.kt` | 🟡 Unit tested |
 | 7.11 | MemoryBridge (RN module) | ✅ | `memory/MemoryBridge.kt` | 🟡 Unit tested |
 | 7.12 | MemoryScreen (UI) | ✅ | `screens/tabs/MemoryScreen.tsx` (363 lines) | 🟡 Accessible via Command Center |
-| 7.13 | On-device embedding model | ⚠️ | EmbeddingService exists | 🔴 May use cloud API |
-| 7.14 | Recursive summarization | ⚠️ | SummarizationService exists | 🔴 |
+| 7.13 | On-device embedding model | ✅ | `EmbeddingService.kt` (351 lines) — TF-IDF vectors, cosine similarity, fully on-device, no cloud | 🟡 Unit tested |
+| 7.14 | Recursive summarization | ✅ | `SummarizationService.kt` (274 lines) wraps `ContextCompactor` (343 lines, 13 functions) | 🟡 Unit tested |
 | 7.15 | Memory export/import | ✅ | `MemoryBridge.kt` | 🟡 Unit tested |
 
 ---
@@ -339,7 +339,6 @@ https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 | 12.2 | FloatingDock                     | ✅ | `components/dock/FloatingDock.tsx` — bright white icons, glass blur | 🟢 Verified: visible, tappable |
 | 12.3 | SideRail (automotive and tablet) | ✅ | `components/dock/SideRail.tsx` | 🔴 Needs tablet emulator |
 | 12.4 | Glass design system              | ✅ | 15 glass components including LiquidGlass (Skia) | 🟢 Verified: glass panels visible on all screens |
-| 12.5 | PlasmaOrb                        | ✅ | `components/plasma/PlasmaOrb.tsx` | 🟢 Verified on Voice screen |
 | 12.6 | ChatScreen                       | ✅ | `screens/tabs/ChatScreen.tsx` (342 lines) | 🟢 Verified: send/receive messages |
 | 12.7 | CommandScreen                    | ✅ | `screens/tabs/CommandScreen.tsx` (1497 lines) | 🟢 Verified: Active Tasks, Scheduled Jobs, Triggers, Memory Stats |
 | 12.8 | ConfigScreen                     | ✅ | `screens/tabs/ConfigScreen.tsx` (1373 lines) | 🟢 Verified: Provider, Model, Temperature, Context, Max Gen, Budget sliders |
@@ -392,7 +391,7 @@ https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 | L.3 | STT (free, zero-download) | ✅ | `AndroidSTTModule.kt` — `SpeechRecognizer` API | 🟡 Unit tested |
 | L.4 | TTS (built-in) | ✅ | `expo-speech` (Android TextToSpeech) | 🟡 Unit tested |
 | L.5 | TTS (high-quality on-device) | ❌ | Kokoro / Piper — not implemented | 🔴 |
-| L.6 | Embeddings (on-device) | ⚠️ | `EmbeddingService.kt` | 🔴 |
+| L.6 | Embeddings (on-device) | ✅ | `EmbeddingService.kt` (351 lines) — TF-IDF, cosine similarity, on-device | 🟡 Unit tested |
 | L.7–L.12 | Vision/Image/MediaPipe/LiteRT/ONNX/Nexa | ❌ | Not implemented | 🔴 |
 | L.13 | HardwareProbe (SoC detection) | ✅ | `providers/HardwareProbe.kt` | 🟡 Unit tested |
 
@@ -406,18 +405,18 @@ https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 | Phase 2: Provider Router | 23 | 5 | 7 | 2 | 9 | **52%** |
 | Phase 3: Tool Engine | 21 | 0 | 16 | 3 | 2 | **76%** |
 | Phase 3b: 78 Tools | 78 | 0 | 68 | 10 | 0 | **87%** |
-| Phase 4: Proactive | 22 | 0 | 20 | 0 | 2 | **91%** |
+| Phase 4: Proactive | 22 | 0 | 22 | 0 | 0 | **100%** |
 | Phase 5: Channels | 17 | 0 | 11 | 4 | 2 | **65%** |
-| Phase 6: Voice | 28 | 2 | 13 | 2 | 11 | **54%** |
-| Phase 7: Memory | 15 | 5 | 8 | 0 | 2 | **87%** |
+| Phase 6: Voice | 28 | 2 | 14 | 2 | 10 | **57%** |
+| Phase 7: Memory | 15 | 5 | 10 | 0 | 0 | **100%** |
 | Phase 9: Testing | 10 | 4 | 2 | 0 | 4 | **60%** |
 | Phase 10: Config | 12 | 4 | 7 | 0 | 1 | **92%** |
 | Phase 11: Swarm | 16 | 2 | 12 | 0 | 2 | **88%** |
 | Phase 12: UI | 13 | 12 | 0 | 0 | 1 | **92%** |
 | Phase 14: Visualization | 13 | 7 | 6 | 0 | 0 | **100%** |
 | Phase 13: Documentation | 5 | 5 | 0 | 0 | 0 | **100%** |
-| Local Inference | 13 | 1 | 4 | 1 | 7 | **38%** |
-| **TOTAL** | **302** | **58** | **177** | **22** | **45** | **78%** |
+| Local Inference | 13 | 1 | 5 | 1 | 6 | **46%** |
+| **TOTAL** | **302** | **58** | **183** | **22** | **39** | **80%** |
 
 ---
 
@@ -444,6 +443,18 @@ https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 | 10 | Local inference engines (LiteRT, ONNX) | ❌ SDK deps |
 | 11 | ~~mDNS local discovery~~ | ✅ Resolved |
 
+### P0b — Context Usage Optimization (NEW — see full research section above)
+
+| # | Gap | Solution | Status |
+|---|-----|----------|--------|
+| 16 | Flat message list as context (takeLast 40) | S1: Structured Context Assembly with token budgeting | ❌ Designed, not implemented |
+| 17 | Compaction blocks local inference queue | S2: Async Background Compaction (extractive-first) | ❌ Designed, not implemented |
+| 18 | No token budget awareness | S6: Token-Budget-Aware Context Window | ❌ Designed, not implemented |
+| 19 | No self-learning across sessions | S5: Self-Learning Memory (retrospective, mistake journal, skill cache) | ❌ Designed, not implemented |
+| 20 | Keyword-only memory retrieval | S7: Semantic Memory Retrieval (TF-IDF embeddings already exist) | ❌ Designed, not implemented |
+| 21 | All plan steps share one context | S4: Subagent Delegation (isolated sub-sessions) | ❌ Designed, not implemented |
+| 22 | Can't handle docs larger than context | S3: Recursive Context Exploration (RLM-inspired) | ❌ Designed, not implemented |
+
 ### P1b — Newly Identified (all resolved)
 
 | # | Gap | Status |
@@ -455,50 +466,282 @@ https://github.com/Good-karma-lab/World-Wide-Swarm-Protocol
 
 ---
 
-## Session Summary — 2026-03-11
+## 🧠 Context Usage Optimization — Research & Solution Plan
 
-### E2E Test Results
+### Problem Statement
 
-**Verified working on Pixel 9 Pro XL emulator (PID 27057):**
-- ✅ App launches and renders neuroswarm visualization
-- ✅ All 5 tabs navigate correctly (Voice, Chat, Command, Swarm, Config)
-- ✅ Config screen shows all settings (Provider, Model, Temperature, Context, Max Gen)
-- ✅ Apply button works — reconfigures agent at runtime
-- ✅ Chat send/receive with local LLM: "Hi" → "Hello! How can I help you today?"
-- ✅ Streaming tokens arrive in real-time via LocalStreamBridge
-- ✅ SwarmDirector skips LLM for local models (keyword-based emotion)
-- ✅ Command Center shows Active Tasks, Scheduled Jobs, Triggers, Memory Stats
-- ✅ Session persists across tab switches
-- ✅ Model download completed (Qwen3.5-0.8B Q4_K_M)
-- ✅ Onboarding flow completes successfully
-- ✅ Neural swarm renders on Voice, Chat (background), Swarm screens
-- ✅ Glass panels with dark glass styling visible on all screens
-- ✅ Dock icons bright and visible against dark background
-- ✅ Context compaction triggers on long conversations
+Current context management has critical weaknesses:
+1. **Naive truncation for local models** — `session.compactWith("[Earlier conversation truncated]", 30)` — loses all context from older messages
+2. **LLM-based compaction blocks inference** — `compactContext()` calls `router.chat()` synchronously, blocking the serial inference queue for local models (minutes of waiting)
+3. **No subagent delegation** — all tasks run in one context, consuming budget on intermediate results
+4. **No persistent self-learning** — agent doesn't save what it learns between sessions; re-discovers the same things every time
+5. **Fixed 40-message window** — `getContextMessages()` always takes `takeLast(40)` regardless of actual token budget
+6. **No recursive context exploration** — can't process documents larger than the context window
+7. **Memory retrieval is keyword-match only** — `getRelevantFacts()` does substring matching, not semantic search
+
+### Research: State of the Art (March 2026)
+
+#### 1. Recursive Language Models (RLM) — [ysz/recursive-llm](https://github.com/ysz/recursive-llm)
+**Paper**: Zhang & Khattab, MIT 2025 ([arXiv:2512.24601](https://arxiv.org/abs/2512.24601))
+
+**Key insight**: Store context as a *variable*, not in the prompt. Let the LLM explore context programmatically via a REPL sandbox.
+
+- Context is stored externally, LLM gets only the query + instructions
+- LLM writes Python code to peek/search/slice the context (`context[:500]`, `re.findall(...)`)
+- `recursive_llm(sub_query, sub_context)` for divide-and-conquer on large documents
+- **Result**: GPT-5-Mini with RLM outperforms raw GPT-5 by 33% on OOLONG benchmark (132K tokens) at similar cost
+- Uses RestrictedPython sandbox for safe code execution
+- Max depth (default 5), max iterations (default 30)
+- Two-model pattern: expensive root model + cheap recursive model
+
+**Applicability to GUAPPA**: Perfect for tool-result processing and long document analysis. When a tool returns a large payload (e.g., `web_scrape` returns 50K chars), instead of stuffing it all into context, store it as a variable and let the model query it recursively.
+
+#### 2. MemGPT / Letta Pattern — [letta-ai/letta](https://github.com/letta-ai/letta) (21K stars)
+**Key insight**: Treat context window like an OS treats RAM — with explicit memory management syscalls.
+
+- **Virtual context**: Agent has explicit `core_memory_append`, `core_memory_replace`, `archival_memory_insert`, `archival_memory_search` functions
+- **Paging**: Old messages are "paged out" to archival storage, retrieved on demand
+- **Self-editing memory**: Agent can modify its own core memory block (persistent facts about user)
+- Agent is *aware* of its memory limitations and manages them proactively
+
+**Applicability to GUAPPA**: Our 5-tier memory already has the storage tiers. What's missing is giving the agent *explicit tools* to manage its own memory (core_memory_append, archival_search, conversation_search).
+
+#### 3. Mem0 Pattern — [mem0ai/mem0](https://github.com/mem0ai/mem0) (49K stars)
+**Key insight**: Universal memory layer with automatic fact extraction, deduplication, and conflict resolution.
+
+- Automatically extracts facts from conversations
+- Deduplicates: "User likes coffee" + "User prefers coffee" → single fact
+- Conflict resolution: "User lives in NYC" then "User moved to LA" → updates
+- Graph-based relationships between facts
+- Temporal awareness: facts can expire or be superseded
+
+**Applicability to GUAPPA**: Our `ContextCompactor.extractFactsFromMessages()` already does basic extraction. Needs dedup, conflict resolution, and temporal awareness.
+
+#### 4. Subagent / Multi-Agent Delegation — OpenAI Swarm, CrewAI, AutoGen
+
+**Key insight**: Decompose complex tasks into subtasks, each handled by a specialist subagent with its own minimal context.
+
+- **OpenAI Swarm**: Lightweight handoff between agents, each with own system prompt and tools
+- **CrewAI** (45K stars): Role-based agents with shared memory, sequential/parallel task execution
+- **AutoGen** (55K stars): Conversable agents, group chat patterns
+
+**Applicability to GUAPPA**: `GuappaPlanner` already decomposes tasks into steps. Each step should run in an *isolated subagent context* (fresh session) that only receives: the subtask description, relevant facts, and the specific tools needed. Results are summarized back to the parent context.
+
+#### 5. LangGraph Stateful Agents — [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph) (26K stars)
+
+**Key insight**: Agent state as a graph — checkpoints, branches, rollbacks. Context is a structured state object, not a flat message list.
+
+- Structured state: separate slots for different types of information
+- Reducers: each state slot has a merge strategy
+- Checkpoints: can save/restore at any point
+
+**Applicability to GUAPPA**: Our session is a flat message list. Should be structured into: system prompt, core memories, task context, recent messages, pending tool results.
+
+#### 6. Self-Learning / Self-Improvement Patterns
+
+**Key patterns observed across Letta, Mem0, and production agent systems:**
+
+- **Session retrospective**: At end of each session (or periodically), agent reflects on what it learned and persists to long-term memory
+- **Mistake journaling**: When agent makes an error (tool call fails, user corrects), save the lesson as a persistent fact
+- **Preference tracking**: Track user preferences (communication style, tool usage patterns) automatically
+- **Prompt self-tuning**: Agent can suggest improvements to its own system prompt based on recurring issues
+- **Skill caching**: When agent discovers how to accomplish a novel task, save the recipe for future use
+- **Knowledge base building**: Extract structured knowledge from tool results and store for future retrieval without re-calling the tool
+
+### Solution Design for GUAPPA
+
+#### S1. Structured Context Assembly (replaces flat `getContextMessages`)
+
+**Current**: `[system_prompt] + messages.takeLast(40)`
+
+**Proposed**:
+```
+[system_prompt]                              ~500 tokens (fixed)
+[core_memory: user facts + preferences]      ~200 tokens (from Tier 3)
+[session_summary: compacted older messages]  ~300 tokens (from episodic)
+[relevant_memories: semantic search results] ~200 tokens (from Tier 5)
+[active_task_context: current plan step]     ~100 tokens (if in multi-step plan)
+[recent_messages: last N messages to fill]   remaining budget
+[pending_tool_results: last tool output]     if awaiting tool loop
+```
+
+The `recent_messages` count is *dynamic* — calculated from: `(context_budget - fixed_overhead) / avg_tokens_per_message`. Not a fixed `takeLast(40)`.
+
+**Location**: `GuappaSession.getContextMessages()` + new `ContextAssembler` class.
+
+#### S2. Async Background Compaction (replaces blocking compaction)
+
+**Current**: `compactContext()` calls `router.chat()` synchronously, blocks serial inference queue.
+
+**Proposed**:
+1. Compaction runs in a **separate coroutine scope** with lower priority
+2. Uses **extractive summary as immediate fallback** (no LLM call) — `generateExtractiveSummary()` already exists
+3. Queues an **async LLM refinement** that upgrades the extractive summary when the model is idle
+4. For local models: always use extractive summary (no LLM call) + fact extraction from keyword patterns
+5. For cloud models: async LLM summary using a separate cheap model (not blocking main inference)
+
+**Location**: `ContextCompactor.checkAndCompact()`, new `CompactionScheduler`.
+
+#### S3. Recursive Context Exploration (RLM-inspired)
+
+**When**: Tool results exceed a threshold (e.g., >4K chars) OR user provides long input text.
+
+**Proposed**:
+1. Store large context in a `ContextVariable` (in-memory, keyed by ID)
+2. Give the agent a `context_explore` tool:
+   - `peek(var_id, start, length)` — view a slice
+   - `search(var_id, pattern)` — regex search
+   - `summarize_chunk(var_id, start, length, query)` — recursive sub-call
+3. Agent can explore the variable iteratively instead of consuming entire context budget
+4. Sub-calls use cheaper/faster model (e.g., local 0.8B for peek/search, cloud for summarize)
+
+**Location**: New `tools/impl/ContextExploreTool.kt`, new `agent/ContextVariableStore.kt`.
+
+#### S4. Subagent Delegation for Complex Tasks
+
+**Current**: `GuappaPlanner.executePlan()` runs each step in the *same session* with full context.
+
+**Proposed**:
+1. Each plan step gets a **fresh sub-session** with minimal context:
+   - Subtask description
+   - Relevant facts from parent context (extracted by parent)
+   - Only the tools needed for this step
+2. Sub-session result is **summarized** (1-2 sentences) before injecting back into parent context
+3. Parent agent maintains a **plan state object** (not conversation messages):
+   - `step_results: Map<StepId, String>` — one-line summaries
+   - `current_step: StepId`
+   - `overall_goal: String`
+4. Parallel independent steps run concurrently (already supported by Planner)
+
+**Benefit**: A 5-step plan that currently consumes 5× the context (each step sees all previous messages) now consumes ~1× per step + plan summary overhead.
+
+**Location**: `GuappaPlanner.executePlan()`, new `SubAgentRunner`.
+
+#### S5. Self-Learning Memory System
+
+**Current**: `extractFactsFromMessages()` runs during compaction only, uses LLM (blocks local model).
+
+**Proposed 5-layer self-learning**:
+
+1. **Session Retrospective** (end of session / app background):
+   - Agent generates a structured session summary: what was accomplished, what failed, what user preferences were observed
+   - Persisted as episodic memory (Tier 4) with tags
+   - For local models: use pattern-based extraction (no LLM call):
+     - User corrections ("no, I meant..." → preference update)
+     - Repeated requests (same tool called 3+ times → cache the pattern)
+     - Error patterns (tool X fails with Y → lesson learned)
+
+2. **Mistake Journal** (on tool failure or user correction):
+   - When a tool call fails: save `{tool, args_pattern, error, fix}` to Tier 3
+   - When user says "no" / "wrong" / corrects: save the correction as a fact
+   - Before next tool call, check mistake journal for matching patterns
+
+3. **Skill Cache** (on successful complex task completion):
+   - Save `{task_description, steps_taken, tools_used, outcome}` as a "skill recipe"
+   - Before planning, semantic-search skill cache for similar tasks
+   - If found, use cached recipe instead of re-planning from scratch
+
+4. **Preference Tracker** (continuous, lightweight):
+   - Track: preferred response length, formality level, topics of interest
+   - Update on every exchange using simple heuristics (no LLM):
+     - Short user messages → prefers concise responses
+     - User says "more detail" → increase verbosity
+     - Repeated tool usage → mark as favorite tool
+
+5. **Knowledge Base Builder** (on tool result):
+   - After tool execution (e.g., `web_search` for "weather in Berlin"), cache the result
+   - Key: `{tool, normalized_query}` → Value: `{result_summary, timestamp, ttl}`
+   - Before executing a tool, check KB for recent cached result
+   - TTL varies by tool type: weather=1h, contacts=24h, system_info=5min
+
+**Location**: New `memory/SelfLearning.kt`, `memory/SkillCache.kt`, `memory/KnowledgeBase.kt`. Fact extraction patterns in `memory/PatternExtractor.kt`.
+
+#### S6. Token-Budget-Aware Context Window
+
+**Current**: `getContextMessages()` hardcodes `takeLast(40)`. No awareness of actual token counts.
+
+**Proposed**:
+1. Each `Message` already has `tokenCount` field (often 0 — needs to be populated)
+2. `ContextAssembler` allocates budget:
+   ```
+   total_budget = config.contextLength (e.g., 65536)
+   reserved_for_generation = config.maxGenTokens (e.g., 8192)
+   available = total_budget - reserved_for_generation  // 57344
+   
+   system_block = system_prompt + core_memory + relevant_memories  // measured
+   remaining = available - system_block
+   
+   // Fill recent messages from newest to oldest until budget exhausted
+   for msg in messages.reversed():
+       if remaining - msg.tokenCount < 0: break
+       include(msg)
+       remaining -= msg.tokenCount
+   ```
+3. Token counting uses `TokenCounter.kt` (already exists, char/4 heuristic) — upgrade to tiktoken-compatible BPE for accuracy
+
+**Location**: `GuappaSession.getContextMessages()` refactored to `ContextAssembler.assemble()`.
+
+#### S7. Semantic Memory Retrieval (upgrade from keyword to embedding search)
+
+**Current**: `getRelevantFacts()` does substring matching. `EmbeddingService.kt` has TF-IDF but isn't used for fact retrieval.
+
+**Proposed**:
+1. When storing a fact, also store its TF-IDF embedding (already supported by `EmbeddingService.embed()`)
+2. When retrieving relevant facts, use `EmbeddingService.searchSimilar()` with the user's latest message as query
+3. Add temporal decay: older facts get lower relevance scores
+4. Add access-count boost: frequently accessed facts rank higher
+
+**Location**: `MemoryManager.getRelevantFacts()`, `EmbeddingService`.
+
+### Implementation Priority
+
+| # | Solution | Effort | Impact | Priority | Dependency |
+|---|----------|--------|--------|----------|------------|
+| S1 | Structured Context Assembly | Medium | 🔴 Critical | P0 | None |
+| S2 | Async Background Compaction | Low | 🔴 Critical | P0 | None |
+| S6 | Token-Budget-Aware Window | Medium | 🔴 Critical | P0 | S1 |
+| S5 | Self-Learning Memory | Medium | 🟡 High | P1 | S7 |
+| S7 | Semantic Memory Retrieval | Low | 🟡 High | P1 | None |
+| S4 | Subagent Delegation | Medium | 🟡 High | P1 | S1, S6 |
+| S3 | Recursive Context Exploration | High | 🟢 Medium | P2 | S4 |
+
+### Files to Create/Modify
+
+**New files:**
+- `agent/ContextAssembler.kt` — structured context assembly with token budgeting
+- `agent/SubAgentRunner.kt` — isolated sub-session execution for plan steps
+- `agent/CompactionScheduler.kt` — async non-blocking compaction scheduling
+- `agent/ContextVariableStore.kt` — store large payloads for RLM-style exploration
+- `memory/SelfLearning.kt` — session retrospective, mistake journal, preference tracker
+- `memory/SkillCache.kt` — skill recipe storage and retrieval
+- `memory/KnowledgeBase.kt` — tool result caching with TTL
+- `memory/PatternExtractor.kt` — heuristic fact/preference extraction (no LLM)
+- `tools/impl/ContextExploreTool.kt` — peek/search/summarize on context variables
+- `tools/impl/MemoryManageTool.kt` — agent self-service memory tools (MemGPT-style)
+
+**Modified files:**
+- `agent/GuappaSession.kt` — replace `getContextMessages()` with `ContextAssembler` call
+- `agent/GuappaOrchestrator.kt` — remove inline compaction, use `CompactionScheduler`; add self-learning hooks
+- `agent/GuappaPlanner.kt` — use `SubAgentRunner` for step execution; check `SkillCache` before planning
+- `memory/MemoryManager.kt` — integrate `SelfLearning`, `KnowledgeBase`; upgrade fact retrieval to semantic
+- `memory/ContextCompactor.kt` — refactor to support async mode, extractive-first strategy
+- `memory/EmbeddingService.kt` — add fact embedding storage, temporal decay scoring
+- `providers/TokenCounter.kt` — upgrade to BPE-based counting (or calibrate char/token ratio per model)
+
+### References
+
+1. Zhang, A. & Khattab, O. (2025). *Recursive Language Models*. MIT CSAIL. [arXiv:2512.24601](https://arxiv.org/abs/2512.24601)
+2. Packer, C. et al. (2024). *MemGPT: Towards LLMs as Operating Systems*. [arXiv:2310.08560](https://arxiv.org/abs/2310.08560)
+3. Mem0 (2025). *Universal Memory Layer for AI Agents*. [github.com/mem0ai/mem0](https://github.com/mem0ai/mem0)
+4. LangGraph (2025). *Build Resilient Language Agents as Graphs*. [github.com/langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)
+5. OpenAI (2024). *Swarm: Ergonomic Multi-Agent Orchestration*. [github.com/openai/swarm](https://github.com/openai/swarm)
+6. CrewAI (2025). *Framework for Collaborative AI Agents*. [github.com/crewAIInc/crewAI](https://github.com/crewAIInc/crewAI)
+
+---
 
 **Known issues:**
 - OOM kill when SQLCipher is enabled on emulator (removed from build)
 - Gboard toolbar interferes with Maestro `hideKeyboard` → back → app restart
-- Context window slider shows 4096 instead of 65536 (config migration timing)
 - ReactNativeJS logs often missing from logcat (buffer overflow)
-
-### Changes This Session
-- Removed SQLCipher dependency (OOM on emulator)
-- Simplified GuappaDatabase.kt to use plain Room
-- Increased OkHttp read timeout from 60s to 300s (for local model inference)
-- Rebuilt APK and verified all features
-
-### Blocked — Needs API Keys
-| What | Key Needed |
-|------|-----------|
-| Cloud chat (OpenRouter/minimax) | OpenRouter API key |
-| Tool call E2E testing | Same — needs function-calling model |
-| Brave web search | Brave API key |
-| Deepgram STT/TTS | Deepgram API key |
-| Telegram channels | Telegram bot token |
-| Discord channels | Discord bot token |
-
-### Unit Test Results
-- **Kotlin**: 178+ tests pass (21 test files)
-- **TypeScript**: 76 tests pass (6 suites)
-- **Tool schemas**: All 78 tools register, schemas valid, names unique
+- `File.downloadFileAsync` (expo-file-system new API) has no progress callback — shows 0% then jumps to 100%
+- Context compaction for local models uses simple truncation as temp fix (LLM-based compaction blocks serial inference queue) — see "Context Usage Optimization" section for proper solution design

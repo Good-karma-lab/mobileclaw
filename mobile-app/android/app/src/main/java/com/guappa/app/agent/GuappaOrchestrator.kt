@@ -225,8 +225,15 @@ class GuappaOrchestrator(
                 persistMessage(session.id, msg)
 
                 // Check if context needs compaction before LLM call
+                // For local models, use simple truncation (LLM compaction blocks the queue)
                 if (session.messages.size > CONTEXT_COMPACTION_THRESHOLD) {
-                    compactContext(session)
+                    val isLocalModel = selectedModel == "local"
+                    if (isLocalModel) {
+                        // Simple truncation: keep system msg + last N messages
+                        session.compactWith("[Earlier conversation truncated]", CONTEXT_KEEP_RECENT)
+                    } else {
+                        compactContext(session)
+                    }
                 }
 
                 if (planner.isComplexRequest(message.text)) {
