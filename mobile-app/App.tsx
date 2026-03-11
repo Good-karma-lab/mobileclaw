@@ -134,7 +134,7 @@ export default function App() {
                   modelPath: agentConfig.localModelPath,
                   gpuLayers: agentCfg.gpuLayers ?? 0,
                   cpuThreads: agentCfg.cpuThreads ?? 4,
-                  contextLength: agentCfg.contextLength ?? 2048,
+                  contextLength: agentCfg.contextLength ?? 65536,
                   thinkingMode: agentCfg.thinkingMode ?? true,
                 });
                 agentConfig.provider = "openai";

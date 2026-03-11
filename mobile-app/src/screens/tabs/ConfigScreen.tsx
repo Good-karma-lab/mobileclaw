@@ -281,7 +281,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
           modelPath: agentConfig.localModelPath,
           gpuLayers: config.gpuLayers ?? 99,
           cpuThreads: config.cpuThreads ?? 4,
-          contextLength: (config.contextLength && config.contextLength > 4096) ? config.contextLength : 32768,
+          contextLength: (config.contextLength && config.contextLength > 4096) ? config.contextLength : 65536,
           thinkingMode: config.thinkingMode ?? true,
         });
         agentConfig.provider = "openai";
@@ -636,6 +636,26 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
             max={2.0}
             step={0.1}
           />
+          <GlassSlider
+            label="Context window"
+            value={config.contextLength ?? 65536}
+            onValueChange={(v) => updateConfig("contextLength", v)}
+            min={4096}
+            max={262144}
+            step={4096}
+            unit="tokens"
+            testID="config-context-length-slider"
+          />
+          <GlassSlider
+            label="Max generation tokens"
+            value={config.maxGenTokens ?? 8192}
+            onValueChange={(v) => updateConfig("maxGenTokens", v)}
+            min={256}
+            max={16384}
+            step={256}
+            unit="tokens"
+            testID="config-max-gen-tokens-slider"
+          />
           <GlassInput
             label="Daily budget"
             value="$5.00"
@@ -789,7 +809,7 @@ export function ConfigScreen({ isActive }: { isActive?: boolean }) {
             value={memory.contextBudgetTokens}
             onValueChange={(v) => updateMemory("contextBudgetTokens", v)}
             min={2048}
-            max={32768}
+            max={65536}
             step={1024}
             unit="tokens"
           />

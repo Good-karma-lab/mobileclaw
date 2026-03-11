@@ -369,18 +369,21 @@ class GuappaOrchestrator(
                         role = msg.role,
                         text = msg.content,
                         images = imageParts
-                    ).copy(toolCallId = msg.toolCallId)
+                    ).copy(toolCallId = msg.toolCallId, toolCalls = msg.toolCalls)
                 } else {
                     ChatMessage(
                         role = msg.role,
                         content = msg.content,
-                        toolCallId = msg.toolCallId
+                        toolCallId = msg.toolCallId,
+                        toolCalls = msg.toolCalls
                     )
                 }
             }
 
             // Determine capability: prefer TOOL_USE if available, fall back to TEXT_CHAT
-            val capability = if (router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
+            // Skip tool schemas for local models — small models can't use function calling
+            val isLocalModel = selectedModel == "local"
+            val capability = if (!isLocalModel && router.getProviderForCapability(CapabilityType.TOOL_USE) != null) {
                 CapabilityType.TOOL_USE
             } else {
                 CapabilityType.TEXT_CHAT
@@ -392,6 +395,9 @@ class GuappaOrchestrator(
             // ---- Always stream ----
             val streamedText = StringBuilder()
             val streamedThinking = StringBuilder()
+            // Inline <think> tag state machine
+            var inThinkBlock = false
+            val thinkTagBuffer = StringBuilder() // buffer for partial tag matching
             // Accumulate tool call fragments from the stream
             data class ToolCallAccum(var id: String, var name: String, val args: StringBuilder = StringBuilder())
             val toolCallAccums = mutableMapOf<Int, ToolCallAccum>()
@@ -399,7 +405,6 @@ class GuappaOrchestrator(
 
             // For local models, launch a coroutine that reads tokens directly
             // from LocalStreamBridge (bypasses HTTP buffering)
-            val isLocalModel = selectedModel == "local"
             var directStreamJob: Job? = null
             if (isLocalModel) {
                 directStreamJob = scope.launch {
@@ -435,16 +440,55 @@ class GuappaOrchestrator(
                             if (isLocalModel) {
                                 // Skip HTTP text deltas for local models —
                                 // tokens are streamed directly via LocalStreamBridge
-                                // But still accumulate for final response
-                                if (streamedText.isEmpty()) {
-                                    // Direct stream already accumulated text
-                                }
                             } else {
-                                streamedText.append(delta.content)
-                                textDirty = true
+                                // Process text with inline <think> tag detection
+                                val text = delta.content
+                                var i = 0
+                                while (i < text.length) {
+                                    val ch = text[i]
+                                    thinkTagBuffer.append(ch)
+                                    val buf = thinkTagBuffer.toString()
+
+                                    if (!inThinkBlock) {
+                                        // Looking for <think>
+                                        if (buf.endsWith("<think>")) {
+                                            // Remove the <think> tag from any accumulated text
+                                            val prefix = buf.dropLast(7)
+                                            if (prefix.isNotEmpty()) {
+                                                streamedText.append(prefix)
+                                                textDirty = true
+                                            }
+                                            thinkTagBuffer.clear()
+                                            inThinkBlock = true
+                                        } else if (buf.length > 7 || (buf.isNotEmpty() && !("<think>".startsWith(buf)))) {
+                                            // Not a partial match — flush to text
+                                            streamedText.append(buf)
+                                            textDirty = true
+                                            thinkTagBuffer.clear()
+                                        }
+                                    } else {
+                                        // Inside <think> block — looking for </think>
+                                        if (buf.endsWith("</think>")) {
+                                            val thinkContent = buf.dropLast(8)
+                                            if (thinkContent.isNotEmpty()) {
+                                                streamedThinking.append(thinkContent)
+                                                thinkDirty = true
+                                            }
+                                            thinkTagBuffer.clear()
+                                            inThinkBlock = false
+                                        } else if (buf.length > 200 && !buf.endsWith("<") && !buf.contains("</think")) {
+                                            // Flush long think content to UI
+                                            streamedThinking.append(buf)
+                                            thinkDirty = true
+                                            thinkTagBuffer.clear()
+                                        }
+                                    }
+                                    i++
+                                }
+
+                                // Throttled flush to UI
                                 val now = System.currentTimeMillis()
-                                // Flush accumulated text to UI at ~30fps (every 33ms)
-                                if (now - lastTextFlush >= 33) {
+                                if (textDirty && now - lastTextFlush >= 33) {
                                     lastTextFlush = now
                                     textDirty = false
                                     messageBus.publish(BusMessage.AgentMessage(
@@ -453,6 +497,18 @@ class GuappaOrchestrator(
                                         isStreaming = true,
                                         isComplete = false,
                                         contentType = "text"
+                                    ))
+                                    delay(1)
+                                }
+                                if (thinkDirty && now - lastThinkFlush >= 33) {
+                                    lastThinkFlush = now
+                                    thinkDirty = false
+                                    messageBus.publish(BusMessage.AgentMessage(
+                                        text = streamedThinking.toString(),
+                                        sessionId = session.id,
+                                        isStreaming = true,
+                                        isComplete = false,
+                                        contentType = "thinking"
                                     ))
                                     delay(1)
                                 }
@@ -552,8 +608,12 @@ class GuappaOrchestrator(
                     )
                 }
 
+                android.util.Log.d("GuappaOrchestrator", "Tool calls accumulated: ${toolCalls.map { "${it.function.name}(${it.function.arguments.take(80)})" }}")
+
                 val assistantContent = streamedText.toString()
-                val assistantMsg = Message(role = "assistant", content = assistantContent)
+                // CRITICAL: include toolCalls in assistant message so next iteration
+                // sends proper tool_calls array in the API request
+                val assistantMsg = Message(role = "assistant", content = assistantContent, toolCalls = toolCalls)
                 session.addMessage(assistantMsg)
                 persistMessage(session.id, assistantMsg)
 

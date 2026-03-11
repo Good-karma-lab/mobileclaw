@@ -205,6 +205,11 @@ dependencies {
     implementation "androidx.room:room-ktx:$roomVersion"
     kapt "androidx.room:room-compiler:$roomVersion"
 
+    // SQLCipher for encrypted Room database (P0 security)
+    // SQLCipher removed — causes OOM on emulators with GGUF models loaded
+    // Re-enable on real devices: implementation "net.zetetic:android-database-sqlcipher:4.5.4"
+    implementation "androidx.sqlite:sqlite-ktx:2.4.0"
+
     // DataStore (config persistence)
     implementation "androidx.datastore:datastore-preferences:1.1.1"
 

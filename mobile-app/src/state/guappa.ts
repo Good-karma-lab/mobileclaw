@@ -33,6 +33,7 @@ export type AgentRuntimeConfig = {
   gpuLayers: number;
   cpuThreads: number;
   contextLength: number;
+  maxGenTokens: number;
   voiceProvider: "deepgram" | "whisper";
   whisperModel: string;
   whisperModelPath: string;
@@ -137,7 +138,8 @@ export const DEFAULT_AGENT_CONFIG: AgentRuntimeConfig = {
   thinkingMode: true, // Qwen3.5 thinking mode enabled by default
   gpuLayers: 99, // Auto: llama.rn offloads as many layers as GPU supports
   cpuThreads: 4,
-  contextLength: 32768,
+  contextLength: 65536,
+  maxGenTokens: 8192,
   voiceProvider: "android",
   whisperModel: "whisper-base",
   whisperModelPath: "",
@@ -210,7 +212,7 @@ export const DEFAULT_PROACTIVE_CONFIG: ProactiveConfig = {
 
 export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   autoSummarization: true,
-  contextBudgetTokens: 8192,
+  contextBudgetTokens: 65536,
   retentionDays: 30,
 };
 
@@ -327,7 +329,21 @@ async function writeMaybeSecureJson<T>(
 }
 
 export async function loadAgentConfig(): Promise<AgentRuntimeConfig> {
-  return readMaybeSecureJson(AGENT_KEY, SECURE_AGENT_KEY, DEFAULT_AGENT_CONFIG);
+  const config = await readMaybeSecureJson(AGENT_KEY, SECURE_AGENT_KEY, DEFAULT_AGENT_CONFIG);
+  // Migrate old defaults to new defaults
+  let dirty = false;
+  if (!config.contextLength || config.contextLength <= 4096) {
+    config.contextLength = 65536;
+    dirty = true;
+  }
+  if (!config.maxGenTokens || config.maxGenTokens <= 4096) {
+    config.maxGenTokens = 8192;
+    dirty = true;
+  }
+  if (dirty) {
+    await writeMaybeSecureJson(AGENT_KEY, SECURE_AGENT_KEY, config);
+  }
+  return config;
 }
 
 export async function saveAgentConfig(config: AgentRuntimeConfig): Promise<void> {

@@ -34,11 +34,13 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
   }
   serverStarting = true;
 
-  // Load model via llama.rn
-  logger.info(`[LocalLLM] Loading model: ${config.modelPath} (gpu_layers=${config.gpuLayers}, n_ctx=${config.contextLength})`);
+  // Cap context for local models — 8K is safe for emulators, 32K for real devices
+  // Higher values cause OOM or extreme latency on smaller models
+  const localCtx = Math.min(config.contextLength, 8192);
+  logger.info(`[LocalLLM] Loading model: ${config.modelPath} (gpu_layers=${config.gpuLayers}, n_ctx=${localCtx})`);
   llamaContext = await initLlama({
     model: config.modelPath,
-    n_ctx: config.contextLength,
+    n_ctx: localCtx,
     n_gpu_layers: config.gpuLayers,
     n_threads: config.cpuThreads,
     use_mmap: true,
@@ -66,7 +68,7 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
       const parsed = JSON.parse(body || "{}");
       const messages = parsed.messages || [];
       const temperature = parsed.temperature ?? 0.7;
-      const maxTokens = parsed.max_tokens ?? 2048;
+      const maxTokens = parsed.max_tokens ?? 8192;
 
       if (!llamaContext) {
         LocalLlmServer.streamError(requestId, "Model not loaded");
@@ -150,7 +152,7 @@ export async function startLocalLlmServer(config: LocalLlmConfig): Promise<void>
       const parsed = JSON.parse(body || "{}");
       const messages = parsed.messages || [];
       const temperature = parsed.temperature ?? 0.7;
-      const maxTokens = parsed.max_tokens ?? 2048;
+      const maxTokens = parsed.max_tokens ?? 8192;
 
       if (!llamaContext) {
         LocalLlmServer.respondToRequest(requestId, 503,

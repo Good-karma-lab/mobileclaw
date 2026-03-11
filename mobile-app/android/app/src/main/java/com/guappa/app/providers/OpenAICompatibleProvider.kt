@@ -36,7 +36,7 @@ open class OpenAICompatibleProvider(
 
     protected val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(300, TimeUnit.SECONDS) // 5 min for local model inference
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
@@ -301,12 +301,14 @@ open class OpenAICompatibleProvider(
         tools: List<JSONObject>?,
         model: String?,
         temperature: Double,
-        stream: Boolean
+        stream: Boolean,
+        maxTokens: Int = 8192
     ): JSONObject {
         val body = JSONObject()
         body.put("model", model ?: "gpt-4o")
         body.put("temperature", temperature)
         body.put("stream", stream)
+        body.put("max_tokens", maxTokens)
 
         val messagesArray = JSONArray()
         for (msg in messages) {

@@ -1,5 +1,7 @@
 package com.guappa.app.agent
 
+import com.guappa.app.providers.ToolCall
+import com.guappa.app.providers.ToolCallFunction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
@@ -17,7 +19,9 @@ data class Message(
     val toolCallId: String? = null,
     val tokenCount: Int = 0,
     /** File paths of images attached to this message (user photos, tool outputs, agent-generated). */
-    val imageAttachments: List<String> = emptyList()
+    val imageAttachments: List<String> = emptyList(),
+    /** Tool calls made by the assistant in this message (required for tool-use loop). */
+    val toolCalls: List<ToolCall>? = null
 ) {
     val hasImages: Boolean get() = imageAttachments.isNotEmpty()
 
@@ -31,6 +35,20 @@ data class Message(
         if (imageAttachments.isNotEmpty()) {
             put("imageAttachments", JSONArray(imageAttachments))
         }
+        if (!toolCalls.isNullOrEmpty()) {
+            put("toolCalls", JSONArray().apply {
+                for (tc in toolCalls) {
+                    put(JSONObject().apply {
+                        put("id", tc.id)
+                        put("type", tc.type)
+                        put("function", JSONObject().apply {
+                            put("name", tc.function.name)
+                            put("arguments", tc.function.arguments)
+                        })
+                    })
+                }
+            })
+        }
     }
 
     companion object {
@@ -39,11 +57,25 @@ data class Message(
             role = json.getString("role"),
             content = json.getString("content"),
             timestamp = json.optLong("timestamp", System.currentTimeMillis()),
-            toolCallId = json.optString("toolCallId", null),
+            toolCallId = if (json.has("toolCallId") && !json.isNull("toolCallId")) json.getString("toolCallId") else null,
             tokenCount = json.optInt("tokenCount", 0),
             imageAttachments = json.optJSONArray("imageAttachments")?.let { arr ->
                 (0 until arr.length()).map { arr.getString(it) }
-            } ?: emptyList()
+            } ?: emptyList(),
+            toolCalls = json.optJSONArray("toolCalls")?.let { arr ->
+                (0 until arr.length()).map { i ->
+                    val tc = arr.getJSONObject(i)
+                    val fn = tc.getJSONObject("function")
+                    ToolCall(
+                        id = tc.getString("id"),
+                        type = tc.optString("type", "function"),
+                        function = ToolCallFunction(
+                            name = fn.getString("name"),
+                            arguments = fn.optString("arguments", "{}")
+                        )
+                    )
+                }
+            }
         )
     }
 }

@@ -60,7 +60,7 @@ async function ensureAgentReady(): Promise<void> {
           modelPath: agentConfig.localModelPath,
           gpuLayers: agentCfg.gpuLayers ?? 0,
           cpuThreads: agentCfg.cpuThreads ?? 4,
-          contextLength: (agentCfg.contextLength && agentCfg.contextLength > 4096) ? agentCfg.contextLength : 32768,
+          contextLength: (agentCfg.contextLength && agentCfg.contextLength > 4096) ? agentCfg.contextLength : 65536,
           thinkingMode: agentCfg.thinkingMode ?? true,
         });
         agentConfig.provider = "openai";

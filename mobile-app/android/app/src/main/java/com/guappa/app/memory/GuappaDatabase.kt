@@ -1,6 +1,7 @@
 package com.guappa.app.memory
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -26,6 +27,7 @@ abstract class GuappaDatabase : RoomDatabase() {
     abstract fun embeddingDao(): EmbeddingDao
 
     companion object {
+        private const val TAG = "GuappaDatabase"
         private const val DB_NAME = "guappa_memory.db"
 
         @Volatile
@@ -38,14 +40,25 @@ abstract class GuappaDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): GuappaDatabase {
-            return Room.databaseBuilder(
-                context.applicationContext,
-                GuappaDatabase::class.java,
-                DB_NAME
-            )
-                .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .fallbackToDestructiveMigration()
-                .build()
+            return try {
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    GuappaDatabase::class.java,
+                    DB_NAME
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to build database, deleting and retrying", e)
+                context.deleteDatabase(DB_NAME)
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    GuappaDatabase::class.java,
+                    DB_NAME
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+            }
         }
     }
 }

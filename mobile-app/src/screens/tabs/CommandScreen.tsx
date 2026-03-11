@@ -39,6 +39,7 @@ import {
   type MemorySession,
 } from "../../native/guappaMemory";
 import { getTriggers, type ProactiveTrigger } from "../../native/guappaProactive";
+import { loadAgentConfig } from "../../state/guappa";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -755,9 +756,10 @@ export function CommandScreen({ isActive }: { isActive?: boolean }) {
   const [tasks, setTasks] = useState<ActiveTask[]>([]);
   const [jobs, setJobs] = useState<ScheduledJob[]>([]);
   const [triggers, setTriggers] = useState<Trigger[]>([]);
+  const [contextLength, setContextLength] = useState(65536);
   const [memoryStats, setMemoryStats] = useState<MemoryStats>({
     workingTokens: 0,
-    maxTokens: 8192,
+    maxTokens: 65536,
     shortTermFacts: 0,
     longTermFacts: 0,
     episodicMemories: 0,
@@ -780,6 +782,11 @@ export function CommandScreen({ isActive }: { isActive?: boolean }) {
   // Load live data from native bridges
   const loadLiveData = useCallback(async () => {
     try {
+      // Load context length from config
+      const agentCfg = await loadAgentConfig();
+      const ctxLen = agentCfg.contextLength || 65536;
+      setContextLength(ctxLen);
+
       const [nativeTasks, nativeStats, nativeSessions, nativeTriggers] =
         await Promise.allSettled([
           getActiveTasks(),
@@ -805,7 +812,7 @@ export function CommandScreen({ isActive }: { isActive?: boolean }) {
         const s = nativeStats.value;
         setMemoryStats({
           workingTokens: 0,
-          maxTokens: 8192,
+          maxTokens: contextLength,
           shortTermFacts: s.shortTermFacts,
           longTermFacts: s.longTermFacts,
           episodicMemories: s.totalEpisodes,

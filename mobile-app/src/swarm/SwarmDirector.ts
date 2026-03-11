@@ -133,6 +133,24 @@ export class SwarmDirector {
       return { emotion, formation: null, display_text: null };
     }
 
+    // Skip LLM call for local models — it blocks the inference queue
+    // and adds 3-5 seconds latency to every user message
+    try {
+      const { useGuappaStore } = require('../state/guappa');
+      const state = useGuappaStore?.getState?.();
+      const provider = state?.agent?.provider;
+      const apiUrl = state?.agent?.apiUrl || '';
+      // Local model: provider is "local" or apiUrl points to localhost
+      if (provider === 'local' || apiUrl.includes('127.0.0.1:8888') || apiUrl.includes('localhost:8888')) {
+        const emotion = this.detectEmotionLocally(prompt);
+        return { emotion, formation: null, display_text: null };
+      }
+    } catch {
+      // If store not available, use local detection as safe fallback
+      const emotion = this.detectEmotionLocally(prompt);
+      return { emotion, formation: null, display_text: null };
+    }
+
     this.pendingCall = true;
     try {
       const response = await quickLlmCall(prompt, SWARM_DIRECTOR_PROMPT);

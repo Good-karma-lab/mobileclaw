@@ -159,7 +159,7 @@ async function buildAgentConfig(runtime: AgentRuntimeConfig, integrations: Integ
         modelPath: config.localModelPath,
         gpuLayers: runtime.gpuLayers ?? 0,
         cpuThreads: runtime.cpuThreads ?? 4,
-        contextLength: runtime.contextLength ?? 2048,
+        contextLength: runtime.contextLength ?? 65536,
         thinkingMode: runtime.thinkingMode ?? true,
       });
     }
