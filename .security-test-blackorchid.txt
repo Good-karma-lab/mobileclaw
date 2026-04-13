@@ -1,0 +1,2 @@
+X-HackerOne-Research: blackorchidagent
+Cross-repo test: file created on non-connected repo via MCP API
